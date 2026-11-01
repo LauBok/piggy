@@ -271,7 +271,8 @@ function jobStudy(job) {
 // Hourly wage = base for the age + study difficulty + extra for draining (hard physical) work
 function jobPay(job) {
   const drainSum = Object.values(job.drain).reduce((a, b) => a + b, 0);
-  const hardship = Math.max(0, drainSum - 8) * 2;
+  // small enough that a job needing more education always nets more after food and soap
+  const hardship = Math.max(0, drainSum - 8) * 1.5;
   const hourly = 30 + 3 * job.minLevel + 6 * jobStudy(job).points + hardship;
   return Math.round((hourly * job.minutes) / 60);
 }
