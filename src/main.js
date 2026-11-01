@@ -2,10 +2,12 @@ const { app, BrowserWindow, ipcMain, screen, Menu, Tray, nativeImage, powerMonit
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+const content = require('./content');
 
 // The installed app is called 小猪桌宠, but saves have always lived in the "piggy" folder:
 // keep that name so updates and the dev build share one save.
 app.setName('piggy');
+content.registerScheme();
 
 const RELEASES_URL = 'https://github.com/LauBok/piggy/releases/latest';
 
@@ -47,7 +49,13 @@ function createWindow() {
   });
   win.setAlwaysOnTop(true, 'floating');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  win.webContents.on('did-finish-load', () => content.watchHealth(win, reloadWindows));
+  win.loadURL('piggy://app/index.html');
+}
+
+function reloadWindows() {
+  win.reload();
+  if (homeOpen()) homeWin.reload();
 }
 
 const homeOpen = () => homeWin && !homeWin.isDestroyed();
@@ -82,7 +90,7 @@ function openHome(tab = 'status') {
       nodeIntegration: false,
     },
   });
-  homeWin.loadFile(path.join(__dirname, 'renderer', 'home.html'), { query: { tab } });
+  homeWin.loadURL(`piggy://app/home.html?tab=${encodeURIComponent(tab)}`);
   homeWin.once('ready-to-show', () => homeWin.show());
 }
 
@@ -106,16 +114,38 @@ function trayIcon() {
 
 // null, or { version, ready } once a newer version is found (ready: downloaded and installable)
 let update = null;
+// version of downloaded game content waiting to be applied, or null
+let contentUpdate = null;
 
 function buildTrayMenu() {
   const items = [
     { label: '显示小猪', click: () => win.show() },
     { label: '打开小窝', click: () => openHome() },
   ];
+  if (contentUpdate) items.push({ label: `更新内容到 ${contentUpdate}（重新加载）`, click: applyContent });
   if (update?.ready) items.push({ label: `重启并更新到 ${update.version}`, click: () => autoUpdater.quitAndInstall() });
   else if (update) items.push({ label: `下载新版本 ${update.version}`, click: () => shell.openExternal(RELEASES_URL) });
-  items.push({ type: 'separator' }, { label: `v${app.getVersion()}`, enabled: false }, { label: '退出', click: () => app.quit() });
+  const v = content.version() === app.getVersion() ? `v${app.getVersion()}` : `v${app.getVersion()} · 内容 v${content.version()}`;
+  items.push({ type: 'separator' }, { label: v, enabled: false }, { label: '退出', click: () => app.quit() });
   tray.setContextMenu(Menu.buildFromTemplate(items));
+}
+
+function applyContent() {
+  if (!content.apply()) return;
+  contentUpdate = null;
+  buildTrayMenu();
+  reloadWindows();
+}
+
+// New game content: tell the pet and offer it in the tray (it also applies on the next start)
+function setupContentUpdates() {
+  const found = (version) => {
+    contentUpdate = version;
+    buildTrayMenu();
+    win.webContents.send('pet:update', { version, content: true });
+  };
+  content.check(found);
+  setInterval(() => content.check(found), 6 * 3600 * 1000);
 }
 
 function createTray() {
@@ -213,9 +243,11 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.whenReady().then(() => {
     if (process.platform === 'darwin') app.dock.hide();
+    content.serve();
     createWindow();
     createTray();
     setupUpdates();
+    setupContentUpdates();
   });
   app.on('second-instance', () => win && win.show());
   app.on('window-all-closed', () => app.quit());

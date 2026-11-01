@@ -49,7 +49,9 @@ const App = {
     window.pet.onStateRequest(() => this.push());
     window.pet.onUpdate((u) => {
       PetView.flash('happy', 2000);
-      UI.say(u.ready ? `新版本 ${u.version} 准备好啦，托盘里点重启~` : `有新版本 ${u.version}，托盘里可以下载~`, 8000);
+      let msg = u.ready ? `新版本 ${u.version} 准备好啦，托盘里点重启~` : `有新版本 ${u.version}，托盘里可以下载~`;
+      if (u.content) msg = `新内容 ${u.version} 下好啦，托盘里点重新加载~`;
+      UI.say(msg, 8000);
     });
     PetView.update(Game);
     UI.refresh();

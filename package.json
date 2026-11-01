@@ -9,7 +9,11 @@
   "repository": "github:LauBok/piggy",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --publish never"
+    "dist": "electron-builder --publish never",
+    "content": "node scripts/build-content.js"
+  },
+  "piggy": {
+    "shellApi": 1
   },
   "build": {
     "appId": "com.laubok.piggy",

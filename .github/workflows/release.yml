@@ -27,3 +27,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # no Apple certificate: build unsigned
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+  # The signed game-content bundle that installed apps pick up without a reinstall
+  content:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/build-content.js
+        env:
+          CONTENT_SIGNING_KEY: ${{ secrets.CONTENT_SIGNING_KEY }}
+      - run: gh release upload "$GITHUB_REF_NAME" dist/content/content.json dist/content/content.json.sig --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
