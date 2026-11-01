@@ -1,0 +1,58 @@
+{
+  "name": "piggy",
+  "productName": "小猪桌宠",
+  "version": "0.1.0",
+  "description": "A cross-platform desktop pet piggy with QQ-pet style stats and activities",
+  "main": "src/main.js",
+  "author": "LauBok",
+  "license": "MIT",
+  "repository": "github:LauBok/piggy",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --publish never"
+  },
+  "build": {
+    "appId": "com.laubok.piggy",
+    "productName": "小猪桌宠",
+    "artifactName": "piggy-${version}-${os}-${arch}.${ext}",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.games",
+      "icon": "build/icon.png",
+      "target": [
+        { "target": "dmg", "arch": ["universal"] },
+        { "target": "zip", "arch": ["universal"] }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "LauBok",
+      "repo": "piggy",
+      "releaseType": "release"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  }
+}

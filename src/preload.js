@@ -1,0 +1,21 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('pet', {
+  loadSave: () => ipcRenderer.invoke('save:load'),
+  writeSave: (data) => ipcRenderer.sendSync('save:write', data),
+  getBounds: () => ipcRenderer.invoke('win:getBounds'),
+  workArea: () => ipcRenderer.invoke('screen:workArea'),
+  cursor: () => ipcRenderer.invoke('screen:cursor'),
+  idleSeconds: () => ipcRenderer.invoke('sys:idle'),
+  setPos: (x, y) => ipcRenderer.send('win:setPos', x, y),
+  ignoreMouse: (ignore) => ipcRenderer.send('win:ignoreMouse', ignore),
+  dragStart: () => ipcRenderer.send('drag:start'),
+  dragEnd: () => ipcRenderer.invoke('drag:end'),
+  openHome: (tab) => ipcRenderer.send('home:open', tab),
+  pushState: (snap) => ipcRenderer.send('pet:state', snap),
+  toast: (t) => ipcRenderer.send('pet:toast', t),
+  onAct: (cb) => ipcRenderer.on('pet:act', (_e, action, id) => cb(action, id)),
+  onStateRequest: (cb) => ipcRenderer.on('pet:pushState', () => cb()),
+  onUpdate: (cb) => ipcRenderer.on('pet:update', (_e, u) => cb(u)),
+  quit: () => ipcRenderer.send('app:quit'),
+});

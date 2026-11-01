@@ -1,0 +1,332 @@
+/* Piggy SVG animations, shared by the pet window and the home window avatar */
+
+.line {
+  fill: none;
+  stroke: #4a2c38;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.line.thin {
+  stroke-width: 2.2;
+}
+
+.pig,
+.breathe,
+.leg,
+.arm,
+.tail,
+.ear,
+#eyes,
+#mouth,
+.soap circle {
+  transform-box: fill-box;
+}
+
+.pig {
+  transform-origin: 50% 100%;
+}
+
+.breathe {
+  transform-origin: 50% 100%;
+  animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    transform: scale(1.02, 1.035);
+  }
+}
+
+#eyes {
+  transform-origin: 50% 50%;
+  transition: transform 0.07s;
+}
+
+#eyes.blink {
+  transform: scaleY(0.1);
+}
+
+.tail {
+  transform-origin: 0% 50%;
+  animation: wag 1.6s ease-in-out infinite;
+}
+
+@keyframes wag {
+  50% {
+    transform: rotate(20deg);
+  }
+}
+
+.ear-l {
+  transform-origin: 85% 90%;
+  animation: twitch-l 7s ease-in-out infinite;
+}
+
+.ear-r {
+  transform-origin: 15% 90%;
+  animation: twitch-r 7s ease-in-out infinite 3s;
+}
+
+@keyframes twitch-l {
+  0%, 90%, 100% { transform: none; }
+  94% { transform: rotate(-12deg); }
+}
+
+@keyframes twitch-r {
+  0%, 90%, 100% { transform: none; }
+  94% { transform: rotate(12deg); }
+}
+
+.leg {
+  transform-origin: 50% 0%;
+}
+
+.arm {
+  transform-origin: 50% 15%;
+}
+
+/* walking */
+.walking .pig {
+  animation: bob 0.36s ease-in-out infinite;
+}
+
+.walking .leg-a,
+.walking .leg-b,
+.walking .arm-l,
+.walking .arm-r {
+  animation: step 0.36s ease-in-out infinite;
+}
+
+.walking .leg-b,
+.walking .arm-l {
+  animation-delay: -0.18s;
+}
+
+@keyframes bob {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes step {
+  0%, 100% { transform: rotate(14deg); }
+  50% { transform: rotate(-14deg); }
+}
+
+/* picked up by the mouse */
+.dragged .pig {
+  transform-origin: 50% 0%;
+  animation: dangle 1.2s ease-in-out infinite;
+}
+
+.dragged .leg {
+  animation: none;
+  transform: translateY(4px);
+}
+
+.dragged .arm-l {
+  transform: rotate(35deg);
+}
+
+.dragged .arm-r {
+  transform: rotate(-35deg);
+}
+
+@keyframes dangle {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.airborne #shadow,
+.scared #shadow,
+.jetting #shadow {
+  opacity: 0;
+}
+
+/* falling from high up: arms flailing */
+.scared .arm-l {
+  animation: flail-l 0.25s ease-in-out infinite alternate;
+}
+
+.scared .arm-r {
+  animation: flail-r 0.25s ease-in-out infinite alternate;
+}
+
+@keyframes flail-l {
+  from { transform: rotate(60deg); }
+  to { transform: rotate(110deg); }
+}
+
+@keyframes flail-r {
+  from { transform: rotate(-60deg); }
+  to { transform: rotate(-110deg); }
+}
+
+.land .breathe {
+  animation: squish 0.3s ease-out;
+}
+
+@keyframes squish {
+  30% {
+    transform: scale(1.12, 0.86);
+  }
+}
+
+.hop .pig {
+  animation: hop 0.45s ease-out;
+}
+
+.jump .pig {
+  animation: hop 0.45s ease-out 3;
+}
+
+.jump .arm-l {
+  transform: rotate(40deg);
+}
+
+.jump .arm-r {
+  transform: rotate(-40deg);
+}
+
+@keyframes hop {
+  40% {
+    transform: translateY(-16px);
+  }
+}
+
+.eating #mouth {
+  transform-origin: 50% 50%;
+  animation: chew 0.22s ease-in-out infinite alternate;
+}
+
+@keyframes chew {
+  from { transform: scaleY(0.3); }
+  to { transform: scaleY(1); }
+}
+
+.sick .breathe {
+  filter: saturate(0.55);
+}
+
+.sleeping .breathe {
+  animation-duration: 4.5s;
+}
+
+.sleeping .tail,
+.sleeping .ear {
+  animation: none;
+}
+
+/* ---------- growth forms ---------- */
+
+.wheel {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.walking .wheel {
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* the baby sucks its pacifier instead of showing a mouth, except while eating */
+.form-baby #mouth {
+  display: none;
+}
+
+.form-baby.eating #mouth {
+  display: inline;
+}
+
+.form-baby.eating .paci {
+  display: none;
+}
+
+.paci {
+  transform-box: fill-box;
+  transform-origin: 50% 30%;
+  animation: suck 1.2s ease-in-out infinite;
+}
+
+@keyframes suck {
+  50% {
+    transform: scale(0.92);
+  }
+}
+
+/* in the pram the whole piggy shouldn't swing around */
+.form-baby.dragged .pig,
+.form-baby.walking .pig {
+  animation: none;
+}
+
+/* toddlers waddle */
+.form-toddler.walking .pig {
+  animation: waddle 0.45s ease-in-out infinite;
+}
+
+@keyframes waddle {
+  0%, 100% { transform: rotate(-4deg) translateY(0); }
+  50% { transform: rotate(4deg) translateY(-2px); }
+}
+
+/* ---------- activities ---------- */
+
+.studying .pig {
+  animation: nod 2.4s ease-in-out infinite;
+}
+
+@keyframes nod {
+  0%, 100% { transform: rotate(0deg); }
+  30% { transform: rotate(-3deg) translateY(1px); }
+  60% { transform: rotate(2deg); }
+}
+
+.working .pig {
+  animation: toil 0.8s ease-in-out infinite;
+}
+
+.working .arm-l,
+.working .arm-r {
+  animation: heave 0.8s ease-in-out infinite;
+}
+
+@keyframes toil {
+  50% { transform: translateY(-3px) scale(1.02, 0.98); }
+}
+
+@keyframes heave {
+  50% { transform: rotate(-30deg); }
+}
+
+.working .arm-r {
+  animation-name: heave-r;
+}
+
+@keyframes heave-r {
+  50% { transform: rotate(30deg); }
+}
+
+.soap circle {
+  fill: rgba(255, 255, 255, 0.8);
+  stroke: #a5d8ff;
+  stroke-width: 1.5;
+  transform-origin: 50% 50%;
+  animation: soap 1.4s ease-in-out infinite alternate;
+}
+
+.soap circle:nth-child(2n) {
+  animation-delay: -0.7s;
+}
+
+@keyframes soap {
+  from { transform: scale(0.75) translateY(2px); }
+  to { transform: scale(1.1) translateY(-3px); }
+}

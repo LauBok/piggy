@@ -1,0 +1,383 @@
+// Wires input, the game clock and the views together. The pet window owns the game state;
+// the home window only displays snapshots of it and sends actions back here.
+
+const LINES = {
+  hunger: ['肚子咕咕叫了…', '好饿呀，想吃东西'],
+  clean: ['身上脏脏的，想洗澡', '我是不是有点臭臭的…'],
+  energy: ['好累…想睡觉', '眼皮在打架…'],
+  health: ['我不舒服…', '头好晕…想吃药'],
+  mood: ['陪我玩嘛~', '好无聊呀'],
+  happy: ['哼哼~', '今天也很开心！', '最喜欢你了！', '(｡･ω･｡)', '要摸摸头！'],
+  lifted: ['哇啊！', '放我下来~', '飞起来啦！'],
+  sulk: ['哼！', '不理你了！', '还戳！', '哼哼！'],
+};
+// little symbols that pop up now and then while busy
+const BUSY_FX = { study: ['💡', '✏️', '❓', '📝', '💡'], work: ['💦', '💪', '💦', '😤'] };
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+function needLine() {
+  const s = Game.s;
+  if (s.health < 40) return pick(LINES.health);
+  if (s.hunger < 30) return pick(LINES.hunger);
+  if (s.energy < 20) return pick(LINES.energy);
+  if (s.clean < 30) return pick(LINES.clean);
+  if (s.mood < 30) return pick(LINES.mood);
+  return null;
+}
+
+const App = {
+  lastHover: 0,
+  holdUntil: 0,
+  clicks: [],
+  angryUntil: 0,
+  lastPetMood: 0,
+  nextChat: Date.now() + 60000,
+  nextIdleCheck: 0,
+  lastTickAt: Date.now(),
+
+  async start() {
+    this.wrap = document.getElementById('petWrap');
+    PetView.init(this.wrap, document.getElementById('pet'));
+    UI.init();
+    await Game.load();
+    const done = Game.checkActivity();
+    Game.takeLevelUp(); // growth while closed is shown by the new form, no need to announce
+    const fedWhileAway = Game.takeSelfCare();
+    await Motion.init();
+    this.bindInput();
+    window.pet.onAct((action, id) => this.act(action, id));
+    window.pet.onStateRequest(() => this.push());
+    window.pet.onUpdate((u) => {
+      PetView.flash('happy', 2000);
+      UI.say(u.ready ? `新版本 ${u.version} 准备好啦，托盘里点重启~` : `有新版本 ${u.version}，托盘里可以下载~`, 8000);
+    });
+    PetView.update(Game);
+    UI.refresh();
+    Game.save();
+
+    setInterval(() => this.tick(), 1000);
+    setInterval(() => Game.save(), 15000);
+    window.addEventListener('beforeunload', () => Game.save());
+
+    if (done) this.report(done);
+    else if (fedWhileAway) this.report(fedWhileAway);
+    else UI.say(Game.isNew ? '你好呀！右键点我打开小窝~' : `${Game.s.name}回来啦~`);
+  },
+
+  get hovered() {
+    return Date.now() - this.lastHover < 1500;
+  },
+
+  canWander() {
+    return !Game.busy && !Game.sleeping && !this.hovered && Game.s.health >= 20 && Date.now() > this.holdUntil;
+  },
+
+  hold(ms) {
+    this.holdUntil = Date.now() + ms;
+  },
+
+  pose(cls, ms) {
+    PetView.setPose(cls, true);
+    setTimeout(() => PetView.setPose(cls, false), ms);
+  },
+
+  // Send the current state to the home window, if it's open
+  push() {
+    window.pet.pushState({
+      s: Game.s,
+      busy: Game.busy,
+      sleeping: Game.sleeping,
+      label: Game.activityLabel(),
+      progress: Game.progress(),
+      remain: Game.remaining(),
+    });
+  },
+
+  // Show an action's outcome and refresh everything that depends on state
+  report(res) {
+    if (!res) return;
+    if (res.ok === false) PetView.flash('sad', 1200);
+    if (res.msg) {
+      UI.say(res.msg);
+      window.pet.toast({ msg: res.msg, ok: res.ok !== false });
+    }
+    if (res.fx) PetView.fx(res.fx);
+    PetView.update(Game);
+    UI.refresh();
+    Game.save();
+    this.push();
+  },
+
+  act(action, id) {
+    let res;
+    switch (action) {
+      case 'use': {
+        const it = ITEM_BY_ID[id];
+        res = Game.use(id);
+        if (!res.ok) break;
+        this.hold(2500);
+        if (it.cat === 'toy') {
+          PetView.flash('happy', 2000);
+          PetView.showProp(it.icon, 'prop-toy', 2200);
+          this.pose('jump', 1400);
+        } else if (it.cat === 'hygiene') {
+          PetView.flash('happy', 1600);
+          PetView.showProp(it.icon, 'prop-wash', 1600);
+        } else {
+          PetView.flash('eat', 1600);
+          PetView.showProp(it.icon, 'prop-eat', 1600);
+          this.pose('eating', 1600);
+        }
+        break;
+      }
+      case 'help':
+        res = Game.help(id);
+        if (res.ok && id === 'meal') {
+          PetView.flash('eat', 1600);
+          PetView.showProp(FREE_HELP_BY_ID.meal.icon, 'prop-eat', 1600);
+          this.pose('eating', 1600);
+          this.hold(2500);
+        }
+        break;
+      case 'minigame': {
+        const [name, result] = String(id).split(':');
+        res = Game.minigame(name, result);
+        if (!res.ok) break;
+        PetView.flash(result === 'win' ? 'sad' : 'happy', 1800);
+        if (result !== 'win') this.pose('jump', 1400);
+        this.hold(2500);
+        break;
+      }
+      case 'buy':
+        res = Game.buy(id);
+        break;
+      case 'study':
+        res = Game.startStudy(id);
+        break;
+      case 'work':
+        res = Game.startWork(id);
+        break;
+      case 'bath':
+        res = Game.startBath();
+        break;
+      case 'sleep':
+        res = Game.sleep();
+        break;
+      case 'wake':
+        res = Game.wake(false);
+        break;
+      case 'play':
+        res = Game.play();
+        if (res.ok) {
+          PetView.flash('happy', 1500);
+          this.pose('jump', 1400);
+          this.hold(2500);
+        }
+        break;
+      case 'cancel':
+        res = Game.cancel();
+        break;
+      case 'follow':
+        Game.s.follow = !Game.s.follow;
+        res = { msg: Game.s.follow ? '我跟着你走~' : '我自己去逛逛' };
+        break;
+      case 'rename': {
+        const name = String(id || '').trim().slice(0, 8);
+        if (!name) return;
+        Game.s.name = name;
+        res = { msg: `以后叫我「${name}」吧！` };
+        break;
+      }
+      case 'reset':
+        Game.reset();
+        res = { msg: '一只新的小猪诞生啦！' };
+        break;
+      case 'quit':
+        Game.save();
+        window.pet.quit();
+        return;
+    }
+    this.report(res);
+  },
+
+  // Sleep while nobody is at the computer, wake up when they're back
+  onIdle(sec) {
+    const away = sec >= AWAY_MINUTES * 60;
+    const a = Game.s.activity;
+    if (away && !a) this.report(Game.sleep(true));
+    else if (!away && a?.type === 'sleep' && a.auto) {
+      Game.wake(false);
+      PetView.flash('happy', 2000);
+      this.pose('jump', 1400);
+      this.report({ msg: '你回来啦！' });
+    }
+  },
+
+  onPetClick() {
+    if (Game.sleeping) {
+      PetView.flash('angry', 1500);
+      this.report(Game.wake(true));
+      return;
+    }
+    if (Game.busy) {
+      UI.say(`${Game.activityLabel()}，还要 ${fmtTime(Game.remaining())}~`);
+      return;
+    }
+    const now = Date.now();
+    // still sulking: more poking keeps it angry (and a bit longer), never happy
+    if (now < this.angryUntil) {
+      this.angryUntil = Math.min(this.angryUntil + 3000, now + 15000);
+      PetView.flash('angry', this.angryUntil - now);
+      PetView.setFacing(-1);
+      UI.say(pick(LINES.sulk), 1500);
+      return;
+    }
+    this.clicks = this.clicks.filter((t) => now - t < 3000);
+    this.clicks.push(now);
+    if (this.clicks.length >= 6) {
+      this.clicks = [];
+      this.angryUntil = now + 10000;
+      Game.apply({ mood: -3 });
+      PetView.flash('angry', 10000);
+      this.report({ msg: '别戳啦！哼！' });
+      return;
+    }
+    PetView.flash('love', 1200);
+    PetView.fx('❤️');
+    this.pose('hop', 450);
+    this.hold(3000);
+    // petting cheers it up, but not faster than once every few seconds
+    if (now - this.lastPetMood > 4000) {
+      this.lastPetMood = now;
+      Game.apply({ mood: 3 });
+    }
+    if (Math.random() < 0.5) UI.say(needLine() || pick(LINES.happy));
+    UI.refresh();
+  },
+
+  onDragStart() {
+    if (Game.sleeping) this.report(Game.wake(true));
+    document.body.classList.add('lifted');
+    PetView.setPose('dragged', true);
+    PetView.setPose('airborne', true);
+    PetView.flash('surprised', 60000);
+    UI.say(pick(LINES.lifted), 2000);
+  },
+
+  async onDragEnd() {
+    const pos = await window.pet.dragEnd();
+    document.body.classList.remove('lifted');
+    PetView.setPose('dragged', false);
+    PetView.flash('surprised', 500);
+    Motion.drop(pos);
+    if (!Motion.falling) PetView.setPose('airborne', false);
+  },
+
+  onLand(height, jetted) {
+    PetView.setPose('airborne', false);
+    this.pose('land', 300);
+    this.hold(1500);
+    if (jetted) {
+      PetView.flash('happy', 1500);
+      UI.say('呼～安全着陆！');
+    } else if (height > 250) {
+      Game.apply({ mood: -2 });
+      PetView.flash('dizzy', 1500);
+      UI.say('哎哟，摔疼了！');
+    }
+  },
+
+  bindInput() {
+    const hit = document.getElementById('petHit');
+    let press = null;
+
+    hit.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      hit.setPointerCapture(e.pointerId);
+      press = { x: e.clientX, y: e.clientY, dragging: false };
+    });
+    hit.addEventListener('pointermove', (e) => {
+      if (!press || press.dragging) return;
+      if (Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5) return;
+      press.dragging = true;
+      Motion.startDrag();
+      window.pet.dragStart();
+      this.onDragStart();
+    });
+    hit.addEventListener('pointerup', () => {
+      if (!press) return;
+      const wasDrag = press.dragging;
+      press = null;
+      if (wasDrag) this.onDragEnd();
+      else this.onPetClick();
+    });
+    hit.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      window.pet.openHome('status');
+    });
+
+    // The window is mostly transparent: let clicks fall through to the desktop
+    // except over the pet and the overview card (elements marked .hit)
+    let ignoring = true;
+    window.pet.ignoreMouse(true);
+    document.addEventListener('mousemove', (e) => {
+      const overHit = !!e.target.closest('.hit');
+      if (overHit === ignoring) {
+        ignoring = !overHit;
+        window.pet.ignoreMouse(ignoring);
+      }
+      if (e.target.closest('#petWrap, #hud')) {
+        this.lastHover = Date.now();
+        document.body.classList.add('hover');
+      }
+    });
+  },
+
+  tick() {
+    const now = Date.now();
+    const minutes = (now - this.lastTickAt) / 60000;
+    this.lastTickAt = now;
+    // a long gap means the computer was asleep: treat it like time spent closed
+    Game.tick(minutes, minutes > 2);
+
+    const done = Game.checkActivity();
+    if (done) this.report(done);
+    const fed = Game.takeSelfCare();
+    if (fed) {
+      PetView.flash('eat', 1600);
+      this.pose('eating', 1600);
+      this.report(fed);
+    }
+    if (now > this.nextIdleCheck) {
+      this.nextIdleCheck = now + 30000;
+      window.pet.idleSeconds().then((sec) => this.onIdle(sec));
+    }
+    const up = Game.takeLevelUp();
+    if (up) {
+      this.pose('jump', 1400);
+      PetView.flash('happy', 2000);
+      this.report(up);
+    }
+
+    const a = Game.s.activity;
+    if (a && BUSY_FX[a.type] && Math.random() < 0.25) PetView.fx(pick(BUSY_FX[a.type]));
+
+    if (!Game.busy && !Game.sleeping && Game.s.energy <= 0) {
+      Game.sleep();
+      this.report({ msg: '撑不住了…zzz' });
+    }
+
+    if (now > this.nextChat) {
+      this.nextChat = now + rand(60000, 120000);
+      const line = needLine();
+      if (line && !Game.busy && !Game.sleeping) UI.say(line);
+    }
+
+    if (!this.hovered) document.body.classList.remove('hover');
+    PetView.update(Game);
+    UI.refresh();
+    this.push();
+  },
+};
+
+App.start();

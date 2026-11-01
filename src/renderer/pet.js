@@ -1,0 +1,324 @@
+// Draws the piggy as SVG and switches its face, growth form, pose and accessories.
+// PIG_SVG / renderFace / applyForm are also used for the avatar in the home window.
+
+const INK = '#4a2c38';
+
+function eyeSvg(cx, cy, kind) {
+  switch (kind) {
+    case 'happy':
+      return `<path class="line" d="M${cx - 7.5} ${cy + 2} Q${cx} ${cy - 7.5} ${cx + 7.5} ${cy + 2}"/>`;
+    case 'closed':
+      return `<path class="line" d="M${cx - 7.5} ${cy - 1} Q${cx} ${cy + 6} ${cx + 7.5} ${cy - 1}"/>`;
+    case 'dizzy':
+      return `<path class="line" d="M${cx - 5.5} ${cy - 5.5} L${cx + 5.5} ${cy + 5.5} M${cx + 5.5} ${cy - 5.5} L${cx - 5.5} ${cy + 5.5}"/>`;
+    case 'surprised':
+      return `<circle cx="${cx}" cy="${cy}" r="9" fill="#fff" stroke="${INK}" stroke-width="2"/>
+        <circle cx="${cx}" cy="${cy}" r="3.8" fill="${INK}"/>
+        <circle cx="${cx + 1.3}" cy="${cy - 1.3}" r="1.1" fill="#fff"/>`;
+    case 'tired':
+      return `<path d="M${cx - 7.6} ${cy} A7.6 9 0 0 0 ${cx + 7.6} ${cy} Z" fill="${INK}"/>
+        <path class="line" d="M${cx - 8.5} ${cy} L${cx + 8.5} ${cy}"/>`;
+    case 'love':
+      return `<path fill="#ff4d7e" d="M${cx} ${cy + 7.5} C${cx - 13} ${cy - 1} ${cx - 6.5} ${cy - 12} ${cx} ${cy - 4.5} C${cx + 6.5} ${cy - 12} ${cx + 13} ${cy - 1} ${cx} ${cy + 7.5}Z"/>
+        <circle cx="${cx - 3.8}" cy="${cy - 3.2}" r="1.8" fill="#fff" opacity=".85"/>`;
+    default:
+      return `<ellipse cx="${cx}" cy="${cy}" rx="7.6" ry="9" fill="${INK}"/>
+        <ellipse cx="${cx}" cy="${cy + 4.5}" rx="5" ry="3.2" fill="#a0607a" opacity=".55"/>
+        <circle cx="${cx + 2.6}" cy="${cy - 3.4}" r="3.2" fill="#fff"/>
+        <circle cx="${cx - 2.7}" cy="${cy + 3.4}" r="1.5" fill="#fff"/>
+        <circle cx="${cx + 3.4}" cy="${cy + 2.4}" r=".9" fill="#fff" opacity=".8"/>`;
+  }
+}
+
+const MOUTHS = {
+  smile: '<path class="line thin" d="M73 97 Q76.5 101.5 80 97 Q83.5 101.5 87 97"/>',
+  grin: `<path d="M72 95 Q80 108 88 95 Z" fill="#d9577f"/>
+    <path d="M76 101.5 Q80 98.5 84 101.5 Q80 105 76 101.5 Z" fill="#ff9ab6"/>`,
+  sad: '<path class="line" d="M74 101 Q80 95 86 101"/>',
+  flat: '<path class="line" d="M75 98 L85 98"/>',
+  open: '<ellipse cx="80" cy="99" rx="4.5" ry="5.5" fill="#d9577f"/>',
+};
+
+const BROWS = '<path class="line" d="M45 48 L62 54 M115 48 L98 54"/>';
+
+const FACES = {
+  normal: { eyes: 'normal', mouth: 'smile' },
+  cheerful: { eyes: 'normal', mouth: 'grin' },
+  happy: { eyes: 'happy', mouth: 'grin' },
+  love: { eyes: 'love', mouth: 'grin' },
+  sad: { eyes: 'normal', mouth: 'sad' },
+  tired: { eyes: 'tired', mouth: 'flat' },
+  sleep: { eyes: 'closed', mouth: 'flat' },
+  dizzy: { eyes: 'dizzy', mouth: 'sad' },
+  surprised: { eyes: 'surprised', mouth: 'open' },
+  angry: { eyes: 'normal', mouth: 'flat', brows: true },
+  eat: { eyes: 'happy', mouth: 'open' },
+};
+
+function renderFace(eyesEl, mouthEl, name) {
+  const f = FACES[name];
+  eyesEl.innerHTML = eyeSvg(58, 64, f.eyes) + eyeSvg(102, 64, f.eyes) + (f.brows ? BROWS : '');
+  mouthEl.innerHTML = MOUTHS[f.mouth];
+}
+
+// Face shown for the pet's stats when nothing temporary overrides it
+function moodFace(s, sleeping) {
+  if (sleeping) return 'sleep';
+  if (s.health < 20) return 'dizzy';
+  if (s.mood < 30 || s.hunger < 20 || s.health < 40) return 'sad';
+  if (s.energy < 20) return 'tired';
+  if (s.mood > 75) return 'cheerful';
+  return 'normal';
+}
+
+const ACCESSORIES = {
+  study: `<path d="M62 28 L62 37 Q80 44 98 37 L98 28 Z" fill="#2f2f45"/>
+    <path d="M42 24 L80 8 L118 24 L80 40 Z" fill="#41415e"/>
+    <path d="M80 24 L110 28 L110 40" fill="none" stroke="#fcc419" stroke-width="2"/>
+    <circle cx="110" cy="42" r="3.2" fill="#fcc419"/>`,
+  work: `<path d="M46 34 Q48 6 80 6 Q112 6 114 34 Z" fill="#ffd43b" stroke="#f59f00" stroke-width="1.5"/>
+    <rect x="76" y="8" width="8" height="24" rx="3" fill="#fcc419"/>
+    <rect x="38" y="31" width="84" height="7" rx="3.5" fill="#fab005"/>`,
+  bath: `<g class="soap">
+    <circle cx="34" cy="100" r="7"/><circle cx="128" cy="86" r="9"/><circle cx="50" cy="26" r="5"/>
+    <circle cx="114" cy="30" r="6"/><circle cx="82" cy="12" r="8"/><circle cx="134" cy="122" r="5"/></g>`,
+  icebag: `<ellipse cx="80" cy="24" rx="20" ry="8" fill="#a5d8ff" stroke="#74c0fc" stroke-width="1.5"/>
+    <rect x="76" y="14" width="8" height="5" rx="2" fill="#74c0fc"/>`,
+};
+
+// ---------- growth forms ----------
+
+const OUTFIT = {
+  bib: `<path d="M63 103 Q80 99 97 103 Q101 123 80 129 Q59 123 63 103 Z" fill="#fff" stroke="#ffb3c8" stroke-width="1.5"/>
+    <path d="M80 121 C76 117 73 114 76 112 C78 111 80 113 80 114 C80 113 82 111 84 112 C87 114 84 117 80 121 Z" fill="#ff8fab"/>`,
+  scarf: `<path d="M63 105 Q80 113 97 105 L95 111 Q80 118 65 111 Z" fill="#f03e3e"/>
+    <path d="M78 112 L69 128 L75 130 L80 116 Z M82 112 L91 128 L85 130 L80 116 Z" fill="#e03131"/>
+    <circle cx="80" cy="113" r="3.6" fill="#c92a2a"/>`,
+  collar: `<path d="M65 104 L80 112 L71 121 Z M95 104 L80 112 L89 121 Z" fill="#fff" stroke="#d6c9de" stroke-width="1.2"/>`,
+  tie: `<path d="M77 110 L83 110 L81.5 114 L85 128 L80 133 L75 128 L78.5 114 Z" fill="#4c6ef5"/>
+    <path d="M76.5 118 L83.5 116 M76 124 L84 122" stroke="#91a7ff" stroke-width="1.5"/>`,
+  bowtie: `<path d="M80 112 L67 104.5 Q65 112 67 119.5 Z M80 112 L93 104.5 Q95 112 93 119.5 Z" fill="#7048e8"/>
+    <circle cx="80" cy="112" r="3.2" fill="#5f3dc4"/>`,
+  glasses: `<g fill="rgba(255,255,255,.2)" stroke="#6b4b57" stroke-width="2.2">
+      <circle cx="58" cy="64" r="12.5"/><circle cx="102" cy="64" r="12.5"/></g>
+    <path d="M70.5 62 Q80 57 89.5 62 M45.5 62 L34 57 M114.5 62 L126 57" fill="none" stroke="#6b4b57" stroke-width="2.2" stroke-linecap="round"/>`,
+  pacifier: `<g class="paci"><ellipse cx="80" cy="99" rx="10.5" ry="6.8" fill="#91d5ff" stroke="#4dabf7" stroke-width="1.5"/>
+    <circle cx="80" cy="99" r="2.8" fill="#fff"/>
+    <circle cx="80" cy="108.5" r="5" fill="none" stroke="#ffd43b" stroke-width="3"/></g>`,
+};
+
+const CART_BACK = `<path d="M24 102 C16 58 40 28 80 26 C70 40 66 70 68 102 Z" fill="url(#gCanopy)" stroke="#9775fa" stroke-width="1.5"/>
+  <path d="M33 100 C27 66 44 42 70 34" fill="none" stroke="#fff" stroke-width="3" opacity=".55"/>
+  <path d="M24 102 Q30 96 36 102 Q42 96 48 102 Q54 96 60 102 Q64 97 68 102" fill="none" stroke="#9775fa" stroke-width="1.5"/>`;
+
+const wheel = (cx) => `<g class="wheel"><circle cx="${cx}" cy="137" r="9.5" fill="#5f4b8b"/>
+  <circle cx="${cx}" cy="137" r="6" fill="#e5dbff"/>
+  <path d="M${cx} 131 L${cx} 143 M${cx - 6} 137 L${cx + 6} 137" stroke="#5f4b8b" stroke-width="1.6"/>
+  <circle cx="${cx}" cy="137" r="2" fill="#5f4b8b"/></g>`;
+
+const CART_FRONT = `<path d="M134 100 L150 64" stroke="#7d6aa8" stroke-width="4" stroke-linecap="round"/>
+  <rect x="142" y="56" width="16" height="8" rx="4" fill="#7d6aa8" transform="rotate(-25 150 60)"/>
+  <path d="M22 100 Q24 130 62 130 L100 130 Q138 130 140 100 Z" fill="url(#gCart)" stroke="#9775fa" stroke-width="1.5"/>
+  <rect x="18" y="95" width="126" height="9" rx="4.5" fill="#fff" stroke="#b197fc" stroke-width="1.5"/>
+  <path d="M81 124 C74 118 70 114 74 111 C77 109 80 112 81 113 C82 112 85 109 88 111 C92 114 88 118 81 124 Z" fill="#fff" opacity=".85"/>
+  <circle cx="50" cy="114" r="3" fill="#fff" opacity=".6"/><circle cx="112" cy="114" r="3" fill="#fff" opacity=".6"/>
+  <path d="M52 129 L46 137 M110 129 L116 137" stroke="#7d6aa8" stroke-width="3" stroke-linecap="round"/>
+  ${wheel(46)}${wheel(116)}`;
+
+// k = size, dy = vertical shift (the baby sits up inside its pram)
+const FORM_LOOK = {
+  baby: { k: 0.72, dy: -24, cart: true, extra: OUTFIT.pacifier },
+  toddler: { k: 0.8, under: OUTFIT.bib },
+  child: { k: 0.88, over: OUTFIT.scarf },
+  teen: { k: 0.94, under: OUTFIT.collar, over: OUTFIT.tie },
+  youth: { k: 1, under: OUTFIT.collar, face: OUTFIT.glasses },
+  adult: { k: 1.04, over: OUTFIT.bowtie },
+};
+
+function applyForm(root, formId) {
+  const look = FORM_LOOK[formId];
+  const $ = (sel) => root.querySelector(sel);
+  for (const id of Object.keys(FORM_LOOK)) root.classList.toggle(`form-${id}`, id === formId);
+  $('#grow').setAttribute('transform', `translate(0 ${look.dy || 0}) translate(80 150) scale(${look.k}) translate(-80 -150)`);
+  $('#cartBack').innerHTML = look.cart ? CART_BACK : '';
+  $('#cartFront').innerHTML = look.cart ? CART_FRONT : '';
+  $('#outfitUnder').innerHTML = look.under || '';
+  $('#outfitOver').innerHTML = look.over || '';
+  $('#faceAcc').innerHTML = (look.face || '') + (look.extra || '');
+  $('#shadow').setAttribute('rx', look.cart ? 66 : Math.round(40 * look.k));
+}
+
+const OUTLINE = 'stroke="#f2a0b8" stroke-width="1.5"';
+
+const PIG_SVG = `
+<svg viewBox="0 0 160 150" width="160" height="150">
+  <defs>
+    <radialGradient id="gHead" cx="40%" cy="32%" r="75%">
+      <stop offset="0" stop-color="#ffeaf1"/><stop offset=".6" stop-color="#ffcddc"/><stop offset="1" stop-color="#ffb3c9"/>
+    </radialGradient>
+    <radialGradient id="gBody" cx="40%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#ffdfe9"/><stop offset="1" stop-color="#ffadc5"/>
+    </radialGradient>
+    <radialGradient id="gSnout" cx="45%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#ffd6e1"/><stop offset="1" stop-color="#ff9fbc"/>
+    </radialGradient>
+    <radialGradient id="gCheek">
+      <stop offset="0" stop-color="#ff7aa2" stop-opacity=".8"/><stop offset="1" stop-color="#ff7aa2" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gCart" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e5dbff"/><stop offset="1" stop-color="#b197fc"/>
+    </linearGradient>
+    <linearGradient id="gCanopy" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d0bfff"/><stop offset="1" stop-color="#b197fc"/>
+    </linearGradient>
+  </defs>
+  <ellipse id="shadow" cx="80" cy="145" rx="40" ry="5" fill="rgba(140,60,90,.16)"/>
+  <g id="cartBack"></g>
+  <g id="grow"><g class="pig"><g class="breathe">
+    <path class="tail" d="M113 118 c10 -2 12 9 5 9 c-6 0 -4 -9 4 -10" fill="none" stroke="#f28fae" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="80" cy="116" rx="36" ry="26" fill="url(#gBody)" ${OUTLINE}/>
+    <ellipse cx="80" cy="123" rx="19" ry="12" fill="#fff2f6" opacity=".8"/>
+    <g class="leg leg-a"><ellipse cx="63" cy="137" rx="9.5" ry="7.5" fill="#ffb5c9" ${OUTLINE}/></g>
+    <g class="leg leg-b"><ellipse cx="97" cy="137" rx="9.5" ry="7.5" fill="#ffb5c9" ${OUTLINE}/></g>
+    <g class="arm arm-l"><ellipse cx="47" cy="115" rx="7" ry="9" fill="#ffbccf" ${OUTLINE}/></g>
+    <g class="arm arm-r"><ellipse cx="113" cy="115" rx="7" ry="9" fill="#ffbccf" ${OUTLINE}/></g>
+    <g id="outfitUnder"></g>
+    <g class="ear ear-l">
+      <path d="M42 44 C30 30 28 14 34 10 C42 8 58 18 66 28 Z" fill="url(#gBody)" ${OUTLINE}/>
+      <path d="M44 37 C37 28 36 19 39 16 C45 15 53 22 58 28 Z" fill="#ff9ab6"/>
+    </g>
+    <g class="ear ear-r">
+      <path d="M118 44 C130 30 132 14 126 10 C118 8 102 18 94 28 Z" fill="url(#gBody)" ${OUTLINE}/>
+      <path d="M116 37 C123 28 124 19 121 16 C115 15 107 22 102 28 Z" fill="#ff9ab6"/>
+    </g>
+    <ellipse cx="80" cy="66" rx="50" ry="44" fill="url(#gHead)" ${OUTLINE}/>
+    <path d="M77 23 q-3 -9 5 -10 q5 0 2 5" fill="none" stroke="#f2a0b8" stroke-width="2.2" stroke-linecap="round"/>
+    <ellipse cx="43" cy="82" rx="13" ry="8" fill="url(#gCheek)"/>
+    <ellipse cx="117" cy="82" rx="13" ry="8" fill="url(#gCheek)"/>
+    <circle cx="39" cy="79" r="1.7" fill="#fff" opacity=".8"/><circle cx="113" cy="79" r="1.7" fill="#fff" opacity=".8"/>
+    <g id="eyes"></g>
+    <ellipse cx="80" cy="84" rx="13.5" ry="9.5" fill="url(#gSnout)" stroke="#f08aa8" stroke-width="1.3"/>
+    <ellipse cx="75" cy="84.5" rx="2.4" ry="3.5" fill="#c94f76"/>
+    <ellipse cx="85" cy="84.5" rx="2.4" ry="3.5" fill="#c94f76"/>
+    <ellipse cx="75.5" cy="79.5" rx="3.6" ry="1.4" fill="#fff" opacity=".65"/>
+    <g id="mouth"></g>
+    <g id="outfitOver"></g>
+    <g id="faceAcc"></g>
+    <g id="dirt" opacity="0" fill="#9c7b5b">
+      <ellipse cx="60" cy="120" rx="6" ry="4"/><ellipse cx="100" cy="127" rx="5" ry="3.5"/>
+      <circle cx="108" cy="44" r="3.5"/><circle cx="52" cy="52" r="2.5"/><circle cx="68" cy="38" r="2.2"/>
+    </g>
+    <g id="acc"></g>
+  </g></g></g>
+  <g id="cartFront"></g>
+</svg>`;
+
+const PetView = {
+  init(wrap, mount) {
+    this.wrap = wrap;
+    mount.innerHTML = PIG_SVG;
+    this.svg = mount.querySelector('svg');
+    this.eyes = mount.querySelector('#eyes');
+    this.mouth = mount.querySelector('#mouth');
+    this.dirt = mount.querySelector('#dirt');
+    this.acc = mount.querySelector('#acc');
+    this.fxBox = document.getElementById('fx');
+    this.prop = document.getElementById('prop');
+    this.propUntil = 0;
+    this.face = null;
+    this.formId = null;
+    this.accKey = null;
+    this.override = null;
+    this.setFace('normal');
+    this.blinkLoop();
+  },
+
+  blinkLoop() {
+    setTimeout(() => {
+      if (FACES[this.face].eyes === 'normal') {
+        this.eyes.classList.add('blink');
+        setTimeout(() => this.eyes.classList.remove('blink'), 140);
+      }
+      this.blinkLoop();
+    }, 2500 + Math.random() * 3000);
+  },
+
+  setFace(name) {
+    if (name === this.face) return;
+    this.face = name;
+    renderFace(this.eyes, this.mouth, name);
+  },
+
+  // Show a face for a while, on top of whatever the stats say
+  flash(face, ms) {
+    this.override = { face, until: Date.now() + ms };
+    clearTimeout(this.flashTimer);
+    this.flashTimer = setTimeout(() => this.update(Game), ms + 20);
+    this.setFace(face);
+  },
+
+  setPose(cls, on) {
+    this.wrap.classList.toggle(cls, on);
+  },
+
+  setFacing(dir) {
+    this.svg.style.transform = dir < 0 ? 'scaleX(-1)' : '';
+  },
+
+  // Hold an item for a moment (food being eaten, a toy, soap…)
+  showProp(text, cls, ms) {
+    this.setProp(text, cls);
+    this.propUntil = Date.now() + ms;
+    clearTimeout(this.propTimer);
+    this.propTimer = setTimeout(() => this.update(Game), ms + 20);
+  },
+
+  setProp(text, cls) {
+    const p = this.prop;
+    if (p.textContent === text && p.className === cls) return;
+    p.className = '';
+    void p.offsetWidth; // restart the CSS animation
+    p.textContent = text;
+    p.className = cls;
+  },
+
+  fx(text) {
+    const el = document.createElement('div');
+    el.className = 'fx-item';
+    el.textContent = text;
+    el.style.left = `${40 + Math.random() * 20}%`;
+    this.fxBox.appendChild(el);
+    setTimeout(() => el.remove(), 1300);
+  },
+
+  update(game) {
+    const s = game.s;
+    const overriding = this.override && Date.now() < this.override.until;
+    this.setFace(overriding ? this.override.face : moodFace(s, game.sleeping));
+
+    const form = game.form.id;
+    if (form !== this.formId) {
+      this.formId = form;
+      applyForm(this.wrap, form);
+    }
+
+    this.dirt.setAttribute('opacity', s.clean < 50 ? ((50 - s.clean) / 50).toFixed(2) : 0);
+    this.setPose('sick', s.health < 40);
+    this.setPose('sleeping', game.sleeping);
+
+    const type = s.activity?.type;
+    this.setPose('studying', type === 'study');
+    this.setPose('working', type === 'work');
+    if (Date.now() >= this.propUntil) {
+      if (type === 'study') this.setProp('📖', 'prop-study');
+      else if (type === 'work') this.setProp(JOB_BY_ID[s.activity.id].icon, 'prop-work');
+      else this.setProp('', '');
+    }
+
+    const accKey = s.activity && ACCESSORIES[s.activity.type] ? s.activity.type : s.health < 40 ? 'icebag' : null;
+    if (accKey !== this.accKey) {
+      this.accKey = accKey;
+      this.acc.innerHTML = accKey ? ACCESSORIES[accKey] : '';
+    }
+  },
+};

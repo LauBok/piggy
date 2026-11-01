@@ -1,0 +1,29 @@
+# Pushing a version tag (e.g. v0.2.0, made by `npm version patch`) builds the Windows and Mac
+# apps and publishes them to a GitHub Release, where installed pigs find the update.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # no Apple certificate: build unsigned
+          CSC_IDENTITY_AUTO_DISCOVERY: false

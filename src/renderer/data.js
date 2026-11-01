@@ -1,0 +1,326 @@
+// Game content and balance. Tweak freely.
+// Times are in real minutes. Stat rates are points per real minute.
+
+const STATS = [
+  { key: 'hunger', name: '饱食', icon: '🍖', color: '#ffa94d' },
+  { key: 'clean', name: '清洁', icon: '🧼', color: '#4dabf7' },
+  { key: 'energy', name: '体力', icon: '⚡', color: '#51cf66' },
+  { key: 'health', name: '健康', icon: '💗', color: '#ff6b6b' },
+  { key: 'mood', name: '心情', icon: '😊', color: '#f783ac' },
+];
+const STAT_KEYS = STATS.map((s) => s.key);
+const STAT_NAME = Object.fromEntries(STATS.map((s) => [s.key, s.name]));
+const STAT_COLOR = Object.fromEntries(STATS.map((s) => [s.key, s.color]));
+
+const esc = (str) =>
+  String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// ---------- stat decay ----------
+
+// Normal drain while idle (time spent with the app closed counts at half speed)
+const DECAY = { hunger: -0.15, clean: -0.1, energy: -0.12, mood: -0.15 };
+const SLEEP_ENERGY_PER_MIN = 2;
+// While asleep (including while you're away or the app is closed) the pig needs much less
+const SLEEP_DRAIN = { hunger: 0.2, clean: 0.3, mood: 0.2 };
+// No keyboard or mouse for this long and the pig goes to sleep until you come back
+const AWAY_MINUTES = 10;
+// The pig feeds itself from the bag below this hunger, and takes medicine below this health
+const SELF_FEED_BELOW = 25;
+const SELF_MEDICINE_BELOW = 30;
+
+// Studying drains faster than idling but slower than working (each job has its own drain)
+const STUDY_DRAIN = { hunger: 1.6, clean: 1, mood: 1.8, energy: 3 };
+
+const BATH_MINUTES = 5;
+const BATH_EFFECT = { clean: 30, mood: 3 };
+const PLAY_EFFECT = { mood: 8, energy: -8, hunger: -3 };
+const MINIGAME_COST = { energy: -5, hunger: -2 };
+
+// Free help so a broke, sick pig can always recover. cooldown in minutes.
+const FREE_HELP = [
+  { id: 'meal', name: '食堂', icon: '🍱', effects: { hunger: 20 }, cooldown: 60 },
+  { id: 'clinic', name: '诊所', icon: '🏥', effects: { health: 20 }, cooldown: 60, maxHealth: 40 },
+];
+const FREE_HELP_BY_ID = Object.fromEntries(FREE_HELP.map((h) => [h.id, h]));
+
+// Health below this stops studying and working
+const MIN_HEALTH_TO_ACT = 40;
+
+const MINIGAMES = [
+  { id: 'rps', name: '石头剪刀布', icon: '✊', desc: '三局两胜，看谁运气好' },
+  { id: 'ttt', name: '井字棋', icon: '⭕', desc: '连成一线就赢，小猪会堵你哦' },
+  { id: 'penalty', name: '点球大战', icon: '⚽', desc: '轮流罚球和扑救，各踢 5 球' },
+  { id: 'chess', name: '国际象棋', icon: '♟️', desc: '你执白先走，小猪执黑' },
+  { id: 'banqi', name: '暗棋', icon: '🀄', desc: '翻棋 · 吃子 · 🗡️ 克 👑' },
+];
+
+// ---------- level (age) ----------
+
+const MAX_LEVEL = 30;
+// Time alone grows the pig slowly (awake, asleep or closed); studying grows it fastest.
+// Little ones (below Lv.6) grow mostly by playing, so time counts half for them.
+// After school age each level costs more and more.
+const EXP_PER_MIN = { alive: 0.1, kidAlive: 0.05, study: 1, work: 0.2 };
+const expNeed = (level) => (level < 6 ? 30 : 150 + 25 * (level - 6));
+
+// Exp from playing, by how hard it is to win. The same at every age: it matters a lot while
+// levels are cheap and little once they cost more. Only PLAY_EXP_DAILY counts each day.
+const PLAY_EXP = {
+  play: 3,
+  toy: 5,
+  rps: { win: 3, draw: 2, lose: 1 },
+  ttt: { win: 6, draw: 4, lose: 2 },
+  penalty: { win: 10, draw: 6, lose: 3 },
+  chess: { win: 40, draw: 20, lose: 8 },
+  banqi: { win: 25, draw: 12, lose: 5 },
+};
+const PLAY_EXP_DAILY = 50;
+
+// ---------- education ----------
+
+const SUBJECTS = [
+  { id: 'chinese', name: '语文', icon: '📖' },
+  { id: 'math', name: '数学', icon: '🔢' },
+  { id: 'english', name: '英语', icon: '🔤' },
+  { id: 'physics', name: '物理', icon: '🧲' },
+  { id: 'chemistry', name: '化学', icon: '⚗️' },
+  { id: 'biology', name: '生物', icon: '🧬' },
+  { id: 'history', name: '历史', icon: '🏺' },
+  { id: 'geography', name: '地理', icon: '🌏' },
+  { id: 'politics', name: '政治', icon: '🏛️' },
+];
+// Harder subjects take a little longer
+const SUBJECT_EXTRA_MIN = { math: 10, physics: 10, chemistry: 10, english: 5, biology: 5 };
+
+const STAGES = [
+  { id: 'primary', name: '小学', icon: '🎒', minLevel: 6, needs: null, degree: '小学毕业', student: '小学生', baseMin: 40, fee: 0 },
+  { id: 'middle', name: '初中', icon: '📘', minLevel: 12, needs: 'primary', degree: '初中毕业', student: '初中生', baseMin: 50, fee: 0 },
+  { id: 'high', name: '高中', icon: '📗', minLevel: 15, needs: 'middle', degree: '高中毕业', student: '高中生', baseMin: 60, fee: 10 },
+  { id: 'college', name: '大学', icon: '🎓', minLevel: 18, degree: '学士', student: '大学生', byMajor: true, fee: 50 },
+  { id: 'master', name: '研究生', icon: '📜', minLevel: 22, degree: '硕士', student: '研究生', byMajor: true, fee: 80 },
+  { id: 'phd', name: '博士', icon: '🔬', minLevel: 25, degree: '博士', student: '博士生', byMajor: true, fee: 100 },
+];
+
+// Which subjects each school stage teaches, and what each course needs first
+const BASIC_COURSES = {
+  primary: {
+    chinese: [],
+    math: [],
+    english: [],
+    politics: ['primary_chinese'],
+  },
+  middle: {
+    chinese: ['primary_chinese'],
+    math: ['primary_math'],
+    english: ['primary_english'],
+    physics: ['primary_math'],
+    chemistry: ['middle_physics'],
+    biology: ['primary_chinese'],
+    history: ['primary_chinese'],
+    geography: ['primary_math'],
+    politics: ['primary_politics'],
+  },
+  high: {
+    chinese: ['middle_chinese'],
+    math: ['middle_math'],
+    english: ['middle_english'],
+    physics: ['middle_physics', 'high_math'],
+    chemistry: ['middle_chemistry'],
+    biology: ['middle_biology', 'high_chemistry'],
+    history: ['middle_history'],
+    geography: ['middle_geography'],
+    politics: ['middle_politics'],
+  },
+};
+const SUBJECT_ALIAS = { 'primary:politics': '品德' };
+
+const MAJORS = [
+  {
+    id: 'cs', name: '计算机', icon: '💻', needs: ['high_math', 'high_physics'],
+    college: ['猪猪编程入门', '数据结构', '拱拱算法', '操作系统'], master: ['猪工智能', '分布式系统'], phd: ['机器学习研究', '猪脑模拟研究'],
+  },
+  {
+    id: 'med', name: '猪猪医学', icon: '🩺', needs: ['high_biology', 'high_chemistry'],
+    college: ['猪体解剖', '猪猪生理学', '猪病理学', '猪猪临床'], master: ['猪猪内科', '猪猪外科'], phd: ['猪猪健康研究', '长寿猪研究'],
+  },
+  {
+    id: 'fin', name: '金融', icon: '💹', needs: ['high_math', 'high_politics'],
+    college: ['经济学原理', '存钱罐会计学', '金融市场', '小猪储蓄投资'], master: ['公司金融', '存钱罐工程'], phd: ['宏观经济研究', '猪肉价格研究'],
+  },
+  {
+    id: 'law', name: '法学', icon: '⚖️', needs: ['high_chinese', 'high_politics', 'high_history'],
+    college: ['法理学', '宪法', '猪权民法', '刑法'], master: ['诉讼法', '国际法'], phd: ['动物权益研究', '比较法研究'],
+  },
+  {
+    id: 'edu', name: '教育学', icon: '🍎', needs: ['high_chinese', 'high_english'],
+    college: ['教育学原理', '小猪心理学', '课程设计', '教学实践'], master: ['教育心理学', '猪猪幼儿园管理'], phd: ['教育理论研究', '学习科学研究'],
+  },
+  {
+    id: 'civil', name: '土木工程', icon: '🏗️', needs: ['high_math', 'high_physics'],
+    college: ['工程力学', '稻草与砖块', '结构设计', '防狼房屋施工'], master: ['桥梁工程', '泥坑工程'], phd: ['结构理论研究', '智能猪舍研究'],
+  },
+];
+const MAJOR_MINUTES = { college: [70, 75, 80, 85], master: [85, 88], phd: [90, 90] };
+
+const STAGE_BY_ID = Object.fromEntries(STAGES.map((s) => [s.id, s]));
+const SUBJECT_BY_ID = Object.fromEntries(SUBJECTS.map((s) => [s.id, s]));
+const MAJOR_BY_ID = Object.fromEntries(MAJORS.map((m) => [m.id, m]));
+
+// Every course in one flat list: { id, stage, subject|major, name, fullName, icon, minutes, prereq }
+const COURSES = [];
+for (const [stageId, subjects] of Object.entries(BASIC_COURSES)) {
+  const stage = STAGE_BY_ID[stageId];
+  for (const [subjectId, prereq] of Object.entries(subjects)) {
+    const subj = SUBJECT_BY_ID[subjectId];
+    const name = SUBJECT_ALIAS[`${stageId}:${subjectId}`] || subj.name;
+    COURSES.push({
+      id: `${stageId}_${subjectId}`,
+      stage: stageId,
+      subject: subjectId,
+      name,
+      fullName: `${stage.name}${name}`,
+      icon: subj.icon,
+      minutes: stage.baseMin + (SUBJECT_EXTRA_MIN[subjectId] || 0),
+      prereq,
+    });
+  }
+}
+for (const m of MAJORS) {
+  let prev = null;
+  for (const stageId of ['college', 'master', 'phd']) {
+    m[stageId].forEach((name, i) => {
+      const id = `${stageId}_${m.id}_${i + 1}`;
+      COURSES.push({
+        id,
+        stage: stageId,
+        major: m.id,
+        name,
+        fullName: `${m.name}·${name}`,
+        icon: m.icon,
+        minutes: MAJOR_MINUTES[stageId][i],
+        // the first college course needs the major's high school subjects; after that it's a chain
+        prereq: prev ? [prev] : m.needs,
+      });
+      prev = id;
+    });
+  }
+}
+const COURSE_BY_ID = Object.fromEntries(COURSES.map((c) => [c.id, c]));
+
+// ---------- jobs ----------
+// requires: course ids, or degrees as "deg:<stage>" / "deg:<stage>:<major>".
+// drain: how many times faster than idle each stat drops while working.
+// pay is not set by hand: it comes from jobPay() below, from how hard the job is to get and to do.
+
+const JOBS = [
+  { id: 'bottles', name: '拱松露', icon: '🍄', minLevel: 3, requires: [], minutes: 20, drain: { hunger: 2, clean: 4, mood: 1.5, energy: 2 } },
+  { id: 'flyer', name: '发传单', icon: '📄', minLevel: 4, requires: [], minutes: 30, drain: { hunger: 2.5, clean: 2, mood: 2, energy: 3 } },
+  { id: 'dishes', name: '洗碗工', icon: '🍽️', minLevel: 5, requires: [], minutes: 40, drain: { hunger: 2, clean: 3.5, mood: 2, energy: 3 } },
+  { id: 'paper', name: '送报员', icon: '📰', minLevel: 8, requires: ['primary_chinese'], minutes: 30, drain: { hunger: 3, clean: 2, mood: 1.5, energy: 3.5 } },
+  { id: 'mover', name: '砖房小工', icon: '🧱', minLevel: 10, requires: [], minutes: 60, drain: { hunger: 4, clean: 4, mood: 3, energy: 5 } },
+  { id: 'cashier', name: '小卖部收银员', icon: '🏪', minLevel: 10, requires: ['primary_math'], minutes: 45, drain: { hunger: 2, clean: 1.2, mood: 2.5, energy: 2.5 } },
+  { id: 'courier', name: '快递员', icon: '📦', minLevel: 12, requires: ['deg:primary'], minutes: 60, drain: { hunger: 3.5, clean: 2.5, mood: 2, energy: 4.5 } },
+  { id: 'tutor', name: '家教', icon: '✏️', minLevel: 15, requires: ['middle_math', 'middle_english'], minutes: 45, drain: { hunger: 1.8, clean: 1, mood: 2, energy: 2.5 } },
+  { id: 'guide', name: '泥浴温泉导游', icon: '♨️', minLevel: 16, requires: ['middle_history', 'middle_geography'], minutes: 60, drain: { hunger: 3, clean: 2.5, mood: 1.5, energy: 4 } },
+  { id: 'labtech', name: '实验室助理', icon: '🧪', minLevel: 18, requires: ['high_chemistry', 'high_biology'], minutes: 60, drain: { hunger: 2, clean: 2, mood: 2, energy: 3 } },
+  { id: 'reporter', name: '猪猪日报记者', icon: '🎤', minLevel: 18, requires: ['high_chinese', 'high_politics'], minutes: 60, drain: { hunger: 2.5, clean: 2, mood: 2.5, energy: 3.5 } },
+  { id: 'teacher', name: '猪猪幼儿园老师', icon: '🏫', minLevel: 22, requires: ['deg:college:edu'], minutes: 50, drain: { hunger: 2, clean: 1.2, mood: 2.5, energy: 3 } },
+  { id: 'banker', name: '存钱罐银行职员', icon: '🐷', minLevel: 22, requires: ['deg:college:fin'], minutes: 50, drain: { hunger: 1.8, clean: 1, mood: 2.8, energy: 2.5 } },
+  { id: 'engineer', name: '猪舍建筑师', icon: '🏡', minLevel: 22, requires: ['deg:college:civil'], minutes: 60, drain: { hunger: 3, clean: 3, mood: 2.5, energy: 4 } },
+  { id: 'coder', name: '程序员', icon: '💻', minLevel: 22, requires: ['deg:college:cs'], minutes: 60, drain: { hunger: 2, clean: 1.2, mood: 3, energy: 3.5 } },
+  { id: 'lawyer', name: '律师', icon: '⚖️', minLevel: 23, requires: ['deg:college:law'], minutes: 60, drain: { hunger: 2.2, clean: 1.2, mood: 3, energy: 3.5 } },
+  { id: 'doctor', name: '猪猪医生', icon: '🩺', minLevel: 23, requires: ['deg:college:med'], minutes: 60, drain: { hunger: 2.5, clean: 1.5, mood: 3, energy: 4 } },
+  { id: 'architect', name: '系统架构师', icon: '🖥️', minLevel: 25, requires: ['deg:master:cs'], minutes: 60, drain: { hunger: 2, clean: 1.2, mood: 3, energy: 3.5 } },
+  { id: 'fund', name: '存钱罐基金经理', icon: '📈', minLevel: 25, requires: ['deg:master:fin'], minutes: 60, drain: { hunger: 2, clean: 1, mood: 3.5, energy: 3.5 } },
+  { id: 'professor', name: '大学教授', icon: '🎓', minLevel: 27, requires: ['deg:phd:edu'], minutes: 50, drain: { hunger: 1.8, clean: 1, mood: 2, energy: 3 } },
+  { id: 'surgeon', name: '猪猪医院院长', icon: '🏥', minLevel: 27, requires: ['deg:phd:med'], minutes: 60, drain: { hunger: 2.5, clean: 1.5, mood: 3, energy: 4.5 } },
+  { id: 'scientist', name: '首席科学家', icon: '🚀', minLevel: 28, requires: ['deg:phd:cs'], minutes: 60, drain: { hunger: 2, clean: 1.2, mood: 2.5, energy: 4 } },
+];
+// Higher stages count as harder study per hour
+const STAGE_DIFFICULTY = { primary: 1, middle: 1.2, high: 1.5, college: 2, master: 3, phd: 4 };
+
+// Every course a list of requirements needs, following prerequisites and diplomas all the way down
+function requiredCourses(tokens, set = new Set()) {
+  for (const t of tokens) {
+    let ids = [t];
+    if (t.startsWith('deg:')) {
+      const [, stageId, majorId] = t.split(':');
+      ids = COURSES.filter((c) => c.stage === stageId && (!majorId || c.major === majorId)).map((c) => c.id);
+    }
+    for (const id of ids) {
+      if (set.has(id)) continue;
+      set.add(id);
+      const c = COURSE_BY_ID[id];
+      requiredCourses(c.prereq, set);
+      const needs = STAGE_BY_ID[c.stage].needs;
+      if (needs) requiredCourses([`deg:${needs}`], set);
+    }
+  }
+  return set;
+}
+
+// Hours of study a job needs, and those hours weighted by difficulty
+function jobStudy(job) {
+  const courses = [...requiredCourses(job.requires)].map((id) => COURSE_BY_ID[id]);
+  return {
+    hours: courses.reduce((n, c) => n + c.minutes / 60, 0),
+    points: courses.reduce((n, c) => n + (c.minutes / 60) * STAGE_DIFFICULTY[c.stage], 0),
+  };
+}
+
+// Hourly wage = base for the age + study difficulty + extra for draining (hard physical) work
+function jobPay(job) {
+  const drainSum = Object.values(job.drain).reduce((a, b) => a + b, 0);
+  const hardship = Math.max(0, drainSum - 8) * 2;
+  const hourly = 30 + 3 * job.minLevel + 6 * jobStudy(job).points + hardship;
+  return Math.round((hourly * job.minutes) / 60);
+}
+
+for (const job of JOBS) {
+  job.studyHours = Math.round(jobStudy(job).hours);
+  job.pay = jobPay(job);
+}
+const JOB_BY_ID = Object.fromEntries(JOBS.map((j) => [j.id, j]));
+
+// ---------- shop ----------
+
+const SHOP_CATS = [
+  { id: 'food', name: '食物', icon: '🍱', desc: '吃了增加饱食度' },
+  { id: 'hygiene', name: '卫生用品', icon: '🧴', desc: '用了增加清洁度' },
+  { id: 'toy', name: '玩具', icon: '🧸', desc: '买一次可以反复玩，玩完要歇一会儿' },
+  { id: 'medicine', name: '药物', icon: '💊', desc: '生病时吃，恢复健康' },
+];
+
+// Toys are kept after use; cooldown is in minutes
+const TOY_COST = { energy: -5, hunger: -2 };
+
+const ITEMS = [
+  { id: 'apple', cat: 'food', name: '苹果', icon: '🍎', price: 5, effects: { hunger: 8, mood: 1 } },
+  { id: 'bread', cat: 'food', name: '面包', icon: '🍞', price: 10, effects: { hunger: 15 } },
+  { id: 'milk', cat: 'food', name: '牛奶', icon: '🥛', price: 12, effects: { hunger: 10, health: 2 } },
+  { id: 'rice', cat: 'food', name: '米饭', icon: '🍚', price: 18, effects: { hunger: 25 } },
+  { id: 'dumpling', cat: 'food', name: '饺子', icon: '🥟', price: 28, effects: { hunger: 35, mood: 3 } },
+  { id: 'burger', cat: 'food', name: '汉堡', icon: '🍔', price: 35, effects: { hunger: 45, mood: 5, health: -2 } },
+  { id: 'pizza', cat: 'food', name: '披萨', icon: '🍕', price: 50, effects: { hunger: 60, mood: 5 } },
+  { id: 'cake', cat: 'food', name: '蛋糕', icon: '🍰', price: 60, effects: { hunger: 30, mood: 15 } },
+  { id: 'feast', cat: 'food', name: '满汉全席', icon: '🍲', price: 200, effects: { hunger: 100, mood: 20, health: 5 } },
+
+  { id: 'wipes', cat: 'hygiene', name: '湿巾', icon: '🧻', price: 5, effects: { clean: 10 } },
+  { id: 'soap', cat: 'hygiene', name: '香皂', icon: '🧼', price: 15, effects: { clean: 25 } },
+  { id: 'shampoo', cat: 'hygiene', name: '洗发水', icon: '🧴', price: 30, effects: { clean: 40 } },
+  { id: 'bodywash', cat: 'hygiene', name: '沐浴露', icon: '🚿', price: 60, effects: { clean: 70, mood: 5 } },
+  { id: 'spa', cat: 'hygiene', name: '泡泡浴', icon: '🛁', price: 120, effects: { clean: 100, mood: 15 } },
+
+  { id: 'ball', cat: 'toy', name: '皮球', icon: '⚽', price: 30, effects: { mood: 12 }, cooldown: 20 },
+  { id: 'blocks', cat: 'toy', name: '积木', icon: '🧩', price: 60, effects: { mood: 18 }, cooldown: 30 },
+  { id: 'kite', cat: 'toy', name: '风筝', icon: '🪁', price: 90, effects: { mood: 22 }, cooldown: 30 },
+  { id: 'bear', cat: 'toy', name: '毛绒熊', icon: '🧸', price: 150, effects: { mood: 30 }, cooldown: 45 },
+  { id: 'car', cat: 'toy', name: '遥控车', icon: '🏎️', price: 220, effects: { mood: 38 }, cooldown: 45 },
+  { id: 'console', cat: 'toy', name: '游戏机', icon: '🎮', price: 400, effects: { mood: 50 }, cooldown: 60 },
+
+  { id: 'vitamin', cat: 'medicine', name: '维生素', icon: '🍬', price: 20, effects: { health: 10 } },
+  { id: 'coldmed', cat: 'medicine', name: '感冒药', icon: '💊', price: 45, effects: { health: 30, mood: -3 } },
+  { id: 'fevermed', cat: 'medicine', name: '退烧药', icon: '🌡️', price: 70, effects: { health: 45, mood: -3 } },
+  { id: 'firstaid', cat: 'medicine', name: '急救包', icon: '🩹', price: 150, effects: { health: 80 } },
+];
+const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
