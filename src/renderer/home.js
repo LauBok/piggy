@@ -112,15 +112,21 @@ const PAGES = {
       return `<h3>${cat.icon} ${cat.name}</h3><div class="grid">${items.map((it) => {
         let label = { food: '吃', hygiene: '用', medicine: '吃', toy: '玩' }[it.cat];
         let ok = !snap.sleeping;
+        let effects = it.effects;
+        let badge = `<span class="badge">×${inv[it.id]}</span>`;
         if (it.cat === 'toy') {
           const wait = Math.max(0, ((s.toyReady[it.id] || 0) - Date.now()) / 60000);
           if (wait > 0) label = `⏱ ${Math.ceil(wait)} 分`;
           ok = ok && !snap.busy && wait <= 0;
+          // what playing gives right now, after boredom
+          const fun = toyFun(s, it.id);
+          effects = { mood: Math.round(it.effects.mood * fun) };
+          badge = fun < 0.5 ? '<span class="badge soft">😑 玩腻了</span>' : '';
         }
         return `<div class="card goods">
-          ${it.cat === 'toy' ? '' : `<span class="badge">×${inv[it.id]}</span>`}
+          ${badge}
           <div class="goods-ic">${it.icon}</div><b>${it.name}</b>
-          <div class="effs">${effChips(it.effects)}</div>
+          <div class="effs">${effChips(effects)}</div>
           <button class="btn" data-action="use" data-id="${it.id}" ${ok ? '' : 'disabled'}>${label}</button>
         </div>`;
       }).join('')}</div>`;
@@ -333,7 +339,7 @@ function structKey() {
     page, s.inventory, Math.floor(s.money), s.level, s.courses, s.activity && [s.activity.type, s.activity.id],
     s.follow, s.name, resetArmed, shopCat, treeSel, schoolStage, schoolMajor, workFilter, gameBlock(), minuteTick,
     page === 'work' ? [Math.round(s.hunger), Math.round(s.energy)] : 0,
-    s.helpReady, s.health >= MIN_HEALTH_TO_ACT, page === 'games' ? s.playDay : 0,
+    s.helpReady, s.health >= MIN_HEALTH_TO_ACT, page === 'bag' ? s.toyBored : 0, page === 'games' ? s.playDay : 0,
   ]);
 }
 

@@ -31,8 +31,9 @@ const SELF_MEDICINE_BELOW = 30;
 // Studying drains faster than idling but slower than working (each job has its own drain)
 const STUDY_DRAIN = { hunger: 1.6, clean: 1, mood: 1.8, energy: 3 };
 
-const BATH_MINUTES = 5;
-const BATH_EFFECT = { clean: 30, mood: 3 };
+// Free but slow, so hygiene items are worth buying to save time
+const BATH_MINUTES = 10;
+const BATH_EFFECT = { clean: 20, mood: 3 };
 const PLAY_EFFECT = { mood: 8, energy: -8, hunger: -3 };
 const MINIGAME_COST = { energy: -5, hunger: -2 };
 
@@ -294,6 +295,11 @@ const SHOP_CATS = [
 
 // Toys are kept after use; cooldown is in minutes
 const TOY_COST = { energy: -5, hunger: -2 };
+// Playing the same toy gets boring: each play takes TOY_BORED_STEP off its fun (down to TOY_MIN_FUN),
+// and one play's worth of boredom wears off every TOY_BORED_RECOVER_H hours
+const TOY_BORED_STEP = 0.25;
+const TOY_MIN_FUN = 0.2;
+const TOY_BORED_RECOVER_H = 2;
 
 const ITEMS = [
   { id: 'apple', cat: 'food', name: '苹果', icon: '🍎', price: 5, effects: { hunger: 8, mood: 1 } },

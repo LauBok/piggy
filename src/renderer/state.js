@@ -17,6 +17,7 @@ function defaultState() {
     courses: {},
     inventory: { apple: 3, bread: 1, wipes: 2 },
     toyReady: {},
+    toyBored: {},
     helpReady: {},
     playDay: null,
     activity: null,
@@ -397,9 +398,12 @@ const Game = {
       const wait = this.toyWait(id);
       if (wait > 0) return fail(`${it.name}刚玩过，${Math.ceil(wait)} 分钟后再玩吧`);
       if (s.energy < 5) return fail('太累了，玩不动…');
-      this.apply({ ...it.effects, ...TOY_COST });
+      const fun = toyFun(s, id);
+      this.apply({ mood: Math.round(it.effects.mood * fun), ...TOY_COST });
       s.toyReady[id] = Date.now() + it.cooldown * 60000;
-      return { ok: true, msg: `玩${it.name}好开心！`, fx: `${it.icon}${this.playExp(PLAY_EXP.toy)}` };
+      s.toyBored[id] = { n: toyBoredom(s, id) + 1, at: Date.now() };
+      const msg = fun < 0.5 ? `${it.name}有点玩腻了…` : `玩${it.name}好开心！`;
+      return { ok: true, msg, fx: `${it.icon}${this.playExp(PLAY_EXP.toy)}` };
     }
 
     if (it.cat === 'food' && s.hunger >= 95) return fail('吃不下了…');

@@ -51,6 +51,16 @@ function jobReqs(s, job) {
 
 const allOk = (reqs) => reqs.every((r) => r.ok);
 
+// How bored the pig is with a toy right now (plays' worth, wearing off over time)
+function toyBoredom(s, id) {
+  const b = s.toyBored?.[id];
+  if (!b) return 0;
+  return Math.max(0, b.n - (Date.now() - b.at) / 3600000 / TOY_BORED_RECOVER_H);
+}
+
+// Share of a toy's mood effect it gives right now
+const toyFun = (s, id) => Math.max(TOY_MIN_FUN, 1 - TOY_BORED_STEP * toyBoredom(s, id));
+
 // Stat change per minute for the given drain multipliers (idle when omitted)
 function drainRates(drain = {}) {
   return Object.fromEntries(Object.entries(DECAY).map(([k, v]) => [k, v * (drain[k] || 1)]));
