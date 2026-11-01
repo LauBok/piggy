@@ -99,13 +99,16 @@ function tttPigMove(b) {
 const TTT = {
   start(el, done) {
     const b = Array(9).fill(null);
+    let fresh = -1; // the mark just placed: only it animates
+    let pigLast = -1; // the pig's latest mark, outlined
     let turn = 'X';
     let over = false;
 
     const render = (msg) => {
       el.innerHTML = `<div class="ttt">
         <div class="g-msg">${msg}</div>
-        <div class="ttt-board">${b.map((v, i) => `<button class="ttt-cell ${v ? 'filled' : ''}" data-g="${i}">${v === 'X' ? '❌' : v === 'O' ? '🐷' : ''}</button>`).join('')}</div>
+        <div class="ttt-board">${b.map((v, i) => `<button class="ttt-cell ${v ? 'filled' : ''} ${i === fresh ? 'fresh' : ''} ${i === pigLast ? 'last' : ''}"
+          data-g="${i}">${v === 'X' ? '❌' : v === 'O' ? '🐷' : ''}</button>`).join('')}</div>
       </div>`;
     };
 
@@ -125,12 +128,15 @@ const TTT = {
       const i = +cell.dataset.g;
       if (b[i]) return;
       b[i] = 'X';
+      fresh = i;
       let w = tttWinner(b);
       if (w) return finish(w);
       turn = 'O';
       render('🐷 🤔');
       setTimeout(() => {
-        b[tttPigMove(b)] = 'O';
+        pigLast = tttPigMove(b);
+        b[pigLast] = 'O';
+        fresh = pigLast;
         turn = 'X';
         w = tttWinner(b);
         if (w) return finish(w);
@@ -724,9 +730,9 @@ const BANQI = {
     const dead = [];
     let sel = -1;
     let targets = [];
-    let last = [];
+    let last = []; // the latest move: [from, to] or [flipped cell]
+    let fresh = -1; // cell that just changed; only it animates, and only on the next render
     let over = false;
-    let msg = '你先';
 
     const render = () => {
       const cells = st.b.map((p, i) => {
@@ -736,7 +742,9 @@ const BANQI = {
           !p ? 'empty' : p.up ? `up ${p.side === 'p' ? 'mine' : 'pig'}` : 'back',
           i === sel ? 'sel' : '',
           t ? (t.cap ? 'cap' : 'dot') : '',
-          last.includes(i) ? 'last' : '',
+          i === last[last.length - 1] ? 'last' : '',
+          last.length === 2 && i === last[0] ? 'from' : '',
+          i === fresh ? 'fresh' : '',
         ].join(' ');
         const face = p && p.up ? `<span>${BANQI_ICON[p.rank]}</span><small>${p.rank}</small>` : '';
         return `<button class="${cls}" data-g="${i}">${face}</button>`;
@@ -752,9 +760,9 @@ const BANQI = {
       el.innerHTML = `<div class="bq">
         <div class="bq-board">${cells}</div>
         <div class="chess-side">
-          <div class="g-msg">${msg}</div>
           <div class="bq-tally">
-            <div class="bq-row head"><span></span><b class="mine">你</b><b class="pig">🐷</b></div>
+            <div class="bq-row head"><span></span>
+              <b class="mine ${!over && st.turn === 'p' ? 'turn' : ''}">你</b><b class="pig ${!over && st.turn === 'b' ? 'turn' : ''}">🐷</b></div>
             ${tally}
             <div class="bq-row total"><span>Σ</span><b class="mine">${BanqiRules.count(st, 'p')}</b><b class="pig">${BanqiRules.count(st, 'b')}</b></div>
           </div>
@@ -762,11 +770,11 @@ const BANQI = {
           ${over ? '' : '<button class="btn ghost" data-g="resign">认输</button>'}
         </div>
       </div>`;
+      fresh = -1;
     };
 
     const end = (result, text) => {
       over = true;
-      msg = text;
       sel = -1;
       targets = [];
       render();
@@ -785,25 +793,20 @@ const BANQI = {
       return true;
     };
 
-    // Applies a move and returns the status text for it
+    // Applies a move; the board shows what happened (last move marks, the changed cell animates)
     const play = (m) => {
-      const mover = m.flip === undefined ? st.b[m.from] : null;
+      const flip = m.flip !== undefined;
       st = BanqiRules.apply(st, m);
-      last = m.flip === undefined ? [m.from, m.to] : [m.flip];
-      if (st.captured) {
-        dead.push(st.captured);
-        return `${BANQI_ICON[mover.rank]} ✖ ${BANQI_ICON[st.captured.rank]}`;
-      }
-      return '';
+      last = flip ? [m.flip] : [m.from, m.to];
+      fresh = flip ? m.flip : m.to;
+      if (st.captured) dead.push(st.captured);
     };
 
     const pigTurn = () => {
-      msg = '🐷 🤔';
       render();
       setTimeout(() => {
-        const info = play(BanqiRules.bestMove(st, dead));
+        play(BanqiRules.bestMove(st, dead));
         if (checkEnd()) return;
-        msg = info ? `🐷 ${info}` : '轮到你';
         render();
       }, 400);
     };

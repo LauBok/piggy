@@ -165,8 +165,15 @@
 }
 
 .ttt-cell.filled {
-  animation: pop 0.3s ease-out;
   cursor: default;
+}
+
+.ttt-cell.fresh {
+  animation: pop 0.3s ease-out;
+}
+
+.ttt-cell.last {
+  box-shadow: inset 0 0 0 3px #fab005;
 }
 
 /* penalty shootout */
@@ -420,7 +427,8 @@
   transform: translateY(-1px);
 }
 
-.bq-cell.up {
+/* only the cell that just changed animates */
+.bq-cell.fresh {
   animation: pop 0.3s ease-out;
 }
 
@@ -458,9 +466,15 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
+/* latest move: where it went (or what was flipped) glows, where it came from is a dashed ring */
 .bq-cell.last {
-  outline: 3px solid rgba(255, 212, 59, 0.85);
-  outline-offset: -1px;
+  outline: 3px solid #fab005;
+  outline-offset: 1px;
+}
+
+.bq-cell.from {
+  outline: 2px dashed #fab005;
+  outline-offset: -6px;
 }
 
 .bq-cell.sel {
@@ -504,6 +518,28 @@
 .bq-row.head b,
 .bq-row.total {
   font-size: 13px;
+}
+
+/* whose turn it is */
+.bq-row.head b {
+  justify-self: center;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+.bq-row.head b.mine.turn {
+  background: #f03e3e;
+  color: #fff;
+}
+
+.bq-row.head b.pig.turn {
+  background: #1c7ed6;
+  color: #fff;
+  animation: think 1s ease-in-out infinite;
+}
+
+@keyframes think {
+  50% { opacity: 0.55; }
 }
 
 .bq-row.total {
