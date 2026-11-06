@@ -104,10 +104,12 @@ const STAGES = [
   { id: 'primary', name: '小学', icon: '🎒', minLevel: 6, needs: null, degree: '小学毕业', student: '小学生', baseMin: 40, fee: 0 },
   { id: 'middle', name: '初中', icon: '📘', minLevel: 12, needs: 'primary', degree: '初中毕业', student: '初中生', baseMin: 50, fee: 0 },
   { id: 'high', name: '高中', icon: '📗', minLevel: 15, needs: 'middle', degree: '高中毕业', student: '高中生', baseMin: 60, fee: 10 },
-  { id: 'college', name: '大学', icon: '🎓', minLevel: 18, degree: '学士', student: '大学生', byMajor: true, fee: 50 },
-  { id: 'master', name: '研究生', icon: '📜', minLevel: 22, degree: '硕士', student: '研究生', byMajor: true, fee: 80 },
-  { id: 'phd', name: '博士', icon: '🔬', minLevel: 25, degree: '博士', student: '博士生', byMajor: true, fee: 100 },
+  // from university up a degree needs every required course of the major plus enough credits
+  { id: 'college', name: '大学', icon: '🎓', minLevel: 18, degree: '学士', student: '大学生', byMajor: true, fee: 50, credits: 26 },
+  { id: 'master', name: '研究生', icon: '📜', minLevel: 22, degree: '硕士', student: '研究生', byMajor: true, fee: 80, credits: 13 },
+  { id: 'phd', name: '博士', icon: '🔬', minLevel: 25, degree: '博士', student: '博士生', byMajor: true, fee: 100, credits: 10 },
 ];
+const CREDITS = { required: 3, elective: 2 };
 
 // Which subjects each school stage teaches, and what each course needs first
 const BASIC_COURSES = {
@@ -152,37 +154,64 @@ const BASIC_COURSES = {
 };
 const SUBJECT_ALIAS = { 'primary:politics': '品德' };
 
+// Each major, per stage: req (required, in order) and elec (major electives)
 const MAJORS = [
   {
     id: 'cs', name: '计算机', icon: '💻', needs: ['high_math', 'high_physics'],
-    college: ['猪猪编程入门', '数据结构', '拱拱算法', '操作系统'], master: ['猪工智能', '分布式系统'], phd: ['机器学习研究', '猪脑模拟研究'],
+    college: { req: ['猪猪编程入门', '数据结构', '拱拱算法', '操作系统', '计算机组成', '软件工程'], elec: ['网页设计', '游戏开发', '数据库', '计算机网络'] },
+    master: { req: ['猪工智能', '分布式系统', '编译原理'], elec: ['计算机视觉', '信息安全', '机器人'] },
+    phd: { req: ['机器学习研究', '猪脑模拟研究'], elec: ['前沿讲座', '论文写作'] },
   },
   {
     id: 'med', name: '猪猪医学', icon: '🩺', needs: ['high_biology', 'high_chemistry'],
-    college: ['猪体解剖', '猪猪生理学', '猪病理学', '猪猪临床'], master: ['猪猪内科', '猪猪外科'], phd: ['猪猪健康研究', '长寿猪研究'],
+    college: { req: ['猪体解剖', '猪猪生理学', '猪病理学', '猪猪临床', '猪猪药理学', '猪猪诊断学'], elec: ['猪猪营养学', '急救常识', '猪猪心理', '中猪医'] },
+    master: { req: ['猪猪内科', '猪猪外科', '猪猪儿科'], elec: ['影像学', '麻醉学', '康复医学'] },
+    phd: { req: ['猪猪健康研究', '长寿猪研究'], elec: ['临床试验', '论文写作'] },
   },
   {
     id: 'fin', name: '金融', icon: '💹', needs: ['high_math', 'high_politics'],
-    college: ['经济学原理', '存钱罐会计学', '金融市场', '小猪储蓄投资'], master: ['公司金融', '存钱罐工程'], phd: ['宏观经济研究', '猪肉价格研究'],
+    college: { req: ['经济学原理', '存钱罐会计学', '金融市场', '小猪储蓄投资', '统计学', '货币银行学'], elec: ['保险学', '税法', '理财规划', '电子支付'] },
+    master: { req: ['公司金融', '存钱罐工程', '风险管理'], elec: ['量化交易', '行为金融', '国际金融'] },
+    phd: { req: ['宏观经济研究', '猪肉价格研究'], elec: ['计量经济', '论文写作'] },
   },
   {
     id: 'law', name: '法学', icon: '⚖️', needs: ['high_chinese', 'high_politics', 'high_history'],
-    college: ['法理学', '宪法', '猪权民法', '刑法'], master: ['诉讼法', '国际法'], phd: ['动物权益研究', '比较法研究'],
+    college: { req: ['法理学', '宪法', '猪权民法', '刑法', '合同法', '行政法'], elec: ['知识产权', '环境法', '劳动法', '法律英语'] },
+    master: { req: ['诉讼法', '国际法', '商法'], elec: ['仲裁实务', '海商法', '法律文书'] },
+    phd: { req: ['动物权益研究', '比较法研究'], elec: ['法哲学', '论文写作'] },
   },
   {
     id: 'edu', name: '教育学', icon: '🍎', needs: ['high_chinese', 'high_english'],
-    college: ['教育学原理', '小猪心理学', '课程设计', '教学实践'], master: ['教育心理学', '猪猪幼儿园管理'], phd: ['教育理论研究', '学习科学研究'],
+    college: { req: ['教育学原理', '小猪心理学', '课程设计', '教学实践', '教育统计', '班级管理'], elec: ['儿童文学', '特殊教育', '教育技术', '游戏化教学'] },
+    master: { req: ['教育心理学', '猪猪幼儿园管理', '教育评价'], elec: ['比较教育', '家庭教育', '教育政策'] },
+    phd: { req: ['教育理论研究', '学习科学研究'], elec: ['质性研究', '论文写作'] },
   },
   {
     id: 'civil', name: '土木工程', icon: '🏗️', needs: ['high_math', 'high_physics'],
-    college: ['工程力学', '稻草与砖块', '结构设计', '防狼房屋施工'], master: ['桥梁工程', '泥坑工程'], phd: ['结构理论研究', '智能猪舍研究'],
+    college: { req: ['工程力学', '稻草与砖块', '结构设计', '防狼房屋施工', '材料力学', '工程测量'], elec: ['园林设计', '给排水', '工程制图', '建筑美学'] },
+    master: { req: ['桥梁工程', '泥坑工程', '抗震设计'], elec: ['隧道工程', '绿色建筑', '施工管理'] },
+    phd: { req: ['结构理论研究', '智能猪舍研究'], elec: ['数值模拟', '论文写作'] },
   },
   {
     id: 'arts', name: '艺术', icon: '🎭', needs: ['high_music', 'high_art'],
-    college: ['乐理与和声', '素描与色彩', '猪猪设计', '舞台表演'], master: ['作曲', '油画创作'], phd: ['猪猪美学研究', '艺术史研究'],
+    college: { req: ['乐理与和声', '素描与色彩', '猪猪设计', '舞台表演', '艺术史', '毕业创作'], elec: ['摄影', '动画', '书法', '陶艺'] },
+    master: { req: ['作曲', '油画创作', '策展'], elec: ['电影配乐', '版画', '舞台美术'] },
+    phd: { req: ['猪猪美学研究', '艺术史研究'], elec: ['艺术评论', '论文写作'] },
   },
 ];
-const MAJOR_MINUTES = { college: [70, 75, 80, 85], master: [85, 88], phd: [90, 90] };
+// General electives (通识): any university student can take them, and they count for every major
+const GENERAL_ELECTIVES = [
+  { id: 'philo', name: '猪猪哲学', icon: '🤔' }, { id: 'music', name: '音乐鉴赏', icon: '🎧' },
+  { id: 'film', name: '电影赏析', icon: '🎬' }, { id: 'mind', name: '心理健康', icon: '💗' },
+  { id: 'startup', name: '创业基础', icon: '🚀' }, { id: 'lang', name: '第二外语', icon: '🗣️' },
+  { id: 'astro', name: '天文学', icon: '🔭' }, { id: 'cook', name: '烹饪课', icon: '🍳' },
+];
+// minutes of required courses by position; electives are shorter
+const MAJOR_MINUTES = { college: [70, 72, 75, 78, 80, 85], master: [85, 88, 90], phd: [90, 90] };
+const ELECTIVE_MINUTES = { college: 50, master: 60, phd: 70 };
+// which earlier required courses (by position) each required course needs
+const REQ_PREREQ = { 6: [[], [0], [0], [1], [2], [3, 4]], 3: [[], [0], [0]], 2: [[], [0]] };
+const PREV_STAGE = { master: 'college', phd: 'master' };
 
 const STAGE_BY_ID = Object.fromEntries(STAGES.map((s) => [s.id, s]));
 const SUBJECT_BY_ID = Object.fromEntries(SUBJECTS.map((s) => [s.id, s]));
@@ -209,24 +238,32 @@ for (const [stageId, subjects] of Object.entries(BASIC_COURSES)) {
   }
 }
 for (const m of MAJORS) {
-  let prev = null;
   for (const stageId of ['college', 'master', 'phd']) {
-    m[stageId].forEach((name, i) => {
-      const id = `${stageId}_${m.id}_${i + 1}`;
-      COURSES.push({
-        id,
-        stage: stageId,
-        major: m.id,
-        name,
-        fullName: `${m.name}·${name}`,
-        icon: m.icon,
-        minutes: MAJOR_MINUTES[stageId][i],
-        // the first college course needs the major's high school subjects; after that it's a chain
-        prereq: prev ? [prev] : m.needs,
-      });
-      prev = id;
-    });
+    const { req, elec } = m[stageId];
+    const reqIds = req.map((_, i) => `${stageId}_${m.id}_${i + 1}`);
+    // the first required course needs the major's high school subjects, or the degree below
+    const entry = PREV_STAGE[stageId] ? [`deg:${PREV_STAGE[stageId]}:${m.id}`] : m.needs;
+    const common = { stage: stageId, major: m.id, icon: m.icon };
+    req.forEach((name, i) => COURSES.push({
+      ...common, id: reqIds[i], name, fullName: `${m.name}·${name}`,
+      minutes: MAJOR_MINUTES[stageId][i],
+      prereq: i ? REQ_PREREQ[req.length][i].map((j) => reqIds[j]) : entry,
+      credits: CREDITS.required,
+    }));
+    // each major elective opens after one of the required courses
+    elec.forEach((name, i) => COURSES.push({
+      ...common, id: `${stageId}_${m.id}_e${i + 1}`, name, fullName: `${m.name}·${name}`,
+      minutes: ELECTIVE_MINUTES[stageId] + i * 3,
+      prereq: [reqIds[Math.min(i + (req.length >= 6 ? 1 : 0), req.length - 1)]],
+      credits: CREDITS.elective, elective: true,
+    }));
   }
+}
+for (const [i, g] of GENERAL_ELECTIVES.entries()) {
+  COURSES.push({
+    id: `college_gen_${g.id}`, stage: 'college', name: g.name, fullName: `通识·${g.name}`, icon: g.icon,
+    minutes: ELECTIVE_MINUTES.college + (i % 3) * 5, prereq: [], credits: CREDITS.elective, elective: true, general: true,
+  });
 }
 const COURSE_BY_ID = Object.fromEntries(COURSES.map((c) => [c.id, c]));
 
@@ -236,13 +273,13 @@ const COURSE_BY_ID = Object.fromEntries(COURSES.map((c) => [c.id, c]));
 // pay is not set by hand: it comes from jobPay() below, from how hard the job is to get and to do.
 
 const JOBS = [
-  { id: 'bottles', name: '拱松露', icon: '🍄', minLevel: 3, requires: [], minutes: 20, drain: { hunger: 2, clean: 4, mood: 1.5, energy: 2 } },
-  { id: 'flyer', name: '发传单', icon: '📄', minLevel: 4, requires: [], minutes: 30, drain: { hunger: 2.5, clean: 2, mood: 2, energy: 3 } },
+  { id: 'bottles', name: '拱松露', doing: true, icon: '🍄', minLevel: 3, requires: [], minutes: 20, drain: { hunger: 2, clean: 4, mood: 1.5, energy: 2 } },
+  { id: 'flyer', name: '发传单', doing: true, icon: '📄', minLevel: 4, requires: [], minutes: 30, drain: { hunger: 2.5, clean: 2, mood: 2, energy: 3 } },
   { id: 'dishes', name: '洗碗工', icon: '🍽️', minLevel: 5, requires: [], minutes: 40, drain: { hunger: 2, clean: 3.5, mood: 2, energy: 3 } },
   { id: 'ballboy', name: '球场球童', icon: '🎾', minLevel: 10, requires: ['primary_pe'], minutes: 30, drain: { hunger: 3, clean: 2.5, mood: 1.5, energy: 4 } },
   { id: 'paper', name: '送报员', icon: '📰', minLevel: 8, requires: ['primary_chinese'], minutes: 30, drain: { hunger: 3, clean: 2, mood: 1.5, energy: 3.5 } },
-  { id: 'busker', name: '街头卖艺', icon: '🪗', minLevel: 8, requires: ['primary_music'], minutes: 30, drain: { hunger: 2, clean: 1.5, mood: 1.5, energy: 2.5 } },
-  { id: 'portrait', name: '公园画肖像', icon: '🖼️', minLevel: 9, requires: ['primary_art'], minutes: 40, drain: { hunger: 2, clean: 2, mood: 1.5, energy: 2 } },
+  { id: 'busker', name: '街头卖艺', doing: true, icon: '🪗', minLevel: 8, requires: ['primary_music'], minutes: 30, drain: { hunger: 2, clean: 1.5, mood: 1.5, energy: 2.5 } },
+  { id: 'portrait', name: '公园画肖像', doing: true, icon: '🖼️', minLevel: 9, requires: ['primary_art'], minutes: 40, drain: { hunger: 2, clean: 2, mood: 1.5, energy: 2 } },
   { id: 'museum', name: '科技馆讲解员', icon: '🔭', minLevel: 9, requires: ['primary_science'], minutes: 40, drain: { hunger: 2, clean: 1, mood: 2, energy: 2.5 } },
   { id: 'mover', name: '砖房小工', icon: '🧱', minLevel: 10, requires: [], minutes: 60, drain: { hunger: 4, clean: 4, mood: 3, energy: 5 } },
   { id: 'cashier', name: '小卖部收银员', icon: '🏪', minLevel: 10, requires: ['primary_math'], minutes: 45, drain: { hunger: 2, clean: 1.2, mood: 2.5, energy: 2.5 } },
@@ -281,6 +318,18 @@ function requiredCourses(tokens, set = new Set()) {
     if (t.startsWith('deg:')) {
       const [, stageId, majorId] = t.split(':');
       ids = COURSES.filter((c) => c.stage === stageId && !c.elective && (!majorId || c.major === majorId)).map((c) => c.id);
+      // plus the quickest electives that make up the credits the degree needs
+      const need = STAGE_BY_ID[stageId].credits;
+      if (need && majorId) {
+        let have = ids.reduce((n, id) => n + COURSE_BY_ID[id].credits, 0);
+        const pool = COURSES.filter((c) => c.stage === stageId && c.elective && (c.major === majorId || c.general))
+          .sort((a, b) => a.minutes - b.minutes);
+        for (const c of pool) {
+          if (have >= need) break;
+          ids.push(c.id);
+          have += c.credits;
+        }
+      }
     }
     for (const id of ids) {
       if (set.has(id)) continue;
@@ -327,7 +376,13 @@ const SHOP_CATS = [
   { id: 'medicine', name: '药物', icon: '💊', desc: '生病时吃，恢复健康' },
   { id: 'wear', name: '装扮', icon: '🎀', desc: '买一次，可以随时戴上或摘下' },
   { id: 'furniture', name: '家具', icon: '🛋️', desc: '摆在家里，一直有效' },
+  { id: 'decor', name: '装饰', icon: '🪴', desc: '摆在家里，只是好看' },
+  { id: 'city', name: '捐建', icon: '⛲', desc: '捐给猪猪城，地图上会出现' },
 ];
+// Bought once and kept: these never go in the bag
+const ONCE_CATS = ['toy', 'wear', 'furniture', 'decor', 'city'];
+// How many decorations fit in each house tier (0 小猪窝 … 3 城堡)
+const DECOR_SLOTS = [2, 5, 9, 14];
 
 // Hobbies unlocked by the electives. Each takes a few minutes; effects grow with how far the
 // subject was studied (1 at primary, up to 3 at high school). cooldown in minutes.
@@ -400,9 +455,70 @@ const ITEMS = [
   { id: 'piano3', cat: 'furniture', group: 'piano', name: '三角钢琴', icon: '🎼', price: 12000, effects: {}, bonus: { piano: 1.6 } },
   { id: 'easel1', cat: 'furniture', group: 'easel', name: '小画架', icon: '🖼️', price: 150, effects: {}, bonus: { paint: 1 } },
   { id: 'easel2', cat: 'furniture', group: 'easel', name: '专业画室', icon: '🎨', price: 3000, effects: {}, bonus: { paint: 1.3 } },
-  { id: 'house1', cat: 'furniture', group: 'house', name: '温馨公寓', icon: '🏠', price: 20000, effects: {}, bonus: { sleep: 1.1, moodDrain: 0.9 } },
-  { id: 'house2', cat: 'furniture', group: 'house', name: '花园别墅', icon: '🏡', price: 80000, effects: {}, bonus: { sleep: 1.25, moodDrain: 0.8 } },
+  { id: 'house1', cat: 'furniture', group: 'house', tier: 1, name: '温馨公寓', icon: '🏠', price: 20000, effects: {}, bonus: { sleep: 1.1, moodDrain: 0.9 } },
+  { id: 'house2', cat: 'furniture', group: 'house', tier: 2, name: '花园别墅', icon: '🏡', price: 80000, effects: {}, bonus: { sleep: 1.25, moodDrain: 0.8 } },
+  { id: 'house3', cat: 'furniture', group: 'house', tier: 3, name: '猪猪城堡', icon: '🏰', price: 200000, effects: {}, bonus: { sleep: 1.4, moodDrain: 0.7 } },
+  // late-game upgrades, for when there's more money than things to buy
+  { id: 'bed4', cat: 'furniture', group: 'bed', name: '云朵床', icon: '🛏️', price: 20000, effects: {}, bonus: { sleep: 2.5 } },
+  { id: 'tub3', cat: 'furniture', group: 'tub', name: '私人温泉', icon: '♨️', price: 25000, effects: {}, bonus: { bath: 3.5 } },
+  { id: 'desk3', cat: 'furniture', group: 'desk', name: '书房', icon: '📚', price: 15000, effects: {}, bonus: { study: 1.4 } },
+  { id: 'sofa3', cat: 'furniture', group: 'sofa', name: '懒人沙发', icon: '🛋️', price: 12000, effects: {}, bonus: { moodDrain: 0.6 } },
+  // needsTier: only fits from that house up (2 = 花园别墅)
+  { id: 'kitchen1', cat: 'furniture', group: 'kitchen', needsTier: 2, name: '小厨房', icon: '🍳', price: 3000, effects: {}, bonus: { food: 1.1 } },
+  { id: 'kitchen2', cat: 'furniture', group: 'kitchen', needsTier: 2, name: '大厨房', icon: '🧑‍🍳', price: 15000, effects: {}, bonus: { food: 1.25 } },
+
+  // decorations: only for looks, each takes one of the house's decoration spots
+  { id: 'rug', cat: 'decor', name: '圆地毯', icon: '🧶', price: 1000, effects: {} },
+  { id: 'plant', cat: 'decor', name: '大盆栽', icon: '🪴', price: 1500, effects: {} },
+  { id: 'lamp', cat: 'decor', name: '小灯笼', icon: '🏮', price: 3000, effects: {} },
+  { id: 'aquarium', cat: 'decor', name: '鱼缸', icon: '🐠', price: 8000, effects: {} },
+  { id: 'trophy', cat: 'decor', name: '奖杯柜', icon: '🏆', price: 12000, effects: {} },
+  { id: 'painting', cat: 'decor', name: '名画', icon: '🖼️', price: 20000, effects: {} },
+  { id: 'globe', cat: 'decor', name: '地球仪', icon: '🌍', price: 30000, effects: {} },
+  { id: 'stars', cat: 'decor', name: '星空天花板', icon: '🌌', price: 50000, effects: {} },
+
+  // donations to the city: they appear on the map
+  { id: 'fountain', cat: 'city', name: '喷泉', icon: '⛲', price: 30000, effects: {} },
+  { id: 'bridge', cat: 'city', name: '彩虹桥', icon: '🌈', price: 60000, effects: {} },
+  { id: 'ferris', cat: 'city', name: '摩天轮', icon: '🎡', price: 100000, effects: {} },
+  { id: 'statue', cat: 'city', name: '金猪雕像', icon: '🐷', price: 300000, effects: {} },
+
+  // sold only by a neighbour who loves the pig (npc: who, at NPC_MAX_HEARTS)
+  { id: 'cap', cat: 'wear', slot: 'head', npc: 'dog', name: '工作帽', icon: '🧢', price: 250, effects: {} },
+  { id: 'carrotcake', cat: 'food', npc: 'rabbit', name: '胡萝卜蛋糕', icon: '🥕', price: 80, effects: { hunger: 40, mood: 20 } },
+  { id: 'bubbler', cat: 'furniture', group: 'bubbler', npc: 'raccoon', name: '泡泡机', icon: '🫧', price: 2000, effects: {}, bonus: { bath: 1.2 } },
+  { id: 'pinecone', cat: 'toy', npc: 'squirrel', name: '松果陀螺', icon: '🌰', price: 200, effects: { mood: 35 }, cooldown: 20 },
+  { id: 'starclip', cat: 'wear', slot: 'head', npc: 'cat', name: '星星发卡', icon: '⭐', price: 300, effects: {} },
+  { id: 'treehouse', cat: 'decor', npc: 'bear', name: '小树屋', icon: '🌳', price: 6000, effects: {} },
+  { id: 'honey', cat: 'medicine', npc: 'sheep', name: '蜂蜜糖', icon: '🍯', price: 60, effects: { health: 40, mood: 10 } },
+  { id: 'gradcap', cat: 'wear', slot: 'head', npc: 'owl', name: '博士帽', icon: '🎓', price: 500, effects: {} },
+  { id: 'chesstable', cat: 'decor', npc: 'turtle', name: '棋盘桌', icon: '♟️', price: 4000, effects: {} },
+  { id: 'pot', cat: 'furniture', group: 'pot', npc: 'duck', name: '大厨锅', icon: '🍲', price: 2500, effects: {}, bonus: { food: 1.1 } },
 ];
 
-const BONUS_NAME = { sleep: '睡觉恢复', bath: '洗澡', study: '学习经验', moodDrain: '心情消耗', piano: '弹琴', paint: '画画' };
+const BONUS_NAME = { sleep: '睡觉恢复', bath: '洗澡', study: '学习经验', moodDrain: '心情消耗', piano: '弹琴', paint: '画画', food: '食物效果' };
 const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
+
+// ---------- neighbours in Pig City ----------
+// Hearts go from 0 to NPC_MAX_HEARTS: +1 for the first hello of the day, +2 for a wish granted.
+// At NPC_PERK_HEARTS each one gives a perk; at the max their shop sells their special item.
+const NPC_PERK_HEARTS = 5;
+const NPC_MAX_HEARTS = 10;
+const NPC_WISHES_PER_DAY = 3;
+// what neighbours wish for: cheap everyday things
+const WISH_CATS = ['food', 'hygiene', 'medicine'];
+const WISH_MAX_PRICE = 70;
+
+const NPCS = [
+  { id: 'dog', name: '柴柴', species: 'dog', place: 'tower', hello: ['今天也加油💪', '有新活儿哦📋', '汪！早呀🌞'], perk: { key: 'pay', v: 1.05, text: '打工工资 +5%' } },
+  { id: 'rabbit', name: '兔婆婆', species: 'rabbit', place: 'bakery', hello: ['刚出炉的🍞', '多吃点呀', '乖孩子😊'], perk: { key: 'discount', cats: ['food'], v: 0.9, text: '食物 9 折' } },
+  { id: 'raccoon', name: '浣浣', species: 'raccoon', place: 'bubble', hello: ['洗干净没🫧', '香香的✨', '别把泥带进来！'], perk: { key: 'discount', cats: ['hygiene'], v: 0.9, text: '卫生用品 9 折' } },
+  { id: 'squirrel', name: '栗栗', species: 'squirrel', place: 'toy', hello: ['来玩来玩🎈', '新玩具到啦！', '吱吱~'], perk: { key: 'toyRecover', v: 2, text: '玩腻的玩具恢复快一倍' } },
+  { id: 'cat', name: '咪咪', species: 'cat', place: 'clothes', hello: ['还行吧😼', '这个衬你🎀', '喵~'], perk: { key: 'discount', cats: ['wear'], v: 0.9, text: '装扮 9 折' } },
+  { id: 'bear', name: '熊师傅', species: 'bear', place: 'furniture', hello: ['结实着呢🪵', '慢慢挑', '嘿咻！'], perk: { key: 'discount', cats: ['furniture', 'decor'], v: 0.9, text: '家具和装饰 9 折' } },
+  { id: 'sheep', name: '绵绵医生', species: 'sheep', place: 'clinic', hello: ['多喝水哦💧', '早睡早起~', '咩~'], perk: { key: 'clinicCd', v: 0.5, text: '免费看病等待减半' } },
+  { id: 'owl', name: '咕咕校长', species: 'owl', place: 'primary', hello: ['好好学习📚', '咕咕~', '知识就是力量'], perk: { key: 'study', v: 1.05, text: '上课经验 ×1.05' } },
+  { id: 'turtle', name: '龟爷爷', species: 'turtle', place: 'chess', hello: ['来一盘？♟️', '慢慢来…', '呵呵呵'], perk: { key: 'playCap', v: 10, text: '每日游戏经验上限 +10' } },
+  { id: 'duck', name: '嘎嘎大厨', species: 'duck', place: 'canteen', hello: ['开饭啦🍚', '嘎嘎！', '管饱！'], perk: { key: 'canteen', v: 10, text: '食堂饱食 +10' } },
+];
+const NPC_BY_ID = Object.fromEntries(NPCS.map((n) => [n.id, n]));

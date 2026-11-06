@@ -151,6 +151,12 @@ const App = {
       case 'buy':
         res = Game.buy(id);
         break;
+      case 'greet':
+        res = Game.greet(id);
+        break;
+      case 'give':
+        res = Game.give(id);
+        break;
       case 'study':
         res = Game.startStudy(id);
         break;

@@ -110,6 +110,18 @@ const WEAR_SVG = {
       <rect x="59" y="16" width="42" height="7" fill="#e64980"/>
       <ellipse cx="80" cy="26" rx="36" ry="7" fill="#212529"/>
       <path d="M64 -2 L64 14" stroke="#fff" stroke-width="2.5" opacity=".15" stroke-linecap="round"/></g>`,
+  cap: `<g>
+      <path d="M48 36 Q50 6 80 6 Q110 6 112 36 Z" fill="#ff922b" stroke="#e8590c" stroke-width="1.5"/>
+      <path d="M104 33 Q130 30 138 39 Q120 42 100 38 Z" fill="#e8590c"/>
+      <path d="M80 7 L80 34" stroke="#ffa94d" stroke-width="2"/><circle cx="80" cy="7" r="3.2" fill="#e8590c"/></g>`,
+  starclip: `<g transform="translate(108 28) rotate(12)">
+      <path d="M0 -11 L3.2 -3.5 L11 -3.4 L4.8 1.6 L7 9.4 L0 4.8 L-7 9.4 L-4.8 1.6 L-11 -3.4 L-3.2 -3.5 Z" fill="#ffd43b" stroke="#f59f00" stroke-width="1.4" stroke-linejoin="round"/>
+      <circle cx="-2" cy="-3" r="1.6" fill="#fff" opacity=".8"/></g>`,
+  gradcap: `<g>
+      <path d="M62 28 L62 37 Q80 44 98 37 L98 28 Z" fill="#2f2f45"/>
+      <path d="M42 24 L80 8 L118 24 L80 40 Z" fill="#41415e"/>
+      <path d="M80 24 L110 28 L110 40" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+      <circle cx="110" cy="42" r="3.2" fill="#ff6b6b"/></g>`,
   crown: `<g>
       <path d="M58 28 L60 6 L70 17 L80 1 L90 17 L100 6 L102 28 Z" fill="#ffd43b" stroke="#f59f00" stroke-width="1.6" stroke-linejoin="round"/>
       <circle cx="80" cy="19" r="3.4" fill="#ff6b6b"/><circle cx="67" cy="22" r="2.4" fill="#4dabf7"/><circle cx="93" cy="22" r="2.4" fill="#4dabf7"/></g>`,

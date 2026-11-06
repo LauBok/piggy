@@ -1,0 +1,1727 @@
+/* Pig City: the map, the top bar, the sheets over the map and the little scenes */
+
+.window {
+  display: block;
+  background: #e6f5d8;
+}
+
+body.paused * {
+  animation-play-state: paused !important;
+}
+
+/* ---------- top bar ---------- */
+
+#hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 52px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 0 8px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.93);
+  border-bottom: 1px solid var(--pink-line);
+  -webkit-app-region: drag;
+}
+
+#hud button {
+  -webkit-app-region: no-drag;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.hud-pig {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.hud-pig > svg {
+  position: absolute;
+  inset: 0;
+}
+
+#hudAvatar {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, #fff, #ffe9f0);
+}
+
+#hudAvatar svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hud-lv {
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--grad);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: bold;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.hud-pig .track,
+.hstat .track {
+  fill: none;
+  stroke: #f7e8ee;
+  stroke-width: 4;
+}
+
+.hud-pig .val,
+.hstat .val {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.5s;
+}
+
+.hud-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 64px;
+}
+
+.hud-name b {
+  font-size: 14px;
+}
+
+.hud-name small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.hud-stats {
+  display: flex;
+  gap: 3px;
+}
+
+.hstat {
+  position: relative;
+  width: 36px;
+  height: 36px;
+}
+
+.hstat svg {
+  position: absolute;
+  inset: 0;
+}
+
+.hstat span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.hstat em {
+  position: absolute;
+  left: 50%;
+  top: 38px;
+  transform: translateX(-50%);
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font: bold 11px/17px 'PigRound', system-ui;
+  font-style: normal;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.hstat:hover em {
+  opacity: 1;
+}
+
+.hstat.warn span {
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
+.hud-act {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 4px 0 10px;
+  border-radius: 17px;
+  background: var(--pink-soft);
+  -webkit-app-region: no-drag;
+  animation: pop-in 0.25s ease-out;
+}
+
+.hud-act.on {
+  display: flex;
+}
+
+.ha-ic {
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.ha-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.ha-main b {
+  font-size: 12px;
+  line-height: 1.1;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ha-bar {
+  display: block;
+  width: 96px;
+  height: 4px;
+  border-radius: 2px;
+  background: #ffd6e2;
+  overflow: hidden;
+}
+
+.ha-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--grad);
+  transition: width 1s linear;
+}
+
+.ha-time {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-act button {
+  width: 26px;
+  height: 26px;
+  border-radius: 50% !important;
+  background: #fff !important;
+  color: #e64980;
+  font-size: 12px;
+}
+
+.hud-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.coins {
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: #fff9db;
+  color: #e67700;
+  white-space: nowrap;
+}
+
+.coins b {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hbtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% !important;
+  background: var(--pink-soft) !important;
+  font-size: 15px;
+}
+
+.hbtn:hover {
+  background: #ffdce7 !important;
+}
+
+.hbtn.win {
+  color: #c2577a;
+  font-size: 13px;
+}
+
+@keyframes pop-in {
+  from { transform: scale(0.85); opacity: 0; }
+}
+
+/* ---------- the map ---------- */
+
+#viewport {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 52px;
+  bottom: 0;
+  overflow: hidden;
+  cursor: grab;
+}
+
+#viewport.dragging {
+  cursor: grabbing;
+}
+
+#world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+#cityBase {
+  display: block;
+}
+
+#cityBase text {
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+  pointer-events: none;
+}
+
+.pl {
+  cursor: pointer;
+}
+
+.pl-hit {
+  fill: transparent;
+}
+
+.pl-art {
+  transition: transform 0.18s ease-out, filter 0.2s;
+}
+
+.pl:hover .pl-art {
+  transform: translateY(-3px);
+}
+
+.pl-lock {
+  display: none;
+}
+
+.pl.locked .pl-lock {
+  display: inline;
+}
+
+.pl.locked .pl-art {
+  filter: grayscale(0.85) opacity(0.6);
+}
+
+.flag {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  animation: flag 1.4s ease-in-out infinite;
+}
+
+@keyframes flag {
+  50% { transform: scaleX(0.75) skewY(6deg); }
+}
+
+.blink-light {
+  animation: blink-light 1.6s steps(1) infinite;
+}
+
+@keyframes blink-light {
+  50% { opacity: 0.2; }
+}
+
+.bob {
+  animation: bob-y 2.4s ease-in-out infinite;
+}
+
+@keyframes bob-y {
+  50% { transform: translateY(-4px); }
+}
+
+.rise {
+  animation: rise 3s ease-in infinite;
+}
+
+@keyframes rise {
+  from { transform: translateY(6px); opacity: 0; }
+  30% { opacity: 1; }
+  to { transform: translateY(-18px); opacity: 0; }
+}
+
+.steam path {
+  animation: steam 2.4s ease-in-out infinite;
+}
+
+@keyframes steam {
+  0% { opacity: 0; transform: translateY(8px); }
+  40% { opacity: 0.75; }
+  100% { opacity: 0; transform: translateY(-16px); }
+}
+
+.twinkle {
+  animation: blink-light 1.2s steps(1) infinite;
+}
+
+.paddle {
+  animation: paddle 8s ease-in-out infinite;
+}
+
+@keyframes paddle {
+  50% { transform: translateX(24px); }
+}
+
+.jib {
+  transform-box: fill-box;
+  transform-origin: 62% 0;
+  animation: jib 9s ease-in-out infinite;
+}
+
+@keyframes jib {
+  50% { transform: scaleX(0.82); }
+}
+
+.wheel-spin {
+  animation: spin 30s linear infinite;
+}
+
+.spray {
+  animation: spray 1.2s ease-in-out infinite;
+}
+
+@keyframes spray {
+  50% { opacity: 0.5; transform: translateY(-3px); }
+}
+
+.puff {
+  animation: rise 3.2s ease-out infinite;
+  fill: #f1f3f5;
+}
+
+.gold-pig {
+  filter: sepia(1) saturate(2.4) hue-rotate(-12deg) brightness(1.08);
+}
+
+/* ---------- things on the map ---------- */
+
+.actor {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.a-move,
+.a-face {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.a-sprite {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(160px * var(--k));
+  transform: translateX(-50%);
+}
+
+.a-sprite svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pig-sprite {
+  cursor: pointer;
+}
+
+.npc .a-sprite {
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.npc:hover .a-sprite {
+  transform: translateX(-50%) translateY(-3px);
+}
+
+.walker {
+  pointer-events: none;
+}
+
+.hop svg {
+  animation: bob 0.5s ease-in-out infinite;
+}
+
+.patrol {
+  animation: patrol var(--dur) ease-in-out infinite;
+}
+
+@keyframes patrol {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(var(--dx), var(--dy, 0)); }
+}
+
+.patrol-face {
+  animation: patrol-face var(--dur) linear infinite;
+}
+
+@keyframes patrol-face {
+  0%, 49.9% { transform: scaleX(var(--f, 1)); }
+  50%, 100% { transform: scaleX(calc(var(--f, 1) * -1)); }
+}
+
+.a-hold {
+  position: absolute;
+  left: 16px;
+  top: -34px;
+  font-size: 17px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.a-hold > span {
+  display: inline-block;
+  animation: wiggle 0.8s ease-in-out infinite;
+}
+
+@keyframes wiggle {
+  50% { transform: rotate(-12deg) translateY(-2px); }
+}
+
+.flyers {
+  position: relative;
+  display: block;
+  width: 16px;
+  height: 20px;
+}
+
+.flyers i {
+  position: absolute;
+  left: calc(var(--i) * 1px);
+  bottom: calc(var(--i) * 2px);
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #ced4da;
+}
+
+.a-veh {
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 64px;
+  transform: translateX(-50%);
+}
+
+.a-veh svg {
+  display: block;
+  width: 100%;
+}
+
+.a-veh .wheel {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+#pigActor.on-route .pig-sprite {
+  bottom: 18px;
+}
+
+
+.basket {
+  display: flex;
+  font-size: 10px;
+}
+
+.basket i {
+  font-style: normal;
+  margin-left: -3px;
+}
+
+.a-follow span {
+  position: absolute;
+  left: calc(-30px - var(--i) * 18px);
+  top: -16px;
+  font-size: 14px;
+  animation: bob 0.5s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.15s);
+}
+
+/* the menu over the pig */
+.pig-menu {
+  position: absolute;
+  left: 0;
+  bottom: 66px;
+  transform: translateX(-50%);
+  display: none;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(214, 90, 135, 0.25);
+  z-index: 3;
+}
+
+.pig-menu.on {
+  display: flex;
+  animation: pop-in 0.18s ease-out;
+}
+
+.pig-menu button {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: var(--pink-soft);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.pig-menu button:hover {
+  background: #ffdce7;
+}
+
+/* neighbours' wishes and words */
+.npc-bubble,
+.npc-say {
+  position: absolute;
+  left: 0;
+  bottom: 56px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.npc-bubble {
+  display: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(120, 80, 100, 0.2);
+  font-size: 15px;
+  line-height: 28px;
+  text-align: center;
+}
+
+.npc-bubble.on {
+  display: block;
+  animation: bob-y 2.2s ease-in-out infinite;
+}
+
+.npc-bubble.have {
+  box-shadow: 0 0 0 3px #ffd43b, 0 3px 12px rgba(250, 176, 5, 0.5);
+}
+
+.npc-say {
+  bottom: 58px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(120, 80, 100, 0.2);
+  font-size: 12px;
+  opacity: 0;
+  z-index: 2;
+}
+
+.npc-say.on {
+  animation: say 2.6s ease-out forwards;
+}
+
+@keyframes say {
+  0% { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.9); }
+  10%, 85% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+}
+
+#placeTip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(74, 44, 56, 0.88);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 4;
+}
+
+#placeTip.on {
+  opacity: 1;
+}
+
+.tip-hearts {
+  color: #ff8fab;
+}
+
+.city-fx {
+  position: absolute;
+  font-size: 16px;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: float-up 1.6s ease-out forwards;
+}
+
+.city-fx.big {
+  font-size: 22px;
+  font-weight: bold;
+  color: #e67700;
+  text-shadow: 0 1px 0 #fff;
+}
+
+@keyframes float-up {
+  from { opacity: 0; transform: translate(-50%, 6px) scale(0.8); }
+  20% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -36px); }
+}
+
+/* props around a scene */
+.prop {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.prop.big {
+  font-size: 30px;
+}
+
+.prop.cheer {
+  animation: bob 0.6s ease-in-out infinite;
+}
+
+.prop.cheer:nth-child(2n) {
+  animation-delay: -0.3s;
+}
+
+.prop.passer {
+  font-size: 18px;
+  animation: passer 18s linear infinite;
+  animation-delay: calc(var(--i) * -6s);
+}
+
+@keyframes passer {
+  from { transform: translate(-50%, -100%) translateX(0); }
+  to { transform: translate(-50%, -100%) translateX(var(--dist, 520px)); }
+}
+
+.prop.npc-model .a-sprite {
+  position: relative;
+  transform: none;
+}
+
+.pile {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  width: 54px;
+  justify-content: center;
+}
+
+.pile i {
+  font-style: normal;
+  font-size: 14px;
+  margin: -3px;
+}
+
+.basket-pile b {
+  font-size: 22px;
+  width: 100%;
+  text-align: center;
+  order: -1;
+}
+
+.wall {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.wall i {
+  display: block;
+  width: 44px;
+  height: 7px;
+  margin-top: 1px;
+  border-radius: 1.5px;
+  background: repeating-linear-gradient(90deg, #e8590c 0 13px, #fff4e6 13px 14px);
+}
+
+.delivered {
+  font-size: 13px;
+  animation: pop-in 0.4s ease-out;
+}
+
+.delivered b {
+  position: absolute;
+  left: 60%;
+  top: -10px;
+  color: #ff6b9d;
+  font-size: 11px;
+}
+
+/* ---------- cut-away rooms ---------- */
+
+.room-bubble {
+  position: absolute;
+  width: 220px;
+  height: 140px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(120, 70, 90, 0.25), 0 0 0 3px #fff;
+  animation: pop-in 0.3s ease-out;
+  pointer-events: none;
+}
+
+.rb-in {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.rb-tail {
+  position: absolute;
+  bottom: -9px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  background: #fff;
+  transform: rotate(45deg);
+  border-radius: 3px;
+}
+
+.rm {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(var(--wall) 0 70%, var(--floor) 70% 100%);
+}
+
+.rm-window {
+  position: absolute;
+  left: 92px;
+  top: 12px;
+  width: 36px;
+  height: 26px;
+  border-radius: 6px;
+  background: #d0ebff;
+  box-shadow: inset 0 0 0 3px #fff;
+  opacity: 0.8;
+}
+
+.rm-item {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  line-height: 1;
+}
+
+.rm-npc {
+  position: absolute;
+  width: 54px;
+}
+
+.rm-npc svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.rm-board {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  width: 110px;
+  height: 52px;
+  border-radius: 6px;
+  background: #2f6f4f;
+  box-shadow: inset 0 0 0 3px #c08a5b;
+  color: #fff;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.rm-board small {
+  font-size: 12px;
+}
+
+.rm-board.wide {
+  left: 20px;
+  width: 180px;
+  font: 20px/1 'PigTitle', system-ui;
+}
+
+.rm-counter {
+  position: absolute;
+  left: 100px;
+  right: 0;
+  top: 88px;
+  height: 22px;
+  background: #e9c99b;
+  box-shadow: inset 0 3px 0 #f3d9b1;
+}
+
+.rm-counter.low {
+  left: 110px;
+  top: 96px;
+}
+
+.rm-steam {
+  position: absolute;
+  left: 112px;
+  top: 74px;
+  width: 6px;
+  height: 14px;
+  border-radius: 3px;
+  background: #fff;
+  opacity: 0.7;
+  animation: rise 2s ease-in infinite;
+}
+
+.rm-bed {
+  position: absolute;
+  left: 30px;
+  top: 92px;
+  width: 110px;
+  height: 22px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: inset 0 -6px 0 #a5d8ff, 0 0 0 2px #74c0fc;
+}
+
+.rm-bed.right {
+  left: auto;
+  right: 18px;
+  width: 100px;
+}
+
+.rm-bed.right b {
+  position: absolute;
+  left: 10px;
+  top: -14px;
+  font-size: 20px;
+}
+
+.rm-bed.wide {
+  left: 40px;
+  width: 140px;
+  top: 98px;
+  height: 28px;
+  box-shadow: inset 0 -10px 0 #b197fc, 0 0 0 2px #9775fa;
+}
+
+.rm-sink {
+  position: absolute;
+  left: 70px;
+  top: 82px;
+  width: 80px;
+  height: 26px;
+  border-radius: 4px 4px 12px 12px;
+  background: #74c0fc;
+  box-shadow: inset 0 4px 0 #a5d8ff;
+}
+
+.soap-b {
+  position: absolute;
+  top: -8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 0 0 1.5px #a5d8ff;
+  animation: rise 1.8s ease-in infinite;
+}
+
+.soap-b:nth-child(1) { left: 10px; }
+.soap-b:nth-child(2) { left: 38px; animation-delay: -0.6s; }
+.soap-b:nth-child(3) { left: 60px; animation-delay: -1.2s; }
+
+.rm-stack {
+  position: absolute;
+  top: 70px;
+  width: 30px;
+  height: 46px;
+}
+
+.rm-stack i {
+  position: absolute;
+  left: 0;
+  width: 28px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px #ced4da;
+}
+
+.rm-stack i.dirty {
+  background: #f1e3c8;
+  box-shadow: 0 0 0 1px #c9a77c;
+}
+
+.rm-stack .sparkle {
+  position: absolute;
+  left: 22px;
+  top: -6px;
+  font-size: 12px;
+  animation: blink-light 1s steps(1) infinite;
+}
+
+.rm-rocket {
+  position: absolute;
+  left: 150px;
+  top: 70px;
+  font-size: 36px;
+  transition: transform 1s linear;
+}
+
+.rm-shelf {
+  position: absolute;
+  left: 14px;
+  top: 44px;
+  width: 104px;
+  height: 4px;
+  background: #c08a5b;
+}
+
+.rm-table {
+  position: absolute;
+  left: 110px;
+  top: 106px;
+  width: 96px;
+  height: 8px;
+  border-radius: 3px;
+  background: #c08a5b;
+}
+
+.rm-screen {
+  position: absolute;
+  left: 112px;
+  top: 30px;
+  width: 92px;
+  height: 52px;
+  border-radius: 6px;
+  background: #212529;
+  box-shadow: 0 0 0 3px #495057;
+}
+
+.rm-screen svg {
+  width: 100%;
+  height: 100%;
+}
+
+.chart {
+  stroke-dasharray: 140;
+  animation: chart 3s ease-in-out infinite;
+}
+
+@keyframes chart {
+  from { stroke-dashoffset: 140; }
+  60%, to { stroke-dashoffset: 0; }
+}
+
+.rm-spot {
+  position: absolute;
+  left: 60px;
+  top: 0;
+  width: 100px;
+  height: 140px;
+  background: linear-gradient(rgba(255, 243, 191, 0.5), rgba(255, 243, 191, 0.1));
+  clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%);
+}
+
+.rm-canvas {
+  position: absolute;
+  left: 120px;
+  top: 26px;
+  width: 80px;
+  height: 64px;
+  background: #fff;
+  box-shadow: 0 0 0 4px #c08a5b;
+}
+
+.rm-canvas i {
+  position: absolute;
+  inset: 4px;
+  background: linear-gradient(160deg, #a5d8ff 0 40%, #ffd43b 40% 52%, #8ce99a 52% 100%);
+  transition: clip-path 1s linear;
+}
+
+.rm-tub {
+  position: absolute;
+  left: 60px;
+  top: 90px;
+  width: 104px;
+  height: 34px;
+  border-radius: 6px 6px 30px 30px;
+  background: #fff;
+  box-shadow: 0 0 0 3px #74c0fc;
+}
+
+/* ---------- sheets ---------- */
+
+#sheet {
+  position: absolute;
+  top: 62px;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  background: linear-gradient(170deg, #fffafc, #fff4f8);
+  box-shadow: 0 10px 30px rgba(140, 60, 90, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.97);
+  transition: transform 0.2s ease-out, opacity 0.2s;
+}
+
+#sheet.on {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+#sheet.wide {
+  left: 10px;
+  width: auto;
+}
+
+.sh-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 8px 20px;
+}
+
+.sh-head b {
+  font-size: 17px;
+}
+
+.sh-x {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: var(--pink-soft);
+  color: #c2577a;
+  cursor: pointer;
+}
+
+.sh-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 16px 18px;
+}
+
+.sh-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sh-body::-webkit-scrollbar-thumb {
+  background: #ffcadb;
+  border-radius: 3px;
+}
+
+.sh-body h3:first-child {
+  margin-top: 4px;
+}
+
+#sheet.narrow .grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.tiles {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  margin: 0 0 6px;
+}
+
+#sheet.narrow .job {
+  flex-wrap: wrap;
+  padding: 12px;
+}
+
+#sheet.narrow .job-ic {
+  width: 42px;
+  height: 42px;
+  font-size: 22px;
+}
+
+#sheet.narrow .job-side {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.job-where {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #f1f3f5;
+  color: #868e96;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.job-where:hover {
+  background: #e7f5ff;
+  color: #1c7ed6;
+}
+
+.btn s {
+  opacity: 0.7;
+  font-weight: normal;
+  font-size: 11px;
+}
+
+.badge.star {
+  left: 10px;
+  right: auto;
+  background: #ffd43b;
+  color: #fff;
+}
+
+.goods.special {
+  background: linear-gradient(160deg, #fff, #fff9db);
+}
+
+.note {
+  margin: -4px 0 10px;
+  color: var(--muted);
+}
+
+/* a neighbour */
+.npc-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.npc-av {
+  width: 60px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.npc-av svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.npc-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.npc-main b {
+  font-size: 14px;
+}
+
+.hearts {
+  display: flex;
+  gap: 2px;
+  margin: 3px 0;
+}
+
+.hearts i::before {
+  content: '♥';
+  font-style: normal;
+  font-size: 12px;
+  color: #f1dfe6;
+}
+
+.hearts i.on::before {
+  color: #ff6b9d;
+}
+
+.hearts i.mark {
+  margin-right: 4px;
+}
+
+.perk {
+  color: #b3a2a8;
+  font-size: 11.5px;
+}
+
+.perk.on {
+  color: #099268;
+}
+
+.npc-acts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wish {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 14px;
+  background: #f8f9fa;
+  color: #868e96;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.wish span {
+  font-size: 20px;
+}
+
+.wish.have {
+  background: #fff9db;
+  color: #e67700;
+  box-shadow: 0 0 0 2px #ffd43b;
+  font-weight: bold;
+}
+
+.wish.done {
+  font-size: 18px;
+  background: none;
+}
+
+.btn.hi {
+  padding: 7px 10px;
+}
+
+/* the pig's home */
+.home-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.home-top b {
+  font-size: 15px;
+}
+
+.dollhouse {
+  position: relative;
+  width: min(100%, 620px);
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  background: linear-gradient(#e7f5ff, #f4fce3);
+  overflow: hidden;
+  aspect-ratio: 720 / 300;
+}
+
+.dollhouse > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dh-item {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  line-height: 1;
+  filter: drop-shadow(0 2px 1px rgba(90, 60, 40, 0.18));
+}
+
+.dh-item.ghost {
+  font-size: 30px;
+  filter: grayscale(1);
+  opacity: 0.22;
+  cursor: pointer;
+}
+
+.dh-item.ghost:hover {
+  opacity: 0.45;
+}
+
+.dh-pig {
+  position: absolute;
+  width: 74px;
+  transform: translate(-50%, -100%);
+}
+
+.dh-sprite svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.wardrobe,
+.furn-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wear-btn {
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--pink-line);
+  border-radius: 14px;
+  background: #fff;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.wear-btn.on {
+  background: var(--grad);
+  border-color: transparent;
+}
+
+.furn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--pink-line);
+  font-size: 24px;
+}
+
+.furn small .eff {
+  font-size: 10px;
+}
+
+.furn.idle {
+  opacity: 0.4;
+}
+
+/* ---------- the bag ---------- */
+
+#drawer {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  z-index: 5;
+  max-width: 820px;
+  padding: 10px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 10px 30px rgba(140, 60, 90, 0.25);
+  transform: translate(-50%, 150%);
+  transition: transform 0.25s ease-out;
+}
+
+#drawer.on {
+  transform: translate(-50%, 0);
+}
+
+.dr-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.dr-item {
+  position: relative;
+  flex-shrink: 0;
+  width: 54px;
+  height: 58px;
+  border: 1px solid var(--pink-line);
+  border-radius: 16px;
+  background: #fff;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.dr-item:hover {
+  transform: translateY(-2px);
+}
+
+.dr-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dr-item span {
+  display: block;
+  font-size: 26px;
+  line-height: 1.3;
+}
+
+.dr-item small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.dr-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 6px;
+  color: var(--muted);
+}
+
+#toast {
+  z-index: 8;
+}
+
+.a-hold > .basket {
+  display: flex;
+  animation: none;
+}
+
+#pigActor.on-route .a-hold {
+  left: 8px;
+  top: -42px;
+}
+
+/* rooting for truffles: head down, quick nods */
+.dig .pig {
+  transform-origin: 50% 100%;
+  animation: dig 0.5s ease-in-out infinite;
+}
+
+@keyframes dig {
+  50% { transform: rotate(8deg) translateY(4px); }
+}
+
+/* university: required courses and credits toward the viewed major's degree */
+.credit-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: -6px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.credit-line b {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.credit-line .pbar {
+  width: 180px;
+  margin: 0;
+}
+
+/* neighbourhood names painted on the ground */
+#cityBase text.district {
+  font: 34px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+  fill: rgba(74, 44, 56, 0.2);
+  letter-spacing: 10px;
+}
+
+/* the little map in the corner */
+#minimap {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 4;
+  width: 168px;
+  height: 121px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #dcefc8;
+  box-shadow: 0 4px 14px rgba(90, 60, 70, 0.25), 0 0 0 3px #fff;
+  cursor: pointer;
+}
+
+#minimap svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#mmView {
+  transition: none;
+}
+
+/* the big map */
+#mapView {
+  position: absolute;
+  top: 62px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 6;
+  display: none;
+  flex-direction: column;
+  border-radius: 20px;
+  background: #fffafc;
+  box-shadow: 0 10px 30px rgba(140, 60, 90, 0.25);
+  overflow: hidden;
+}
+
+#mapView.on {
+  display: flex;
+  transform-origin: calc(100% - 84px) calc(100% - 60px);
+  animation: map-grow 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes map-grow {
+  from { transform: scale(0.2); opacity: 0.3; border-radius: 40px; }
+}
+
+.mv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 6px 20px;
+}
+
+.mv-head b {
+  font-size: 17px;
+}
+
+#mapView svg {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 0 12px 12px;
+  box-sizing: border-box;
+}
+
+.mp {
+  cursor: pointer;
+}
+
+.mp:hover rect {
+  opacity: 1;
+  stroke: #e64980;
+  stroke-width: 8;
+}
+
+.mp.locked {
+  filter: grayscale(0.9);
+  opacity: 0.6;
+}
+
+.mp-ic {
+  font-size: 52px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.mp-name {
+  font: 34px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+  fill: #4a2c38;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 8px;
+  pointer-events: none;
+}
+
+.mp-district {
+  font: 60px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+  fill: rgba(74, 44, 56, 0.28);
+  letter-spacing: 16px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.mv-pig {
+  fill: #fff;
+  stroke: #ff6b9d;
+  stroke-width: 10;
+  animation: pulse 1.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+#cityBase text.signtext {
+  font: 19px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+  fill: #5c3d1e;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.blades {
+  animation: spin 9s linear infinite;
+}
+
+.falls path {
+  animation: falls 0.6s linear infinite;
+}
+
+@keyframes falls {
+  to { stroke-dashoffset: -18; }
+}
+
+.ripple {
+  animation: ripple 3s linear infinite;
+}
+
+@keyframes ripple {
+  to { stroke-dashoffset: -100; }
+}
+
+.farm-animal {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-size: 26px;
+  line-height: 1;
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+/* titles and names in the playful title face; everything else in the rounded one */
+.sh-head b,
+.mv-head b,
+.hud-name b,
+.home-top b,
+.npc-main b,
+.game-head b,
+.sh-body h3,
+.fcenter > b,
+.goods > b,
+.job-main > b,
+.tile b,
+.coins b,
+#placeTip,
+.npc-say {
+  font-family: 'PigTitle', 'PigRound', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+  font-weight: normal;
+  letter-spacing: 0.5px;
+}
+
+.sh-head b,
+.mv-head b {
+  font-size: 21px;
+}
+
+.hud-name b {
+  font-size: 16px;
+}
+
+button,
+input {
+  font-family: inherit;
+}

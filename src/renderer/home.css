@@ -16,7 +16,7 @@ body {
   overflow: hidden;
   background: transparent;
   user-select: none;
-  font: 13px/1.5 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
+  font: 13px/1.5 'PigRound', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
   color: var(--ink);
 }
 

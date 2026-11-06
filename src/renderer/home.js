@@ -1,455 +1,229 @@
-// Home window: a bigger view of the pet with the shop, school, jobs and mini games.
-// It holds no game state of its own; it renders snapshots pushed from the pet window
-// and sends actions back there.
-
-const NAV = [
-  { id: 'status', icon: '🐷', label: '状态' },
-  { id: 'bag', icon: '🎒', label: '背包' },
-  { id: 'shop', icon: '🛒', label: '商店' },
-  { id: 'school', icon: '🏫', label: '学校' },
-  { id: 'work', icon: '💼', label: '打工' },
-  { id: 'games', icon: '🎲', label: '游戏' },
-  { id: 'more', icon: '⚙️', label: '设置' },
-];
-
-const FORM_ICON = { baby: '🍼', toddler: '🧸', child: '🎒', teen: '📚', youth: '🎓', adult: '💼' };
+// Home window: Pig City. It holds no game state of its own; it renders snapshots pushed from
+// the pet window and sends actions back there.
 
 const $ = (id) => document.getElementById(id);
 
-const effChips = (effects) =>
-  Object.entries(effects)
-    .map(([k, v]) => `<span class="eff" style="--c:${STAT_COLOR[k]}">${STAT_NAME[k]} ${v > 0 ? '+' : ''}${v}</span>`)
-    .join('');
-
-const chip = (text, color) => `<span class="eff" style="--c:${color}">${text}</span>`;
-
-// what a piece of furniture does, e.g. 睡觉恢复 ×1.5, 解锁弹琴
-const bonusChips = (bonus = {}) =>
-  Object.entries(bonus)
-    .map(([k, v]) => chip(v === 1 ? `解锁${BONUS_NAME[k]}` : `${BONUS_NAME[k]} ×${v}`, '#845ef7'))
-    .join('');
-
-const reqChips = (reqs) => reqs.map((r) => `<span class="req ${r.ok ? 'ok' : 'no'}">${esc(r.text)}</span>`).join('');
-
-const ring = (key, color) => `<svg viewBox="0 0 40 40"><circle class="track" cx="20" cy="20" r="16"/>
-  <circle class="val" cx="20" cy="20" r="16" pathLength="100" stroke="${color}" data-ring="${key}" transform="rotate(-90 20 20)"/></svg>`;
-
 let snap = null;
-let page = new URLSearchParams(location.search).get('tab') || 'status';
+let sheet = null; // open sheet: a place id or 'settings'
+let drawerOpen = false;
 let lastKey = '';
-let resetArmed = false;
-let updInfo = null; // versions and pending updates, from the main process
-let updBusy = false;
-let updChecked = false;
-let shopCat = 'food';
-let treeSel = null;
-let schoolStage = null;
-let schoolMajor = MAJORS[0].id;
-let treeDir = ''; // 'fwd' / 'back': which way the school view slides on the next render
-let workFilter = 'all';
-let activeGame = null;
-let gameSession = 0;
+let firstTab = new URLSearchParams(location.search).get('tab');
 
-const freeToAct = () => !snap.busy && !snap.sleeping;
+const ringSvg = (key, color, r = 15) => `<svg viewBox="0 0 40 40"><circle class="track" cx="20" cy="20" r="${r}"/>
+  <circle class="val" cx="20" cy="20" r="${r}" pathLength="100" stroke="${color}" data-ring="${key}" transform="rotate(-90 20 20)"/></svg>`;
 
-function activityIcon(a) {
-  if (a.type === 'study') return COURSE_BY_ID[a.id].icon;
-  if (a.type === 'work') return JOB_BY_ID[a.id].icon;
-  if (a.type === 'help') return FREE_HELP_BY_ID[a.id].icon;
-  if (a.type === 'hobby') return HOBBY_BY_ID[a.id].icon;
-  return '🛁';
-}
+// ---------- top bar ----------
 
-function gameBlock() {
-  if (snap.sleeping) return '😴 睡觉中';
-  if (snap.busy) return `${activityIcon(snap.s.activity)} ${snap.label.replace(/^在/, '')}中`;
-  if (snap.s.energy < -MINIGAME_COST.energy) return '⚡ 体力不足';
-  return '';
-}
-
-const PAGES = {
-  status() {
-    const s = snap.s;
-    let act = '';
-    if (snap.busy) {
-      act = `<div class="card activity"><div class="act-ic">${activityIcon(s.activity)}</div>
-        <div class="act-main"><b>${esc(s.name)}正${snap.label}</b><div class="pbar"><i data-progress></i></div></div>
-        <span class="remain">还剩 <b data-remain></b></span>
-        <button class="btn ghost" data-action="cancel">取消</button></div>`;
-    } else if (snap.sleeping) {
-      act = `<div class="card activity"><div class="act-ic">😴</div>
-        <div class="act-main"><b>睡觉中</b></div>
-        <button class="btn" data-action="wake">叫醒</button></div>`;
-    }
-    const form = formFor(s.level);
-    const growth = `<div class="card growth"><div class="growth-ic">${FORM_ICON[form.id]}</div>
-      <div class="growth-main"><b>${form.name} · Lv.${s.level}</b><div class="pbar"><i data-exp></i></div></div>
-      <small data-exptext></small></div>`;
-    const stats = STATS.map(
-      (st) => `<div class="card stat" data-warn="${st.key}">
-        <div class="ring-wrap">${ring(st.key, st.color)}<span class="ring-ic">${st.icon}</span></div>
-        <b>${st.name}</b><span class="num"><b data-val="${st.key}"></b></span></div>`
-    ).join('');
-    const free = !snap.busy;
-    const tiles = [
-      { action: 'bath', icon: '🛁', name: '洗澡', ok: free && !snap.sleeping },
-      snap.sleeping
-        ? { action: 'wake', icon: '☀️', name: '起床', ok: true }
-        : { action: 'sleep', icon: '😴', name: '睡觉', ok: free },
-      { action: 'play', icon: '🤸', name: '玩耍', ok: free && !snap.sleeping },
-      { action: 'follow', icon: '🐾', name: '跟随', ok: true, on: s.follow },
-      { action: 'mini', icon: '🫣', name: '迷你', ok: true, on: s.mini },
-      ...FREE_HELP.map((h) => {
-        const wait = Math.max(0, ((s.helpReady[h.id] || 0) - Date.now()) / 60000);
-        const ok = freeToAct() && wait <= 0 && !(h.maxHealth && s.health >= h.maxHealth);
-        return { action: 'help', id: h.id, icon: h.icon, name: h.name, ok, sub: wait > 0 ? `⏱ ${Math.ceil(wait)} 分` : '免费' };
-      }),
-    ];
-    // hobbies: unlocked by the electives, locked ones show which subject opens them
-    const hobbies = HOBBIES.map((h) => {
-      const eff = hobbyEffects(s, h);
-      const wait = Math.max(0, ((s.hobbyReady[h.id] || 0) - Date.now()) / 60000);
-      const lock = hobbyLock(s, h);
-      if (lock) return { action: 'hobby', id: h.id, icon: h.icon, name: h.name, ok: false, sub: `${lock.why === 'subject' ? '🔒' : '🛒'} ${lock.text}`, locked: true };
-      return { action: 'hobby', id: h.id, icon: h.icon, name: h.name, ok: freeToAct() && wait <= 0, sub: wait > 0 ? `⏱ ${Math.ceil(wait)} 分` : `心情 +${eff.mood}` };
-    });
-    const tileRow = (list) => `<div class="tiles">${list.map((t) => `<button class="tile ${t.on ? 'on' : ''} ${t.locked ? 'locked' : ''}"
-      data-action="${t.action}" ${t.id ? `data-id="${t.id}"` : ''} ${t.ok ? '' : 'disabled'}>
-      <span class="tile-ic">${t.icon}</span><b>${t.name}</b>${t.sub ? `<small>${t.sub}</small>` : ''}</button>`).join('')}</div>`;
-    return `${act}${growth}<div class="stats">${stats}</div>${tileRow(tiles)}${tileRow(hobbies)}`;
-  },
-
-  bag() {
-    const s = snap.s;
-    const inv = s.inventory;
-    const owned = ITEMS.filter((it) => inv[it.id] > 0);
-    if (!owned.length) {
-      return `<div class="empty"><div class="empty-ic">🎒</div><b>空空的</b>
-        <button class="btn" data-action="go" data-id="shop">🛒 商店</button></div>`;
-    }
-    return SHOP_CATS.map((cat) => {
-      const items = owned.filter((it) => it.cat === cat.id);
-      if (!items.length) return '';
-      return `<h3>${cat.icon} ${cat.name}</h3><div class="grid">${items.map((it) => {
-        let label = { food: '吃', hygiene: '用', medicine: '吃', toy: '玩' }[it.cat];
-        let ok = !snap.sleeping;
-        let effects = it.effects;
-        let badge = `<span class="badge">×${inv[it.id]}</span>`;
-        if (it.cat === 'toy') {
-          const wait = Math.max(0, ((s.toyReady[it.id] || 0) - Date.now()) / 60000);
-          if (wait > 0) label = `⏱ ${Math.ceil(wait)} 分`;
-          ok = ok && !snap.busy && wait <= 0;
-          // what playing gives right now, after boredom
-          const fun = toyFun(s, it.id);
-          effects = { mood: Math.round(it.effects.mood * fun) };
-          badge = fun < 0.5 ? '<span class="badge soft">😑 玩腻了</span>' : '';
-        }
-        if (it.cat === 'wear') {
-          const worn = s.wear[it.slot] === it.id;
-          label = worn ? '摘下' : '戴上';
-          ok = true;
-          badge = worn ? '<span class="badge">✓</span>' : '';
-        }
-        if (it.cat === 'furniture') {
-          // only the best piece of each kind is in use
-          const better = ITEMS.some((x) => x.group === it.group && x.price > it.price && inv[x.id]);
-          return `<div class="card goods ${better ? 'locked' : ''}">
-            <div class="goods-ic">${it.icon}</div><b>${it.name}</b>
-            <div class="effs">${bonusChips(it.bonus)}</div>
-            <button class="btn ${better ? '' : 'done'}" disabled>${better ? '闲置' : '使用中'}</button>
-          </div>`;
-        }
-        return `<div class="card goods">
-          ${badge}
-          <div class="goods-ic">${it.icon}</div><b>${it.name}</b>
-          <div class="effs">${effChips(effects)}</div>
-          <button class="btn" data-action="use" data-id="${it.id}" ${ok ? '' : 'disabled'}>${label}</button>
-        </div>`;
-      }).join('')}</div>`;
-    }).join('');
-  },
-
-  shop() {
-    const s = snap.s;
-    const pills = SHOP_CATS.map((c) => `<button class="pill ${c.id === shopCat ? 'on' : ''}" data-action="shopCat" data-id="${c.id}">${c.icon} ${c.name}</button>`).join('');
-    const goods = ITEMS.filter((it) => it.cat === shopCat).map((it) => {
-      const owned = s.inventory[it.id] || 0;
-      const toyOwned = ['toy', 'wear', 'furniture'].includes(it.cat) && owned;
-      return `<div class="card goods">
-        ${owned ? `<span class="badge soft">${toyOwned ? '已拥有' : `已有 ${owned}`}</span>` : ''}
-        <div class="goods-ic">${it.icon}</div><b>${it.name}</b>
-        <div class="effs">${effChips(it.effects)}${bonusChips(it.bonus)}${it.cooldown ? chip(`⏱ ${it.cooldown} 分`, '#868e96') : ''}</div>
-        <button class="btn" data-action="buy" data-id="${it.id}" ${toyOwned || s.money < it.price ? 'disabled' : ''}>
-          ${toyOwned ? '已拥有' : `🪙 ${it.price}`}</button>
+const Hud = {
+  init() {
+    $('hud').innerHTML = `
+      <button class="hud-pig" data-action="findPig" title="小猪在哪"><div id="hudAvatar"></div>${ringSvg('exp', '#ffa94d', 18)}<span class="hud-lv" id="hudLv"></span></button>
+      <div class="hud-name"><b id="hudName"></b><small id="hudTitle"></small></div>
+      <div class="hud-stats">${STATS.map((st) => `<button class="hstat" data-action="stat" data-id="${st.key}" data-warn="${st.key}">
+        ${ringSvg(st.key, st.color)}<span>${st.icon}</span><em data-val="${st.key}"></em></button>`).join('')}</div>
+      <div class="hud-act" id="hudAct"></div>
+      <div class="hud-right">
+        <span class="coins">🪙 <b data-val="money"></b></span>
+        <button class="hbtn" data-action="map" title="地图 (M)">🗺️</button>
+        <button class="hbtn" data-action="bag" title="背包">🎒</button>
+        <button class="hbtn" data-action="settings" title="设置">⚙️</button>
+        <button class="hbtn win" data-win="min" title="最小化">─</button>
+        <button class="hbtn win" data-win="close" title="关闭">✕</button>
       </div>`;
-    }).join('');
-    return `<div class="pills">${pills}</div><div class="grid">${goods}</div>`;
+    this.pig = new PigSprite($('hudAvatar'), true);
   },
 
-  // A local tech tree: the focused course in the middle, what it needs on the left,
-  // what it unlocks on the right. Clicking either side moves the focus there.
-  school() {
+  update() {
     const s = snap.s;
-    const state = (c) => {
-      if (s.courses[c.id]) return 'done';
-      if (s.activity?.type === 'study' && s.activity.id === c.id) return 'studying';
-      return allOk(courseReqs(s, c)) ? 'ready' : 'locked';
-    };
-    if (!treeSel) treeSel = (COURSES.find((c) => state(c) === 'ready') || COURSES.find((c) => !s.courses[c.id]) || COURSES[0]).id;
-    const sel = COURSE_BY_ID[treeSel];
-    if (!schoolStage) schoolStage = sel.stage;
-    const label = (c) => (c.major ? `${MAJOR_BY_ID[c.major].name}·${c.name}` : c.fullName);
+    $('hudName').textContent = s.name;
+    $('hudTitle').textContent = educationTitle(s);
+    $('hudLv').textContent = s.level;
+    const exp = s.level >= MAX_LEVEL ? 100 : (s.exp / expNeed(s.level)) * 100;
+    document.querySelector('[data-ring="exp"]').setAttribute('stroke-dasharray', `${exp} 100`);
+    for (const st of STATS) document.querySelector(`[data-ring="${st.key}"]`).setAttribute('stroke-dasharray', `${s[st.key]} 100`);
+    document.querySelectorAll('[data-val]').forEach((el) => (el.textContent = Math.round(s[el.dataset.val])));
+    document.querySelectorAll('[data-warn]').forEach((el) => el.classList.toggle('warn', s[el.dataset.warn] < 30));
+    this.pig.update(s, snap.sleeping);
 
-    if (sel.major) schoolMajor = sel.major;
-    const byMajor = STAGE_BY_ID[schoolStage].byMajor;
-
-    // one line of stages: green when graduated, pink for the one being viewed, faded when too young
-    const stepper = STAGES.map((st) => {
-      const done = st.byMajor ? MAJORS.some((m) => stageDone(s, st.id, m.id)) : stageDone(s, st.id);
-      const cls = [st.id === schoolStage && 'on', done && 'done', s.level < st.minLevel && 'young'].filter(Boolean).join(' ');
-      return `<button class="step ${cls}" data-action="stage" data-id="${st.id}" title="Lv.${st.minLevel}"><i></i><span>${st.name}</span></button>`;
-    }).join('');
-    const majorBar = byMajor
-      ? `<div class="majors">${MAJORS.map((m) => `<button class="major-btn ${m.id === schoolMajor ? 'on' : ''}"
-          data-action="major" data-id="${m.id}" title="${m.name}">${m.icon}</button>`).join('')}</div>`
-      : '';
-
-    // the courses you can flip through with ‹ › on the center card
-    const siblings = COURSES.filter((c) => c.stage === sel.stage && (!c.major || c.major === sel.major));
-    const at = siblings.findIndex((c) => c.id === sel.id);
-    const prevSib = siblings[at - 1];
-    const nextSib = siblings[at + 1];
-
-    // left: prerequisite courses; right: courses this one unlocks
-    const stage = STAGE_BY_ID[sel.stage];
-    const before = sel.prereq.map((id) => ({ kind: 'course', c: COURSE_BY_ID[id] }));
-    const after = COURSES.filter((c) => c.prereq.includes(sel.id)).map((c) => ({ kind: 'course', c }));
-
-    // the whole degree ladder: one segment per stage, filled by how much of it is learned.
-    // University stages fill by the furthest major, and show every major started as a small icon
-    // (several majors can be studied, each gives its own degree).
-    const ladder = STAGES.map((st) => {
-      const done = (list) => list.filter((c) => s.courses[c.id]).length;
-      let frac;
-      let got;
-      let majors = '';
-      if (st.byMajor) {
-        const per = MAJORS.map((m) => {
-          const list = COURSES.filter((c) => c.stage === st.id && c.major === m.id);
-          return { m, n: done(list), total: list.length };
-        });
-        frac = Math.max(...per.map((p) => p.n / p.total));
-        got = per.some((p) => p.n === p.total);
-        majors = per.filter((p) => p.n > 0)
-          .map((p) => `<i class="${p.n === p.total ? 'got' : ''}" title="${p.m.name} ${p.n}/${p.total}">${p.m.icon}</i>`).join('');
-      } else {
-        const list = COURSES.filter((c) => c.stage === st.id && !c.elective);
-        frac = done(list) / list.length;
-        got = frac === 1;
-      }
-      return `<button class="dl-seg ${got ? 'got' : ''} ${st.id === schoolStage ? 'on' : ''}" data-action="stage" data-id="${st.id}">
-        <div class="dl-bar"><i style="width:${frac * 100}%"></i></div><span>${st.degree}</span>
-        <div class="dl-majors">${majors}</div></button>`;
-    }).join('');
-    const degree = `<div class="degree-ladder">${ladder}</div>`;
-
-    const ROW = 54;
-    const H = Math.max(Math.max(before.length, after.length) * ROW + 16, 300); // room for the center card
-    const W = { side: 148, gap: 38, mid: 230 };
-    const xMid = W.side + W.gap;
-    const xRight = xMid + W.mid + W.gap;
-    const yOf = (list, i) => (H - list.length * ROW) / 2 + i * ROW + 5;
-    const node = (item, list, i, x, dir) => {
-      const y = yOf(list, i);
-      return `<button class="fnode ${state(item.c)}" data-action="focus" data-id="${item.c.id}" data-dir="${dir}" style="left:${x}px;top:${y}px">
-        <span>${item.c.icon}</span>${label(item.c)}</button>`;
-    };
-    const line = (x1, y1, x2, y2, ok) =>
-      `<path class="edge ${ok ? 'done' : ''}" d="M${x1} ${y1} C${x1 + 26} ${y1} ${x2 - 26} ${y2} ${x2} ${y2}"/>`;
-    const nodeOk = (item) => !!s.courses[item.c.id];
-    const lines = [
-      ...before.map((it, i) => line(W.side, yOf(before, i) + 22, xMid, H / 2, nodeOk(it))),
-      ...after.map((it, i) => line(xMid + W.mid, H / 2, xRight, yOf(after, i) + 22, !!s.courses[sel.id])),
-    ].join('');
-
-    const st = state(sel);
-    const fee = stage.fee;
-    let btn;
-    if (st === 'done') btn = '<button class="btn done" disabled>已学完</button>';
-    else if (st === 'studying') btn = '<button class="btn" disabled>学习中</button>';
-    else if (st === 'locked') btn = '<button class="btn" disabled>🔒</button>';
-    else btn = `<button class="btn" data-action="study" data-id="${sel.id}" ${freeToAct() ? '' : 'disabled'}>上课</button>`;
-    const sibBtn = (c, dir, ch) => (c
-      ? `<button class="fc-nav" data-action="focus" data-id="${c.id}" data-dir="${dir}">${ch}</button>`
-      : '<span class="fc-nav off">' + ch + '</span>');
-    const center = `<div class="fcenter ${st}" style="left:${xMid}px;width:${W.mid}px">
-      <div class="fc-top">${sibBtn(prevSib, 'back', '‹')}<small>${at + 1} / ${siblings.length}</small>${sibBtn(nextSib, 'fwd', '›')}</div>
-      <div class="fc-ic">${sel.icon}</div><b>${label(sel)}</b>
-      <div class="effs">${sel.elective ? chip('选修', '#845ef7') : ''}${chip(`⏱ ${sel.minutes} 分`, '#868e96')}${fee ? chip(`🪙 ${fee}`, '#f59f00') : ''}</div>
-      ${st === 'done' ? '' : `<div class="reqs">${reqChips(courseReqs(s, sel).slice(0, 1))}</div>`}
-      ${btn}</div>`;
-
-    const anim = treeDir;
-    treeDir = '';
-    return `<div class="stepper">${stepper}</div>${majorBar}
-      <div class="card focus ${anim}"><div class="focus-in" style="width:${xRight + W.side}px;height:${H}px">
-        <svg width="${xRight + W.side}" height="${H}">${lines}</svg>
-        ${before.length ? '' : `<div class="fside-empty" style="left:0;width:${W.side}px">起点</div>`}
-        ${before.map((it, i) => node(it, before, i, 0, 'back')).join('')}
-        ${center}
-        ${after.map((it, i) => node(it, after, i, xRight, 'fwd')).join('')}
-      </div></div>${degree}`;
-  },
-
-  work() {
-    const s = snap.s;
-    const pills = [['all', '全部'], ['can', '可做']].map(([id, name]) =>
-      `<button class="pill ${workFilter === id ? 'on' : ''}" data-action="workFilter" data-id="${id}">${name}</button>`).join('');
-    const jobs = JOBS.filter((j) => workFilter === 'all' || allOk(jobReqs(s, j)));
-    const rows = jobs.map((job) => {
-      const reqs = jobReqs(s, job);
-      const ok = allOk(reqs);
-      const p = projected(job.drain, job.minutes);
-      const working = s.activity?.type === 'work' && s.activity.id === job.id;
-      return `<div class="card job ${ok ? '' : 'locked'}">
-        <div class="job-ic">${job.icon}</div>
-        <div class="job-main"><b>${job.name}</b>
-          <div class="reqs">${reqChips(reqs)}</div>
-          <div class="effs">${chip(`⏱ ${job.minutes} 分`, '#868e96')}${effChips(p)}</div></div>
-        <div class="job-side"><span class="pay">🪙 ${job.pay}</span>
-          ${working
-            ? '<button class="btn" disabled>💪</button>'
-            : ok
-              ? `<button class="btn" data-action="work" data-id="${job.id}" ${freeToAct() ? '' : 'disabled'}>打工</button>`
-              : '<button class="btn" disabled>🔒</button>'}
-        </div></div>`;
-    }).join('');
-    return `<div class="pills">${pills}</div>
-      <div class="jobs">${rows || '<div class="empty"><div class="empty-ic">🔒</div></div>'}</div>`;
-  },
-
-  games() {
-    if (activeGame) {
-      const g = MINIGAMES.find((x) => x.id === activeGame);
-      return `<div class="game-head"><button class="btn ghost" data-action="games">←</button>
-        <b>${g.icon} ${g.name}</b></div>
-        <div class="card game-area" id="gameArea"></div>`;
+    // the activity capsule, only while busy or asleep
+    const act = $('hudAct');
+    const a = s.activity;
+    if (!a) {
+      act.classList.remove('on');
+      act.dataset.key = '';
+      return;
     }
-    const why = gameBlock();
-    const s = snap.s;
-    const got = s.playDay?.date === new Date().toDateString() ? s.playDay.got : 0;
-    const left = Math.max(0, PLAY_EXP_DAILY - got);
-    return `<div class="play-day"><span>⭐ 今日</span><div class="pbar"><i style="width:${(got / PLAY_EXP_DAILY) * 100}%"></i></div>
-        <b>${Math.floor(got)} / ${PLAY_EXP_DAILY}</b></div>
-      ${why ? `<div class="advice">${why}</div>` : ''}
-      <div class="game-list">${MINIGAMES.map((g) => {
-        const win = Math.min(PLAY_EXP[g.id].win, left);
-        return `<button class="card game-card" data-action="game" data-id="${g.id}" ${why ? 'disabled' : ''}>
-          <span class="game-ic">${g.icon}</span><b>${g.name}</b>
-          <span class="eff" style="--c:#f59f00">⭐ +${win}</span></button>`;
-      }).join('')}</div>`;
-  },
-
-  more() {
-    const s = snap.s;
-    const degs = degrees(s);
-    // version and the one update button: check, or apply whatever is waiting
-    const u = updInfo;
-    let btn = '<button class="btn" data-action="checkUpdate">检查更新</button>';
-    if (!u) btn = '';
-    else if (!u.packaged) btn = '<button class="btn" disabled>开发版</button>';
-    else if (updBusy) btn = '<button class="btn" disabled>检查中…</button>';
-    else if (u.contentUpdate) btn = `<button class="btn" data-action="applyUpdate">更新到 ${u.contentUpdate}</button>`;
-    else if (u.update?.ready) btn = `<button class="btn" data-action="applyUpdate">重启更新到 ${u.update.version}</button>`;
-    else if (u.update?.downloading) btn = `<button class="btn" disabled>下载中 ${u.update.version}…</button>`;
-    else if (u.update) btn = `<button class="btn" data-action="applyUpdate">下载 ${u.update.version}</button>`;
-    else if (updChecked) btn = '<button class="btn ghost" data-action="checkUpdate">✓ 已是最新</button>';
-    const ver = u ? `<div class="card form version"><div><b>🐷 v${u.app}</b>${u.content !== u.app ? `<small>内容 v${u.content}</small>` : ''}</div>${btn}</div>` : '';
-    return `${ver}<div class="card form"><h3>名字</h3>
-        <div class="field"><input id="nameInput" maxlength="8" value="${esc(s.name)}" />
-          <button class="btn" data-action="rename">保存</button></div></div>
-      ${degs.length ? `<div class="card form"><h3>学历</h3>
-        <div class="reqs left">${degs.map((d) => `<span class="req ok">🎓 ${d}</span>`).join('')}</div></div>` : ''}
-      <div class="card form row-btns">
-        <button class="btn ghost" data-action="reset">${resetArmed ? '⚠️ 确认重置' : '重置存档'}</button>
-        <button class="btn ghost" data-action="quit">退出</button>
-      </div>`;
+    const key = `${a.type}:${a.id}:${a.start}`;
+    if (act.dataset.key !== key) {
+      act.dataset.key = key;
+      act.innerHTML = snap.sleeping
+        ? `<span class="ha-ic" data-action="findPig">😴</span><span class="ha-main" data-action="findPig"><b>睡觉中</b></span><button data-action="wake" title="叫醒">☀️</button>`
+        : `<span class="ha-ic" data-action="findPig">${activityIcon(a)}</span>
+           <span class="ha-main" data-action="findPig"><b>${esc(snap.label.replace(/^在/, ''))}</b><i class="ha-bar"><i id="haBar"></i></i></span>
+           <span class="ha-time" id="haTime"></span><button data-action="cancel" title="不做了">✕</button>`;
+      act.classList.add('on');
+    }
+    if ($('haBar')) $('haBar').style.width = `${snap.progress * 100}%`;
+    if ($('haTime')) $('haTime').textContent = fmtTime(snap.remain);
   },
 };
 
-// Rebuild only when something the layout depends on changed; live numbers update in refresh()
+// ---------- sheets and the bag ----------
+
+// Rebuild only when something the sheet depends on changed
 function structKey() {
-  if (page === 'games' && activeGame) return JSON.stringify(['games', activeGame, gameSession]);
   const s = snap.s;
-  // cooldown labels count down in minutes
-  const minuteTick = page === 'bag' || page === 'status' ? Math.floor(Date.now() / 60000) : 0;
+  const U = SheetUI;
+  if (U.activeGame) return JSON.stringify([sheet, U.activeGame, U.gameSession]);
   return JSON.stringify([
-    page, s.inventory, Math.floor(s.money), s.level, s.courses, s.activity && [s.activity.type, s.activity.id],
-    s.follow, s.name, resetArmed, shopCat, treeSel, schoolStage, schoolMajor, workFilter, gameBlock(), minuteTick,
-    page === 'work' ? [Math.round(s.hunger), Math.round(s.energy)] : 0,
-    s.helpReady, s.hobbyReady, s.wear, s.health >= MIN_HEALTH_TO_ACT, page === 'more' ? [updInfo, updBusy, updChecked] : 0, page === 'bag' ? s.toyBored : 0, page === 'games' ? s.playDay : 0,
+    sheet, drawerOpen, s.inventory, Math.floor(s.money), s.level, s.courses, s.activity && [s.activity.type, s.activity.id],
+    snap.sleeping, s.follow, s.mini, s.name, s.wear, s.npc, s.helpReady, s.hobbyReady, s.playDay, s.health >= MIN_HEALTH_TO_ACT,
+    Math.floor(Date.now() / 60000), U.furnTab, U.treeSel, U.schoolStage, U.schoolMajor, U.workFilter, U.resetArmed, U.upd,
+    sheet === 'tower' ? [Math.round(s.hunger), Math.round(s.energy)] : 0, gameBlock(snap),
   ]);
 }
 
-function renderAll() {
-  const p = NAV.find((n) => n.id === page);
-  $('nav').innerHTML = NAV.map((n) => `<button class="nav-item ${n.id === page ? 'on' : ''}" data-action="go" data-id="${n.id}">
-    <span>${n.icon}</span>${n.label}</button>`).join('');
-  $('pageTitle').textContent = p.label;
-  $('sideName').textContent = snap.s.name;
-  $('sideTitle').textContent = educationTitle(snap.s);
-  $('sideLevel').textContent = `Lv.${snap.s.level}`;
-  const scroll = $('page').scrollTop;
-  $('page').innerHTML = PAGES[page]();
-  $('page').scrollTop = scroll;
-  if (page === 'games' && activeGame) {
-    const id = activeGame;
+function renderSheet() {
+  const el = $('sheet');
+  if (!sheet) {
+    el.classList.remove('on');
+    City.lock(mapOpen);
+    return;
+  }
+  const { head, body } = sheetHtml(snap, sheet);
+  const scroll = el.querySelector('.sh-body')?.scrollTop || 0;
+  const same = el.dataset.id === sheet;
+  el.dataset.id = sheet;
+  el.innerHTML = `<div class="sh-head"><b>${head}</b><button class="sh-x" data-action="closeSheet">✕</button></div><div class="sh-body">${body}</div>`;
+  if (same) el.querySelector('.sh-body').scrollTop = scroll;
+  el.classList.add('on');
+  City.lock(true);
+  if (SheetUI.activeGame && $('gameArea')) {
+    const id = SheetUI.activeGame;
     MiniGames[id].start($('gameArea'), (result) => window.home.act('minigame', `${id}:${result}`));
+  }
+  const dh = $('dollhouse');
+  if (dh) {
+    dh.innerHTML = dollhouseHtml(snap.s, '<div class="dh-sprite"></div>');
+    new PigSprite(dh.querySelector('.dh-sprite')).update(snap.s, snap.sleeping);
   }
 }
 
-function refresh() {
+function renderDrawer() {
+  const el = $('drawer');
+  el.classList.toggle('on', drawerOpen);
+  if (!drawerOpen) return;
   const s = snap.s;
-  const need = expNeed(s.level);
-  const expPct = s.level >= MAX_LEVEL ? 100 : (s.exp / need) * 100;
-  const expText = s.level >= MAX_LEVEL ? 'MAX' : `${Math.floor(s.exp)} / ${need}`;
-  $('sideExp').style.width = `${expPct}%`;
-  document.querySelectorAll('[data-exp]').forEach((el) => (el.style.width = `${expPct}%`));
-  document.querySelectorAll('[data-exptext]').forEach((el) => (el.textContent = expText));
-  document.querySelectorAll('[data-val]').forEach((el) => (el.textContent = Math.round(s[el.dataset.val])));
-  document.querySelectorAll('[data-ring]').forEach((el) => el.setAttribute('stroke-dasharray', `${s[el.dataset.ring]} 100`));
-  document.querySelectorAll('[data-warn]').forEach((el) => el.classList.toggle('warn', s[el.dataset.warn] < 30));
-  document.querySelectorAll('[data-remain]').forEach((el) => (el.textContent = fmtTime(snap.remain)));
-  document.querySelectorAll('[data-progress]').forEach((el) => (el.style.width = `${snap.progress * 100}%`));
-  Avatar.update(s, snap.sleeping);
+  const items = ITEMS.filter((it) => s.inventory[it.id] > 0 && ['food', 'hygiene', 'medicine', 'toy'].includes(it.cat));
+  if (!items.length) {
+    el.innerHTML = `<div class="dr-empty">🎒 空空的 <button class="btn ghost" data-action="open" data-id="bakery">🍞 面包房</button></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="dr-row">${items.map((it) => {
+    let sub = `×${s.inventory[it.id]}`;
+    let ok = !snap.sleeping;
+    if (it.cat === 'toy') {
+      const wait = minutesLeft(s.toyReady[it.id]);
+      sub = wait > 0 ? `⏱${Math.ceil(wait)}` : toyFun(s, it.id) < 0.5 ? '😑' : '';
+      ok = ok && !snap.busy && wait <= 0;
+    }
+    const eff = it.cat === 'toy' ? { mood: Math.round(it.effects.mood * toyFun(s, it.id)) } : it.effects;
+    const tip = `${it.name} ${Object.entries(eff).map(([k, v]) => `${STAT_NAME[k]}${v > 0 ? '+' : ''}${v}`).join(' ')}`;
+    return `<button class="dr-item" data-action="use" data-id="${it.id}" ${ok ? '' : 'disabled'} title="${esc(tip)}"><span>${it.icon}</span><small>${sub}</small></button>`;
+  }).join('')}</div>`;
 }
 
 function update() {
   if (!snap) return;
+  Hud.update();
+  City.update(snap);
   const key = structKey();
   if (key !== lastKey) {
     lastKey = key;
-    renderAll();
+    renderSheet();
+    renderDrawer();
   }
-  refresh();
 }
 
-function go(id) {
-  if (!PAGES[id]) return;
-  if (id !== page) $('page').scrollTop = 0;
-  if (id !== 'games') activeGame = null;
-  page = id;
-  update();
-  if (id === 'more') {
-    window.home.updateStatus().then((info) => {
-      updInfo = info;
-      update();
-    });
+function openSheet(id) {
+  const p = PLACE_BY_ID[id];
+  if (p?.minLevel && snap.s.level < p.minLevel) {
+    toast({ msg: `${p.name} Lv.${p.minLevel} 开放`, ok: false });
+    return;
   }
+  if (id !== sheet) {
+    SheetUI.activeGame = null;
+    if (p?.sheet === 'school') {
+      SheetUI.treeSel = null;
+      SheetUI.schoolStage = null;
+    }
+  }
+  sheet = id;
+  drawerOpen = false;
+  City.togglePigMenu(false);
+  lastKey = '';
+  update();
+  if (id === 'settings') refreshUpdateInfo();
+}
+
+function closeAll() {
+  sheet = null;
+  closeMap();
+  drawerOpen = false;
+  SheetUI.activeGame = null;
+  City.togglePigMenu(false);
+  lastKey = '';
+  update();
+}
+
+function refreshUpdateInfo() {
+  window.home.updateStatus().then((info) => {
+    SheetUI.upd = { ...SheetUI.upd, info };
+    update();
+  });
+}
+
+// Old page names (tray menu, right-click on the pet) mapped to places
+function openTab(tab) {
+  const to = TAB_TO_PLACE[tab];
+  if (tab === 'school') {
+    const lv = snap.s.level;
+    return openSheet(lv >= 18 ? 'college' : lv >= 12 ? 'middle' : 'primary');
+  }
+  if (to === 'bag') {
+    closeAll();
+    drawerOpen = true;
+    lastKey = '';
+    return update();
+  }
+  if (to) return openSheet(to);
+  closeAll();
+  City.findPig();
+}
+
+let mapOpen = false;
+function openMap() {
+  closeAll();
+  mapOpen = true;
+  City.lock(true);
+  City.openMap();
+}
+
+function closeMap() {
+  if (!mapOpen) return;
+  mapOpen = false;
+  City.closeMap();
+  City.lock(!!sheet);
 }
 
 let toastTimer;
 function toast({ msg, ok }) {
+  // a neighbour talking: say it in their speech bubble on the map instead
+  const n = NPCS.find((x) => msg.startsWith(`${x.name}：`));
+  if (n) {
+    City.npcSay(n.id, msg.slice(n.name.length + 1));
+    return;
+  }
   const el = $('toast');
   el.textContent = msg;
   el.classList.toggle('bad', !ok);
@@ -458,90 +232,80 @@ function toast({ msg, ok }) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
-// The piggy in the sidebar mirrors the real pet's mood and growth
-const Avatar = {
-  init() {
-    const mount = $('avatar');
-    mount.innerHTML = PIG_SVG;
-    this.root = mount;
-    this.eyes = mount.querySelector('#eyes');
-    this.mouth = mount.querySelector('#mouth');
-    this.dirt = mount.querySelector('#dirt');
-    this.face = null;
-    this.formId = null;
-    this.blink();
-  },
-  blink() {
-    setTimeout(() => {
-      if (this.face && FACES[this.face].eyes === 'normal') {
-        this.eyes.classList.add('blink');
-        setTimeout(() => this.eyes.classList.remove('blink'), 140);
-      }
-      this.blink();
-    }, 2500 + Math.random() * 3000);
-  },
-  update(s, sleeping) {
-    const face = moodFace(s, sleeping);
-    if (face !== this.face) {
-      this.face = face;
-      renderFace(this.eyes, this.mouth, face);
-    }
-    const form = formFor(s.level).id;
-    if (form !== this.formId) {
-      this.formId = form;
-      applyForm(this.root, form);
-    }
-    this.dirt.setAttribute('opacity', s.clean < 50 ? ((50 - s.clean) / 50).toFixed(2) : 0);
-    this.root.classList.toggle('sick', s.health < 40);
-    this.root.classList.toggle('sleeping', sleeping);
-    renderWear(this.root, s.wear, null);
-  },
-};
+// ---------- actions ----------
 
 // UI-only actions handled here; everything else goes to the pet window
 const LOCAL = {
-  go,
-  shopCat: (id) => { shopCat = id; update(); },
-  checkUpdate: async () => {
-    updBusy = true;
+  open: (id) => openSheet(id),
+  fly: (id) => openSheet(id),
+  map: () => (mapOpen ? closeMap() : openMap()),
+  closeMap,
+  closeSheet: closeAll,
+  settings: () => (sheet === 'settings' ? closeAll() : openSheet('settings')),
+  bag: () => {
+    drawerOpen = !drawerOpen;
+    if (drawerOpen) sheet = null;
+    lastKey = '';
     update();
-    updInfo = await window.home.checkUpdate();
-    updBusy = false;
-    updChecked = true;
+  },
+  stat: (key) => openSheet(STAT_PLACE[key]),
+  findPig: () => {
+    closeAll();
+    City.findPig();
+  },
+  goHome: () => {
+    City.togglePigMenu(false);
+    if (City.canWalk(true)) City.walkTo(PLACE_BY_ID.home.entry);
+  },
+  furnTab: (id) => { SheetUI.furnTab = id; update(); },
+  checkUpdate: async () => {
+    SheetUI.upd = { ...SheetUI.upd, busy: true };
+    update();
+    const info = await window.home.checkUpdate();
+    SheetUI.upd = { info, busy: false, checked: true };
     update();
   },
   applyUpdate: async () => {
-    updInfo = await window.home.applyUpdate();
+    const info = await window.home.applyUpdate();
+    SheetUI.upd = { ...SheetUI.upd, info };
     update();
   },
   focus: (id, data) => {
-    treeDir = data.dir || '';
-    treeSel = id;
-    schoolStage = COURSE_BY_ID[id].stage;
+    SheetUI.treeDir = data.dir || '';
+    SheetUI.treeSel = id;
+    SheetUI.schoolStage = COURSE_BY_ID[id].stage;
     update();
   },
   // show a stage (and major, at university) and focus its first course still to learn
   stage: (id) => {
-    const list = COURSES.filter((c) => c.stage === id && (!c.major || c.major === schoolMajor));
-    schoolStage = id;
-    treeSel = (list.find((c) => !snap.s.courses[c.id]) || list[0]).id;
-    treeDir = '';
+    const list = COURSES.filter((c) => c.stage === id && (!c.major || c.major === SheetUI.schoolMajor));
+    SheetUI.schoolStage = id;
+    SheetUI.treeSel = (list.find((c) => !snap.s.courses[c.id]) || list[0]).id;
+    SheetUI.treeDir = '';
     update();
   },
   major: (id) => {
-    schoolMajor = id;
-    LOCAL.stage(schoolStage);
+    SheetUI.schoolMajor = id;
+    LOCAL.stage(SheetUI.schoolStage);
   },
-  workFilter: (id) => { workFilter = id; update(); },
-  games: () => { activeGame = null; update(); },
+  workFilter: (id) => { SheetUI.workFilter = id; update(); },
+  games: () => { SheetUI.activeGame = null; update(); },
   game: (id) => {
-    if (gameBlock()) return toast({ msg: gameBlock(), ok: false });
-    activeGame = id;
-    gameSession++;
+    const why = gameBlock(snap);
+    if (why) return toast({ msg: why, ok: false });
+    SheetUI.activeGame = id;
+    SheetUI.gameSession++;
     update();
   },
   rename: () => window.home.act('rename', $('nameInput').value),
 };
+
+function onNpc(id) {
+  const s = snap.s;
+  const wish = npcWish(id);
+  if (wish && !wishDone(s, id) && s.inventory[wish]) window.home.act('give', id);
+  else window.home.act('greet', id);
+}
 
 document.addEventListener('click', (e) => {
   const win = e.target.closest('[data-win]');
@@ -550,34 +314,57 @@ document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-action]');
   if (!el || el.disabled) return;
   const { action, id } = el.dataset;
+  if (el.closest('#pigMenu')) City.togglePigMenu(false);
   if (LOCAL[action]) return LOCAL[action](id, el.dataset);
-  if (action === 'reset' && !resetArmed) {
-    resetArmed = true;
+  if (action === 'reset' && !SheetUI.resetArmed) {
+    SheetUI.resetArmed = true;
     update();
     setTimeout(() => {
-      resetArmed = false;
+      SheetUI.resetArmed = false;
       update();
     }, 3000);
     return;
   }
-  if (action === 'reset') resetArmed = false;
+  if (action === 'reset') SheetUI.resetArmed = false;
   window.home.act(action, id);
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && e.target.id === 'nameInput') window.home.act('rename', e.target.value);
-  if (e.key === 'Escape') window.home.close();
+  if (e.target.tagName === 'INPUT') {
+    if (e.key === 'Enter' && e.target.id === 'nameInput') window.home.act('rename', e.target.value);
+    return;
+  }
+  if (e.key === 'Escape') {
+    if (sheet || drawerOpen || mapOpen) closeAll();
+    else window.home.close();
+    return;
+  }
+  if (e.key.toLowerCase() === 'm' && !sheet) return LOCAL.map();
+  if (City.key(e, true)) e.preventDefault();
 });
+document.addEventListener('keyup', (e) => City.key(e, false));
+window.addEventListener('blur', () => City.keys.clear());
 
-Avatar.init();
+Hud.init();
+City.init({
+  onEnter: openSheet,
+  onNpc,
+  onBlocked: (msg) => toast({ msg, ok: false }),
+  onMap: () => LOCAL.map(),
+});
 window.home.onState((s) => {
   snap = s;
   update();
+  if (firstTab) {
+    const tab = firstTab;
+    firstTab = null;
+    openTab(tab);
+  }
 });
 window.home.onToast(toast);
-window.home.onTab(go);
+window.home.onTab((tab) => snap && openTab(tab));
 window.home.ready();
-window.home.updateStatus().then((info) => {
-  updInfo = info;
-  update();
-});
+refreshUpdateInfo();
+
+// for test scripts: open any sheet, or show any scene without doing it for real
+window.__city = { open: openSheet, openTab, City };

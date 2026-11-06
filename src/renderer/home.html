@@ -4,33 +4,23 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:"
     />
-    <title>小猪的小窝</title>
+    <title>猪猪城</title>
+    <link rel="stylesheet" href="fonts.css" />
     <link rel="stylesheet" href="pig.css" />
     <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="games.css" />
+    <link rel="stylesheet" href="city.css" />
   </head>
   <body>
     <div class="window">
-      <aside class="side">
-        <div class="avatar"><div id="avatar"></div></div>
-        <div class="side-name" id="sideName"></div>
-        <div class="side-title"><span class="tag lv" id="sideLevel"></span> <span class="tag" id="sideTitle"></span></div>
-        <div class="side-exp"><div class="pbar thin"><i id="sideExp"></i></div></div>
-        <div class="wallet"><span>🪙</span><b data-val="money"></b><small>金币</small></div>
-        <nav id="nav"></nav>
-      </aside>
-      <main>
-        <header class="top">
-          <h1 id="pageTitle"></h1>
-          <div class="winbtns">
-            <button data-win="min" title="最小化">─</button>
-            <button data-win="close" title="关闭">✕</button>
-          </div>
-        </header>
-        <section id="page"></section>
-      </main>
+      <header id="hud"></header>
+      <div id="viewport"><div id="world"></div></div>
+      <aside id="sheet"></aside>
+      <div id="minimap"></div>
+      <div id="mapView"></div>
+      <div id="drawer"></div>
       <div id="toast"></div>
     </div>
 
@@ -38,6 +28,10 @@
     <script src="rules.js"></script>
     <script src="pet.js"></script>
     <script src="games.js"></script>
+    <script src="city-data.js"></script>
+    <script src="city-art.js"></script>
+    <script src="city.js"></script>
+    <script src="sheets.js"></script>
     <script src="home.js"></script>
   </body>
 </html>

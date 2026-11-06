@@ -22,6 +22,8 @@ function defaultState() {
     hobbyReady: {},
     wear: { head: null, face: null },
     playDay: null,
+    // neighbours: { [id]: { h: hearts, hi: day of the last hello, wish: day the last wish was granted } }
+    npc: {},
     activity: null,
     follow: false,
     mini: false,
@@ -99,7 +101,7 @@ const Game = {
   // Exp from playing, capped per day; returns a little "+n" label to float over the pig
   playExp(base) {
     const day = this.playExpToday();
-    const n = Math.min(base, PLAY_EXP_DAILY - day.got);
+    const n = Math.min(base, playCap(this.s) - day.got);
     if (n <= 0) return '';
     day.got += n;
     this.addExp(n);
@@ -160,7 +162,7 @@ const Game = {
       this.apply(d);
       if (offline) s.health = Math.max(s.health, Math.min(20, before));
       const alive = s.level < 6 ? EXP_PER_MIN.kidAlive : EXP_PER_MIN.alive;
-      const studyBonus = active?.type === 'study' ? homeBonus(s, 'study') : 1;
+      const studyBonus = active?.type === 'study' ? homeBonus(s, 'study') * npcPerk(s, 'study', 1) : 1;
       this.addExp(((s.health >= 30 ? alive : 0) + eff.exp * r * studyBonus) * m);
       this.selfCare();
     }
@@ -212,7 +214,7 @@ const Game = {
   activityLabel(a = this.s.activity) {
     if (!a) return '';
     if (a.type === 'study') return `在上${COURSE_BY_ID[a.id].fullName}`;
-    if (a.type === 'work') return `在当${JOB_BY_ID[a.id].name}`;
+    if (a.type === 'work') return `在${jobVerb(JOB_BY_ID[a.id])}`;
     if (a.type === 'bath') return '在洗澡';
     if (a.type === 'help') return FREE_HELP_BY_ID[a.id].label;
     if (a.type === 'hobby') return `在${HOBBY_BY_ID[a.id].name}`;
@@ -276,7 +278,7 @@ const Game = {
     const weak = this.tooWeak(job.drain, job.minutes);
     if (weak) return fail(weak);
     this.begin('work', id, job.minutes);
-    return { ok: true, msg: `去当${job.name}，${job.minutes} 分钟后回来！` };
+    return { ok: true, msg: `去${jobVerb(job)}，${job.minutes} 分钟后回来！` };
   },
 
   startBath() {
@@ -302,23 +304,24 @@ const Game = {
 
     if (a.type === 'study') {
       const c = COURSE_BY_ID[a.id];
+      // a course can finish a degree (a general elective even several), so compare before and after
+      const had = degrees(this.s);
       this.s.courses[a.id] = Date.now();
       this.addExp(10);
-      const stage = STAGE_BY_ID[c.stage];
-      let grad = '';
-      if (c.major && stageDone(this.s, c.stage, c.major)) grad = ` 🎓 拿到${MAJOR_BY_ID[c.major].name}${stage.degree}学位！`;
-      else if (!c.major && stageDone(this.s, c.stage)) grad = ` 🎓 ${stage.degree}啦！`;
+      const got = degrees(this.s).filter((d) => !had.includes(d));
+      const grad = got.length ? ` 🎓 ${got.map((d) => (d.endsWith('毕业') ? `${d}啦` : `拿到${d}学位`)).join('，')}！` : '';
       return { ok: true, msg: `学完了「${c.fullName}」！${grad}`, fx: '📖✓' };
     }
     if (a.type === 'work') {
-      const job = JOB_BY_ID[a.id];
-      this.apply({ money: job.pay });
+      const pay = payOf(this.s, JOB_BY_ID[a.id]);
+      this.apply({ money: pay });
       this.addExp(5);
-      return { ok: true, msg: `下班啦，赚了 ${job.pay} 金币！`, fx: `🪙+${job.pay}` };
+      return { ok: true, msg: `下班啦，赚了 ${pay} 金币！`, fx: `🪙+${pay}` };
     }
     if (a.type === 'help') {
       const h = FREE_HELP_BY_ID[a.id];
       this.apply(h.effects);
+      if (a.id === 'meal') this.apply({ hunger: npcPerk(this.s, 'canteen', 0) });
       return { ok: true, msg: a.id === 'meal' ? '食堂的饭真香！' : '看过医生，好多了', fx: h.icon };
     }
     if (a.type === 'hobby') {
@@ -396,7 +399,8 @@ const Game = {
     if (id === 'meal' && this.s.hunger >= 95) return fail('吃不下了…');
     const wait = this.helpWait(id);
     if (wait > 0) return fail(`${h.name}还要 ${Math.ceil(wait)} 分钟`);
-    this.s.helpReady[id] = Date.now() + h.cooldown * 60000;
+    const cooldown = h.cooldown * (id === 'clinic' ? npcPerk(this.s, 'clinicCd', 1) : 1);
+    this.s.helpReady[id] = Date.now() + cooldown * 60000;
     this.begin('help', id, h.minutes);
     return { ok: true, msg: `去${h.name}啦，${h.minutes} 分钟回来` };
   },
@@ -431,7 +435,8 @@ const Game = {
     const s = this.s;
     if (!s.inventory[id]) return fail(`没有${it.name}了`);
 
-    if (it.cat === 'furniture') return fail(`${it.name}已经摆在家里啦`);
+    if (['furniture', 'decor'].includes(it.cat)) return fail(`${it.name}已经摆在家里啦`);
+    if (it.cat === 'city') return fail(`${it.name}已经在城里啦`);
 
     // outfits: put on, or take off if already worn
     if (it.cat === 'wear') {
@@ -458,7 +463,9 @@ const Game = {
     if (it.cat === 'food' && s.hunger >= 95) return fail('吃不下了…');
     if (it.cat === 'hygiene' && s.clean >= 98) return fail('已经很干净啦');
     if (it.cat === 'medicine' && s.health >= 100) return fail('很健康，不用吃药');
-    this.apply(it.effects);
+    // a kitchen at home makes food go further
+    const food = it.cat === 'food' ? homeBonus(s, 'food') : 1;
+    this.apply({ ...it.effects, ...(it.effects.hunger ? { hunger: Math.round(it.effects.hunger * food) } : {}) });
     if (--s.inventory[id] <= 0) delete s.inventory[id];
     if (it.cat === 'medicine') return { ok: true, msg: '吃了药，感觉好多了', fx: '💊' };
     if (it.cat === 'hygiene') return { ok: true, msg: '擦擦洗洗，干净啦~', fx: '✨' };
@@ -468,10 +475,53 @@ const Game = {
 
   buy(id) {
     const it = ITEM_BY_ID[id];
-    if (['toy', 'wear', 'furniture'].includes(it.cat) && this.s.inventory[id]) return fail(`已经有${it.name}啦`);
-    if (this.s.money < it.price) return fail('金币不够…去打工赚钱吧');
-    this.apply({ money: -it.price });
+    const why = buyBlock(this.s, it);
+    if (why) return fail(why);
+    this.apply({ money: -priceOf(this.s, it) });
     this.s.inventory[id] = (this.s.inventory[id] || 0) + 1;
+    if (it.cat === 'city') return { ok: true, msg: `捐建了${it.name}，猪猪城更漂亮啦！`, fx: '🎉' };
+    if (['furniture', 'decor'].includes(it.cat)) return { ok: true, msg: `${it.name}送到家啦`, fx: '🏠' };
     return { ok: true, msg: `买了${it.name}，放进背包啦` };
+  },
+
+  // ---------- neighbours ----------
+
+  npcRec(id) {
+    return (this.s.npc[id] ||= { h: 0 });
+  },
+
+  addHearts(id, n) {
+    const rec = this.npcRec(id);
+    const before = rec.h;
+    rec.h = Math.min(NPC_MAX_HEARTS, rec.h + n);
+    const name = NPC_BY_ID[id].name;
+    if (before < NPC_PERK_HEARTS && rec.h >= NPC_PERK_HEARTS) return `${name}和你成了好朋友：${NPC_BY_ID[id].perk.text}！`;
+    if (before < NPC_MAX_HEARTS && rec.h >= NPC_MAX_HEARTS) return `${name}最喜欢你了，店里有专属好东西！`;
+    return '';
+  },
+
+  // Say hi: the first hello of the day makes them like the pig a little more
+  greet(id) {
+    const n = NPC_BY_ID[id];
+    const line = n.hello[Math.floor(Math.random() * n.hello.length)];
+    if (greetedToday(this.s, id)) return { ok: true, msg: `${n.name}：${line}` };
+    this.npcRec(id).hi = dayKey();
+    this.apply({ mood: 2 });
+    const up = this.addHearts(id, 1);
+    return { ok: true, msg: up || `${n.name}：${line}`, fx: '💗' };
+  },
+
+  // Give a neighbour what they wished for today
+  give(id) {
+    const n = NPC_BY_ID[id];
+    const wish = npcWish(id);
+    if (!wish || wishDone(this.s, id)) return fail(`${n.name}今天什么都不缺`);
+    const it = ITEM_BY_ID[wish];
+    if (!this.s.inventory[wish]) return fail(`背包里还没有${it.name}`);
+    if (--this.s.inventory[wish] <= 0) delete this.s.inventory[wish];
+    this.npcRec(id).wish = dayKey();
+    this.apply({ mood: 5 });
+    const up = this.addHearts(id, 2);
+    return { ok: true, msg: up || `${n.name}收下了${it.name}，好开心！`, fx: '💗💗' };
   },
 };

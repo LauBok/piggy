@@ -11,9 +11,17 @@ function fmtTime(sec) {
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }
 
-// All required courses of a stage (and major, for university stages) are done; electives don't count
+// Credits earned toward a major's degree at a university stage: its own courses and general electives
+const stageCredits = (s, stageId, majorId) =>
+  COURSES.filter((c) => c.stage === stageId && (c.major === majorId || c.general) && s.courses[c.id]).reduce((n, c) => n + c.credits, 0);
+
+// Graduated from a stage: every required course done (electives don't count before university),
+// and from university up, enough credits for that major too
 function stageDone(s, stageId, majorId) {
-  return COURSES.filter((c) => c.stage === stageId && !c.elective && (!majorId || c.major === majorId)).every((c) => s.courses[c.id]);
+  const st = STAGE_BY_ID[stageId];
+  if (st.byMajor && !majorId) return MAJORS.some((m) => stageDone(s, stageId, m.id));
+  const required = COURSES.filter((c) => c.stage === stageId && !c.elective && (!majorId || c.major === majorId)).every((c) => s.courses[c.id]);
+  return required && (!st.credits || stageCredits(s, stageId, majorId) >= st.credits);
 }
 
 // How far an elective subject was studied: 0 (not at all) to 3 (high school)
@@ -88,7 +96,69 @@ const allOk = (reqs) => reqs.every((r) => r.ok);
 function toyBoredom(s, id) {
   const b = s.toyBored?.[id];
   if (!b) return 0;
-  return Math.max(0, b.n - (Date.now() - b.at) / 3600000 / TOY_BORED_RECOVER_H);
+  const hours = TOY_BORED_RECOVER_H / npcPerk(s, 'toyRecover', 1);
+  return Math.max(0, b.n - (Date.now() - b.at) / 3600000 / hours);
+}
+
+// ---------- neighbours ----------
+
+const dayKey = () => new Date().toDateString();
+
+function hashStr(str) {
+  let h = 2166136261;
+  for (const ch of str) {
+    h ^= ch.codePointAt(0);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+const hearts = (s, id) => s.npc?.[id]?.h || 0;
+const greetedToday = (s, id) => s.npc?.[id]?.hi === dayKey();
+const wishDone = (s, id) => s.npc?.[id]?.wish === dayKey();
+
+// The value of a neighbour's perk once they like the pig enough, or `base`
+function npcPerk(s, key, base) {
+  const n = NPCS.find((x) => x.perk.key === key && hearts(s, x.id) >= NPC_PERK_HEARTS);
+  return n ? n.perk.v : base;
+}
+
+// What an item costs this pig, after any neighbour's discount
+function priceOf(s, it) {
+  const n = NPCS.find((x) => x.perk.key === 'discount' && x.perk.cats.includes(it.cat) && hearts(s, x.id) >= NPC_PERK_HEARTS);
+  return n ? Math.round(it.price * n.perk.v) : it.price;
+}
+
+const payOf = (s, job) => Math.round(job.pay * npcPerk(s, 'pay', 1));
+const playCap = (s) => PLAY_EXP_DAILY + npcPerk(s, 'playCap', 0);
+
+// The item a neighbour wishes for today, or null. A few neighbours a day each want one cheap
+// thing, picked so it's sold somewhere other than their own shop.
+function npcWish(id, day = dayKey()) {
+  const wishers = [...NPCS].sort((a, b) => hashStr(day + a.id) - hashStr(day + b.id)).slice(0, NPC_WISHES_PER_DAY);
+  if (!wishers.some((n) => n.id === id)) return null;
+  const own = NPC_BY_ID[id].perk.cats || [];
+  const pool = ITEMS.filter((it) => WISH_CATS.includes(it.cat) && !it.npc && it.price <= WISH_MAX_PRICE && !own.includes(it.cat));
+  return pool[hashStr(id + day) % pool.length].id;
+}
+
+// ---------- home ----------
+
+// The best house owned: 0 小猪窝 (the one every pig starts with) … 3 城堡
+const homeTier = (s) => Math.max(0, ...ITEMS.filter((it) => it.tier && s.inventory[it.id]).map((it) => it.tier));
+const ownedDecor = (s) => ITEMS.filter((it) => it.cat === 'decor' && s.inventory[it.id]);
+const decorSlots = (s) => DECOR_SLOTS[homeTier(s)];
+const HOUSE_NAMES = ['小猪窝', '温馨公寓', '花园别墅', '猪猪城堡'];
+
+// Why an item can't be bought right now, or null
+function buyBlock(s, it) {
+  if (ONCE_CATS.includes(it.cat) && s.inventory[it.id]) return `已经有${it.name}啦`;
+  if (it.npc && hearts(s, it.npc) < NPC_MAX_HEARTS) return `和${NPC_BY_ID[it.npc].name}再熟一点才卖给你`;
+  if (it.tier && homeTier(s) >= it.tier) return '已经住上更好的房子啦';
+  if (it.needsTier && homeTier(s) < it.needsTier) return `要住进${HOUSE_NAMES[it.needsTier]}才放得下`;
+  if (it.cat === 'decor' && ownedDecor(s).length >= decorSlots(s)) return '家里摆满啦，换个大房子吧';
+  if (s.money < priceOf(s, it)) return '金币不够…去打工赚钱吧';
+  return null;
 }
 
 // Share of a toy's mood effect it gives right now
@@ -141,3 +211,6 @@ const FORMS = [
   { min: 22, id: 'adult', name: '成年' },
 ];
 const formFor = (level) => FORMS.filter((f) => level >= f.min).pop();
+
+// How to say doing a job: "当洗碗工" for a role, just "拱松露" when the name is already an action
+const jobVerb = (job) => (job.doing ? job.name : `当${job.name}`);
