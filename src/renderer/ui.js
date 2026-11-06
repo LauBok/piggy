@@ -20,8 +20,10 @@ const UI = {
         <span class="spacer"></span><span class="coin">🪙 <b data-val="money"></b></span></div>
       <div class="exp" title="经验"><i id="hudExp"></i></div>
       <div class="rings">${rings}</div>
-      <button class="hud-btn" id="homeBtn">🏠 打开小窝</button>`;
+      <div class="hud-btns"><button class="hud-btn" id="homeBtn">🏠 打开小窝</button>
+        <button class="hud-mini" id="miniBtn" title="迷你">🫣</button></div>`;
     $('homeBtn').addEventListener('click', () => window.pet.openHome('status'));
+    $('miniBtn').addEventListener('click', () => App.act('mini'));
     this.hudName = $('hudName');
     this.hudTitle = $('hudTitle');
     this.hudLevel = $('hudLevel');
@@ -29,6 +31,7 @@ const UI = {
   },
 
   say(text, ms = 3500) {
+    if (document.body.classList.contains('mini')) return; // mini mode stays quiet
     this.bubble.textContent = text;
     this.bubble.classList.add('show');
     clearTimeout(this.sayTimer);

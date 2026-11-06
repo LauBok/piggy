@@ -95,6 +95,32 @@ const Motion = {
     this.startFall();
   },
 
+  // Mini mode: stays where dropped, and hides half outside the screen when dropped at an edge
+  // (left, right, or down on the taskbar) so only the eyes peek out. Returns the edge or null.
+  async dropMini(pos) {
+    this.dragging = false;
+    const { bounds, workArea } = await window.pet.display();
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const EDGE = 24;
+    let { x, y } = pos;
+    let peek = null;
+    if (x <= bounds.x + EDGE) {
+      x = bounds.x - w * 0.42;
+      peek = 'left';
+    } else if (x + w >= bounds.x + bounds.width - EDGE) {
+      x = bounds.x + bounds.width - w * 0.58;
+      peek = 'right';
+    } else if (y + h >= workArea.y + workArea.height - 8) {
+      y = bounds.y + bounds.height - h * 0.55;
+      peek = 'bottom';
+    }
+    this.x = x;
+    this.y = y;
+    this.place();
+    return peek;
+  },
+
   startFall() {
     this.jetting = false;
     this.falling = this.y < this.groundY - 1;
@@ -115,7 +141,8 @@ const Motion = {
     const k = Math.min((t - this.lastFrame) / 16.67, 3);
     this.lastFrame = t;
     requestAnimationFrame((tt) => this.frame(tt));
-    if (this.dragging || !this.area) return;
+    // mini mode stays exactly where it was put
+    if (this.dragging || !this.area || Game.s.mini) return;
 
     if (this.falling) {
       const high = this.groundY - this.dropY > JET_MIN_DROP;

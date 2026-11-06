@@ -19,9 +19,12 @@ function defaultState() {
     toyReady: {},
     toyBored: {},
     helpReady: {},
+    hobbyReady: {},
+    wear: { head: null, face: null },
     playDay: null,
     activity: null,
     follow: false,
+    mini: false,
     lastTick: Date.now(),
   };
 }
@@ -141,8 +144,8 @@ const Game = {
       const d = {
         hunger: rates.hunger * m * r,
         clean: rates.clean * m * r,
-        mood: rates.mood * m * r,
-        energy: sleeping ? SLEEP_ENERGY_PER_MIN * m : rates.energy * m * r,
+        mood: rates.mood * m * r * homeBonus(s, 'moodDrain'),
+        energy: sleeping ? SLEEP_ENERGY_PER_MIN * homeBonus(s, 'sleep') * m : rates.energy * m * r,
         health: 0,
       };
       if (s.hunger < 20) d.health -= 0.3 * m * r;
@@ -157,7 +160,8 @@ const Game = {
       this.apply(d);
       if (offline) s.health = Math.max(s.health, Math.min(20, before));
       const alive = s.level < 6 ? EXP_PER_MIN.kidAlive : EXP_PER_MIN.alive;
-      this.addExp(((s.health >= 30 ? alive : 0) + eff.exp * r) * m);
+      const studyBonus = active?.type === 'study' ? homeBonus(s, 'study') : 1;
+      this.addExp(((s.health >= 30 ? alive : 0) + eff.exp * r * studyBonus) * m);
       this.selfCare();
     }
   },
@@ -210,6 +214,8 @@ const Game = {
     if (a.type === 'study') return `在上${COURSE_BY_ID[a.id].fullName}`;
     if (a.type === 'work') return `在当${JOB_BY_ID[a.id].name}`;
     if (a.type === 'bath') return '在洗澡';
+    if (a.type === 'help') return FREE_HELP_BY_ID[a.id].label;
+    if (a.type === 'hobby') return `在${HOBBY_BY_ID[a.id].name}`;
     return '在睡觉';
   },
 
@@ -310,7 +316,19 @@ const Game = {
       this.addExp(5);
       return { ok: true, msg: `下班啦，赚了 ${job.pay} 金币！`, fx: `🪙+${job.pay}` };
     }
-    this.apply(BATH_EFFECT);
+    if (a.type === 'help') {
+      const h = FREE_HELP_BY_ID[a.id];
+      this.apply(h.effects);
+      return { ok: true, msg: a.id === 'meal' ? '食堂的饭真香！' : '看过医生，好多了', fx: h.icon };
+    }
+    if (a.type === 'hobby') {
+      const h = HOBBY_BY_ID[a.id];
+      this.apply(hobbyEffects(this.s, h) || {});
+      const lines = { piano: '弹得真好听~', paint: '画好啦，好看吗？', soccer: '踢球真开心！' };
+      return { ok: true, msg: lines[h.id], fx: `${h.icon}${this.playExp(PLAY_EXP.hobby)}` };
+    }
+    const tub = homeBonus(this.s, 'bath');
+    this.apply({ clean: Math.round(BATH_EFFECT.clean * tub), mood: Math.round(BATH_EFFECT.mood * tub) });
     return { ok: true, msg: '洗得香喷喷！', fx: '✨' };
   },
 
@@ -369,17 +387,38 @@ const Game = {
     return Math.max(0, ((this.s.helpReady[id] || 0) - Date.now()) / 60000);
   },
 
-  // Free canteen meal or clinic visit, on a cooldown
+  // Free canteen meal or clinic visit: takes a while, then on a cooldown
   help(id) {
     const h = FREE_HELP_BY_ID[id];
-    if (this.sleeping) return fail('在睡觉呢…zzz');
+    const why = this.blocked();
+    if (why) return fail(why);
     if (h.maxHealth && this.s.health >= h.maxHealth) return fail('很健康，不用看病');
     if (id === 'meal' && this.s.hunger >= 95) return fail('吃不下了…');
     const wait = this.helpWait(id);
     if (wait > 0) return fail(`${h.name}还要 ${Math.ceil(wait)} 分钟`);
-    this.apply(h.effects);
     this.s.helpReady[id] = Date.now() + h.cooldown * 60000;
-    return { ok: true, msg: id === 'meal' ? '食堂的饭真香！' : '看过医生，好多了', fx: h.icon };
+    this.begin('help', id, h.minutes);
+    return { ok: true, msg: `去${h.name}啦，${h.minutes} 分钟回来` };
+  },
+
+  hobbyWait(id) {
+    return Math.max(0, ((this.s.hobbyReady[id] || 0) - Date.now()) / 60000);
+  },
+
+  // Piano, painting or football: unlocked by the electives, takes a few minutes
+  startHobby(id) {
+    const h = HOBBY_BY_ID[id];
+    const why = this.blocked();
+    if (why) return fail(why);
+    const lock = hobbyLock(this.s, h);
+    if (lock) return fail(lock.why === 'subject' ? `先上一节${lock.text}课吧` : `家里还没有${lock.text}，去商店买一个吧`);
+    const effects = hobbyEffects(this.s, h);
+    const wait = this.hobbyWait(id);
+    if (wait > 0) return fail(`歇一会儿，${Math.ceil(wait)} 分钟后再${h.name}`);
+    if (this.s.energy < -(effects.energy || 0)) return fail('太累了…');
+    this.s.hobbyReady[id] = Date.now() + h.cooldown * 60000;
+    this.begin('hobby', id, h.minutes);
+    return { ok: true, msg: `去${h.name}啦~` };
   },
 
   toyWait(id) {
@@ -391,6 +430,16 @@ const Game = {
     const it = ITEM_BY_ID[id];
     const s = this.s;
     if (!s.inventory[id]) return fail(`没有${it.name}了`);
+
+    if (it.cat === 'furniture') return fail(`${it.name}已经摆在家里啦`);
+
+    // outfits: put on, or take off if already worn
+    if (it.cat === 'wear') {
+      const on = s.wear[it.slot] !== id;
+      s.wear[it.slot] = on ? id : null;
+      return { ok: true, msg: on ? `戴上${it.name}啦，好看吗？` : `摘下${it.name}`, fx: on ? '✨' : '' };
+    }
+
     if (this.sleeping) return fail('在睡觉呢…zzz');
 
     if (it.cat === 'toy') {
@@ -419,7 +468,7 @@ const Game = {
 
   buy(id) {
     const it = ITEM_BY_ID[id];
-    if (it.cat === 'toy' && this.s.inventory[id]) return fail(`已经有${it.name}啦`);
+    if (['toy', 'wear', 'furniture'].includes(it.cat) && this.s.inventory[id]) return fail(`已经有${it.name}啦`);
     if (this.s.money < it.price) return fail('金币不够…去打工赚钱吧');
     this.apply({ money: -it.price });
     this.s.inventory[id] = (this.s.inventory[id] || 0) + 1;

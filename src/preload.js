@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('pet', {
   cursor: () => ipcRenderer.invoke('screen:cursor'),
   idleSeconds: () => ipcRenderer.invoke('sys:idle'),
   setPos: (x, y) => ipcRenderer.send('win:setPos', x, y),
+  setMini: (on) => ipcRenderer.invoke('win:mini', on),
+  display: () => ipcRenderer.invoke('screen:display'),
   ignoreMouse: (ignore) => ipcRenderer.send('win:ignoreMouse', ignore),
   dragStart: () => ipcRenderer.send('drag:start'),
   dragEnd: () => ipcRenderer.invoke('drag:end'),

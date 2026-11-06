@@ -431,7 +431,7 @@ h3 {
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 12px;
   margin-top: 14px;
 }
@@ -1388,6 +1388,26 @@ h3 {
 }
 
 /* ---------- settings ---------- */
+
+.version {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.version b {
+  font-size: 15px;
+}
+
+.version small {
+  display: block;
+  color: var(--muted);
+}
+
+.tile.locked small {
+  color: #b3a2a8;
+}
 
 .form {
   padding: 16px 20px;

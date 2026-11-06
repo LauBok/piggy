@@ -37,10 +37,11 @@ const BATH_EFFECT = { clean: 20, mood: 3 };
 const PLAY_EFFECT = { mood: 8, energy: -8, hunger: -3 };
 const MINIGAME_COST = { energy: -5, hunger: -2 };
 
-// Free help so a broke, sick pig can always recover. cooldown in minutes.
+// Free help so a broke, sick pig can always recover. It takes a while (minutes), so buying
+// food or medicine is the quick way. cooldown in minutes.
 const FREE_HELP = [
-  { id: 'meal', name: '食堂', icon: '🍱', effects: { hunger: 20 }, cooldown: 60 },
-  { id: 'clinic', name: '诊所', icon: '🏥', effects: { health: 20 }, cooldown: 60, maxHealth: 40 },
+  { id: 'meal', name: '食堂', icon: '🍱', effects: { hunger: 20 }, minutes: 15, cooldown: 60, label: '在食堂吃饭' },
+  { id: 'clinic', name: '诊所', icon: '🏥', effects: { health: 20 }, minutes: 20, cooldown: 60, maxHealth: 40, label: '在诊所看病' },
 ];
 const FREE_HELP_BY_ID = Object.fromEntries(FREE_HELP.map((h) => [h.id, h]));
 
@@ -69,6 +70,7 @@ const expNeed = (level) => (level < 6 ? 30 : 150 + 25 * (level - 6));
 const PLAY_EXP = {
   play: 3,
   toy: 5,
+  hobby: 4,
   rps: { win: 3, draw: 2, lose: 1 },
   ttt: { win: 6, draw: 4, lose: 2 },
   penalty: { win: 10, draw: 6, lose: 3 },
@@ -89,9 +91,14 @@ const SUBJECTS = [
   { id: 'history', name: '历史', icon: '🏺' },
   { id: 'geography', name: '地理', icon: '🌏' },
   { id: 'politics', name: '政治', icon: '🏛️' },
+  { id: 'science', name: '科学', icon: '🔬' },
+  // electives: not needed to graduate, but they unlock hobbies and arts jobs
+  { id: 'music', name: '音乐', icon: '🎵', elective: true },
+  { id: 'art', name: '美术', icon: '🎨', elective: true },
+  { id: 'pe', name: '体育', icon: '⚽', elective: true },
 ];
-// Harder subjects take a little longer
-const SUBJECT_EXTRA_MIN = { math: 10, physics: 10, chemistry: 10, english: 5, biology: 5 };
+// Harder subjects take a little longer, electives a little shorter
+const SUBJECT_EXTRA_MIN = { math: 10, physics: 10, chemistry: 10, english: 5, biology: 5, music: -10, art: -10, pe: -10 };
 
 const STAGES = [
   { id: 'primary', name: '小学', icon: '🎒', minLevel: 6, needs: null, degree: '小学毕业', student: '小学生', baseMin: 40, fee: 0 },
@@ -109,17 +116,24 @@ const BASIC_COURSES = {
     math: [],
     english: [],
     politics: ['primary_chinese'],
+    science: ['primary_math'],
+    music: [],
+    art: [],
+    pe: [],
   },
   middle: {
     chinese: ['primary_chinese'],
     math: ['primary_math'],
     english: ['primary_english'],
-    physics: ['primary_math'],
+    physics: ['primary_math', 'primary_science'],
     chemistry: ['middle_physics'],
-    biology: ['primary_chinese'],
+    biology: ['primary_science'],
     history: ['primary_chinese'],
     geography: ['primary_math'],
     politics: ['primary_politics'],
+    music: ['primary_music'],
+    art: ['primary_art'],
+    pe: ['primary_pe'],
   },
   high: {
     chinese: ['middle_chinese'],
@@ -131,6 +145,9 @@ const BASIC_COURSES = {
     history: ['middle_history'],
     geography: ['middle_geography'],
     politics: ['middle_politics'],
+    music: ['middle_music'],
+    art: ['middle_art'],
+    pe: ['middle_pe'],
   },
 };
 const SUBJECT_ALIAS = { 'primary:politics': '品德' };
@@ -160,6 +177,10 @@ const MAJORS = [
     id: 'civil', name: '土木工程', icon: '🏗️', needs: ['high_math', 'high_physics'],
     college: ['工程力学', '稻草与砖块', '结构设计', '防狼房屋施工'], master: ['桥梁工程', '泥坑工程'], phd: ['结构理论研究', '智能猪舍研究'],
   },
+  {
+    id: 'arts', name: '艺术', icon: '🎭', needs: ['high_music', 'high_art'],
+    college: ['乐理与和声', '素描与色彩', '猪猪设计', '舞台表演'], master: ['作曲', '油画创作'], phd: ['猪猪美学研究', '艺术史研究'],
+  },
 ];
 const MAJOR_MINUTES = { college: [70, 75, 80, 85], master: [85, 88], phd: [90, 90] };
 
@@ -183,6 +204,7 @@ for (const [stageId, subjects] of Object.entries(BASIC_COURSES)) {
       icon: subj.icon,
       minutes: stage.baseMin + (SUBJECT_EXTRA_MIN[subjectId] || 0),
       prereq,
+      elective: !!subj.elective,
     });
   }
 }
@@ -217,22 +239,34 @@ const JOBS = [
   { id: 'bottles', name: '拱松露', icon: '🍄', minLevel: 3, requires: [], minutes: 20, drain: { hunger: 2, clean: 4, mood: 1.5, energy: 2 } },
   { id: 'flyer', name: '发传单', icon: '📄', minLevel: 4, requires: [], minutes: 30, drain: { hunger: 2.5, clean: 2, mood: 2, energy: 3 } },
   { id: 'dishes', name: '洗碗工', icon: '🍽️', minLevel: 5, requires: [], minutes: 40, drain: { hunger: 2, clean: 3.5, mood: 2, energy: 3 } },
+  { id: 'ballboy', name: '球场球童', icon: '🎾', minLevel: 10, requires: ['primary_pe'], minutes: 30, drain: { hunger: 3, clean: 2.5, mood: 1.5, energy: 4 } },
   { id: 'paper', name: '送报员', icon: '📰', minLevel: 8, requires: ['primary_chinese'], minutes: 30, drain: { hunger: 3, clean: 2, mood: 1.5, energy: 3.5 } },
+  { id: 'busker', name: '街头卖艺', icon: '🪗', minLevel: 8, requires: ['primary_music'], minutes: 30, drain: { hunger: 2, clean: 1.5, mood: 1.5, energy: 2.5 } },
+  { id: 'portrait', name: '公园画肖像', icon: '🖼️', minLevel: 9, requires: ['primary_art'], minutes: 40, drain: { hunger: 2, clean: 2, mood: 1.5, energy: 2 } },
+  { id: 'museum', name: '科技馆讲解员', icon: '🔭', minLevel: 9, requires: ['primary_science'], minutes: 40, drain: { hunger: 2, clean: 1, mood: 2, energy: 2.5 } },
   { id: 'mover', name: '砖房小工', icon: '🧱', minLevel: 10, requires: [], minutes: 60, drain: { hunger: 4, clean: 4, mood: 3, energy: 5 } },
   { id: 'cashier', name: '小卖部收银员', icon: '🏪', minLevel: 10, requires: ['primary_math'], minutes: 45, drain: { hunger: 2, clean: 1.2, mood: 2.5, energy: 2.5 } },
   { id: 'courier', name: '快递员', icon: '📦', minLevel: 12, requires: ['deg:primary'], minutes: 60, drain: { hunger: 3.5, clean: 2.5, mood: 2, energy: 4.5 } },
+  { id: 'pianoaide', name: '琴行助教', icon: '🎼', minLevel: 13, requires: ['middle_music'], minutes: 45, drain: { hunger: 1.8, clean: 1, mood: 2, energy: 2.5 } },
+  { id: 'artaide', name: '美术班助教', icon: '🖍️', minLevel: 13, requires: ['middle_art'], minutes: 45, drain: { hunger: 1.8, clean: 2, mood: 2, energy: 2.5 } },
   { id: 'tutor', name: '家教', icon: '✏️', minLevel: 15, requires: ['middle_math', 'middle_english'], minutes: 45, drain: { hunger: 1.8, clean: 1, mood: 2, energy: 2.5 } },
+  { id: 'coach', name: '少儿体育教练', icon: '🏃', minLevel: 16, requires: ['high_pe'], minutes: 60, drain: { hunger: 3, clean: 2.5, mood: 1.8, energy: 4 } },
+  { id: 'band', name: '乐队主唱', icon: '🎸', minLevel: 17, requires: ['high_music'], minutes: 60, drain: { hunger: 2.5, clean: 1.5, mood: 1.5, energy: 3.5 } },
+  { id: 'illustrator', name: '绘本插画师', icon: '📚', minLevel: 17, requires: ['high_art'], minutes: 60, drain: { hunger: 2, clean: 1.5, mood: 2, energy: 2.5 } },
   { id: 'guide', name: '泥浴温泉导游', icon: '♨️', minLevel: 16, requires: ['middle_history', 'middle_geography'], minutes: 60, drain: { hunger: 3, clean: 2.5, mood: 1.5, energy: 4 } },
   { id: 'labtech', name: '实验室助理', icon: '🧪', minLevel: 18, requires: ['high_chemistry', 'high_biology'], minutes: 60, drain: { hunger: 2, clean: 2, mood: 2, energy: 3 } },
-  { id: 'reporter', name: '猪猪日报记者', icon: '🎤', minLevel: 18, requires: ['high_chinese', 'high_politics'], minutes: 60, drain: { hunger: 2.5, clean: 2, mood: 2.5, energy: 3.5 } },
+  { id: 'reporter', name: '猪猪日报记者', icon: '🗞️', minLevel: 18, requires: ['high_chinese', 'high_politics'], minutes: 60, drain: { hunger: 2.5, clean: 2, mood: 2.5, energy: 3.5 } },
   { id: 'teacher', name: '猪猪幼儿园老师', icon: '🏫', minLevel: 22, requires: ['deg:college:edu'], minutes: 50, drain: { hunger: 2, clean: 1.2, mood: 2.5, energy: 3 } },
   { id: 'banker', name: '存钱罐银行职员', icon: '🐷', minLevel: 22, requires: ['deg:college:fin'], minutes: 50, drain: { hunger: 1.8, clean: 1, mood: 2.8, energy: 2.5 } },
   { id: 'engineer', name: '猪舍建筑师', icon: '🏡', minLevel: 22, requires: ['deg:college:civil'], minutes: 60, drain: { hunger: 3, clean: 3, mood: 2.5, energy: 4 } },
+  { id: 'designer', name: '猪猪设计师', icon: '🎨', minLevel: 22, requires: ['deg:college:arts'], minutes: 50, drain: { hunger: 2, clean: 1.2, mood: 2.5, energy: 3 } },
   { id: 'coder', name: '程序员', icon: '💻', minLevel: 22, requires: ['deg:college:cs'], minutes: 60, drain: { hunger: 2, clean: 1.2, mood: 3, energy: 3.5 } },
   { id: 'lawyer', name: '律师', icon: '⚖️', minLevel: 23, requires: ['deg:college:law'], minutes: 60, drain: { hunger: 2.2, clean: 1.2, mood: 3, energy: 3.5 } },
   { id: 'doctor', name: '猪猪医生', icon: '🩺', minLevel: 23, requires: ['deg:college:med'], minutes: 60, drain: { hunger: 2.5, clean: 1.5, mood: 3, energy: 4 } },
   { id: 'architect', name: '系统架构师', icon: '🖥️', minLevel: 25, requires: ['deg:master:cs'], minutes: 60, drain: { hunger: 2, clean: 1.2, mood: 3, energy: 3.5 } },
   { id: 'fund', name: '存钱罐基金经理', icon: '📈', minLevel: 25, requires: ['deg:master:fin'], minutes: 60, drain: { hunger: 2, clean: 1, mood: 3.5, energy: 3.5 } },
+  { id: 'orchestra', name: '交响乐团首席', icon: '🎻', minLevel: 25, requires: ['deg:master:arts'], minutes: 60, drain: { hunger: 2, clean: 1, mood: 2.5, energy: 3.5 } },
+  { id: 'artist', name: '著名艺术家', icon: '🌟', minLevel: 27, requires: ['deg:phd:arts'], minutes: 60, drain: { hunger: 2, clean: 2, mood: 2, energy: 3 } },
   { id: 'professor', name: '大学教授', icon: '🎓', minLevel: 27, requires: ['deg:phd:edu'], minutes: 50, drain: { hunger: 1.8, clean: 1, mood: 2, energy: 3 } },
   { id: 'surgeon', name: '猪猪医院院长', icon: '🏥', minLevel: 27, requires: ['deg:phd:med'], minutes: 60, drain: { hunger: 2.5, clean: 1.5, mood: 3, energy: 4.5 } },
   { id: 'scientist', name: '首席科学家', icon: '🚀', minLevel: 28, requires: ['deg:phd:cs'], minutes: 60, drain: { hunger: 2, clean: 1.2, mood: 2.5, energy: 4 } },
@@ -246,7 +280,7 @@ function requiredCourses(tokens, set = new Set()) {
     let ids = [t];
     if (t.startsWith('deg:')) {
       const [, stageId, majorId] = t.split(':');
-      ids = COURSES.filter((c) => c.stage === stageId && (!majorId || c.major === majorId)).map((c) => c.id);
+      ids = COURSES.filter((c) => c.stage === stageId && !c.elective && (!majorId || c.major === majorId)).map((c) => c.id);
     }
     for (const id of ids) {
       if (set.has(id)) continue;
@@ -291,7 +325,19 @@ const SHOP_CATS = [
   { id: 'hygiene', name: '卫生用品', icon: '🧴', desc: '用了增加清洁度' },
   { id: 'toy', name: '玩具', icon: '🧸', desc: '买一次可以反复玩，玩完要歇一会儿' },
   { id: 'medicine', name: '药物', icon: '💊', desc: '生病时吃，恢复健康' },
+  { id: 'wear', name: '装扮', icon: '🎀', desc: '买一次，可以随时戴上或摘下' },
+  { id: 'furniture', name: '家具', icon: '🛋️', desc: '摆在家里，一直有效' },
 ];
+
+// Hobbies unlocked by the electives. Each takes a few minutes; effects grow with how far the
+// subject was studied (1 at primary, up to 3 at high school). cooldown in minutes.
+// tool: furniture group (or item id) the pig needs to own to do it
+const HOBBIES = [
+  { id: 'piano', name: '弹琴', icon: '🎹', subject: 'music', tool: 'piano', toolName: '琴', minutes: 10, effects: { mood: 12, energy: -4 }, cooldown: 30 },
+  { id: 'paint', name: '画画', icon: '🖌️', subject: 'art', tool: 'easel', toolName: '画架', minutes: 10, effects: { mood: 12, energy: -3 }, cooldown: 30 },
+  { id: 'soccer', name: '踢球', icon: '⚽', subject: 'pe', tool: 'ball', toolName: '皮球', minutes: 10, effects: { mood: 8, health: 4, energy: -10, hunger: -4 }, cooldown: 30 },
+];
+const HOBBY_BY_ID = Object.fromEntries(HOBBIES.map((h) => [h.id, h]));
 
 // Toys are kept after use; cooldown is in minutes
 const TOY_COST = { energy: -5, hunger: -2 };
@@ -329,5 +375,34 @@ const ITEMS = [
   { id: 'coldmed', cat: 'medicine', name: '感冒药', icon: '💊', price: 45, effects: { health: 30, mood: -3 } },
   { id: 'fevermed', cat: 'medicine', name: '退烧药', icon: '🌡️', price: 70, effects: { health: 45, mood: -3 } },
   { id: 'firstaid', cat: 'medicine', name: '急救包', icon: '🩹', price: 150, effects: { health: 80 } },
+
+  // worn on the head or the face; bought once (see WEAR_SVG in pet.js for the drawings)
+  { id: 'bow', cat: 'wear', slot: 'head', name: '粉色蝴蝶结', icon: '🎀', price: 80, effects: {} },
+  { id: 'flower', cat: 'wear', slot: 'head', name: '小花发夹', icon: '🌸', price: 120, effects: {} },
+  { id: 'shades', cat: 'wear', slot: 'face', name: '酷酷墨镜', icon: '🕶️', price: 200, effects: {} },
+  { id: 'tophat', cat: 'wear', slot: 'head', name: '绅士礼帽', icon: '🎩', price: 350, effects: {} },
+  { id: 'crown', cat: 'wear', slot: 'head', name: '小皇冠', icon: '👑', price: 600, effects: {} },
+
+  // furniture for the pig's home, bought once. Only the best item of each group counts.
+  // bonus multiplies: sleep (energy regained asleep), bath (free bath), study (exp from classes),
+  // moodDrain (how fast mood drops), piano / paint (those hobbies; owning one unlocks the hobby)
+  { id: 'bed1', cat: 'furniture', group: 'bed', name: '小木床', icon: '🛏️', price: 300, effects: {}, bonus: { sleep: 1.25 } },
+  { id: 'bed2', cat: 'furniture', group: 'bed', name: '软软大床', icon: '🛏️', price: 1200, effects: {}, bonus: { sleep: 1.5 } },
+  { id: 'bed3', cat: 'furniture', group: 'bed', name: '豪华公主床', icon: '🛌', price: 5000, effects: {}, bonus: { sleep: 2 } },
+  { id: 'tub1', cat: 'furniture', group: 'tub', name: '小浴缸', icon: '🛁', price: 400, effects: {}, bonus: { bath: 1.5 } },
+  { id: 'tub2', cat: 'furniture', group: 'tub', name: '按摩浴缸', icon: '🫧', price: 3000, effects: {}, bonus: { bath: 2.5 } },
+  { id: 'desk1', cat: 'furniture', group: 'desk', name: '小书桌', icon: '📝', price: 250, effects: {}, bonus: { study: 1.1 } },
+  { id: 'desk2', cat: 'furniture', group: 'desk', name: '实木书桌配台灯', icon: '💡', price: 2000, effects: {}, bonus: { study: 1.25 } },
+  { id: 'sofa1', cat: 'furniture', group: 'sofa', name: '小沙发', icon: '🛋️', price: 300, effects: {}, bonus: { moodDrain: 0.85 } },
+  { id: 'sofa2', cat: 'furniture', group: 'sofa', name: '真皮沙发', icon: '🛋️', price: 2500, effects: {}, bonus: { moodDrain: 0.7 } },
+  { id: 'piano1', cat: 'furniture', group: 'piano', name: '电子琴', icon: '🎹', price: 300, effects: {}, bonus: { piano: 1 } },
+  { id: 'piano2', cat: 'furniture', group: 'piano', name: '立式钢琴', icon: '🎹', price: 2000, effects: {}, bonus: { piano: 1.3 } },
+  { id: 'piano3', cat: 'furniture', group: 'piano', name: '三角钢琴', icon: '🎼', price: 12000, effects: {}, bonus: { piano: 1.6 } },
+  { id: 'easel1', cat: 'furniture', group: 'easel', name: '小画架', icon: '🖼️', price: 150, effects: {}, bonus: { paint: 1 } },
+  { id: 'easel2', cat: 'furniture', group: 'easel', name: '专业画室', icon: '🎨', price: 3000, effects: {}, bonus: { paint: 1.3 } },
+  { id: 'house1', cat: 'furniture', group: 'house', name: '温馨公寓', icon: '🏠', price: 20000, effects: {}, bonus: { sleep: 1.1, moodDrain: 0.9 } },
+  { id: 'house2', cat: 'furniture', group: 'house', name: '花园别墅', icon: '🏡', price: 80000, effects: {}, bonus: { sleep: 1.25, moodDrain: 0.8 } },
 ];
+
+const BONUS_NAME = { sleep: '睡觉恢复', bath: '洗澡', study: '学习经验', moodDrain: '心情消耗', piano: '弹琴', paint: '画画' };
 const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));

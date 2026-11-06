@@ -202,6 +202,85 @@ body.hover:not(.lifted) #hud {
   filter: brightness(1.06);
 }
 
+.hud-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.hud-mini {
+  flex-shrink: 0;
+  width: 34px;
+  border: none;
+  border-radius: 11px;
+  background: #fff0f5;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.hud-mini:hover {
+  background: #ffdeeb;
+}
+
+/* ---------- mini mode: just the face, quiet, stays put ---------- */
+
+body.mini #hud,
+body.mini #bubble,
+body.mini #progress,
+body.mini #zzz,
+body.mini #fx,
+body.mini #prop,
+body.mini #jet,
+body.mini #shadow,
+body.mini #cartBack,
+body.mini #cartFront {
+  display: none;
+}
+
+body.mini #petWrap {
+  left: 4px;
+  bottom: 3px;
+  width: 88px;
+  height: 78px;
+  transition: transform 0.3s;
+}
+
+body.mini #pet svg {
+  width: 88px;
+  height: 78px;
+}
+
+body.mini #petHit {
+  inset: 0;
+  border-radius: 45%;
+}
+
+/* hiding at a screen edge: turned so the eyes face into the screen */
+body.peek-left #petWrap {
+  transform: rotate(90deg);
+}
+
+body.peek-right #petWrap {
+  transform: rotate(-90deg);
+}
+
+#needDot {
+  display: none;
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fa5252;
+  box-shadow: 0 0 0 2px #fff;
+  pointer-events: none;
+}
+
+body.mini.needy #needDot {
+  display: block;
+  animation: pulse 1s ease-in-out infinite;
+}
+
 /* ---------- speech bubble ---------- */
 
 #bubble {

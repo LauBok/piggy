@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld('home', {
   onState: (cb) => ipcRenderer.on('home:state', (_e, snap) => cb(snap)),
   onToast: (cb) => ipcRenderer.on('home:toast', (_e, t) => cb(t)),
   onTab: (cb) => ipcRenderer.on('home:tab', (_e, tab) => cb(tab)),
+  updateStatus: () => ipcRenderer.invoke('update:status'),
+  checkUpdate: () => ipcRenderer.invoke('update:check'),
+  applyUpdate: () => ipcRenderer.invoke('update:apply'),
   minimize: () => ipcRenderer.send('home:min'),
   close: () => ipcRenderer.send('home:close'),
 });

@@ -196,9 +196,14 @@
   }
 }
 
-.eating #mouth {
+.eating #mouth,
+.dining #mouth {
   transform-origin: 50% 50%;
   animation: chew 0.22s ease-in-out infinite alternate;
+}
+
+.wear-face .glasses {
+  display: none;
 }
 
 @keyframes chew {
@@ -241,8 +246,13 @@
   display: none;
 }
 
-.form-baby.eating #mouth {
+.form-baby.eating #mouth,
+.form-baby.dining #mouth {
   display: inline;
+}
+
+.form-baby.dining .paci {
+  display: none;
 }
 
 .form-baby.eating .paci {

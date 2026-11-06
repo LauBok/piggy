@@ -86,6 +86,48 @@ const ACCESSORIES = {
     <rect x="76" y="14" width="8" height="5" rx="2" fill="#74c0fc"/>`,
 };
 
+// Which activity/sickness accessory the pig shows right now
+const accKeyFor = (s) => (s.activity && ACCESSORIES[s.activity.type] ? s.activity.type : s.health < 40 ? 'icebag' : null);
+
+// ---------- outfits bought in the shop ----------
+
+const WEAR_SVG = {
+  bow: `<g transform="translate(107 24) rotate(18)">
+      <path d="M0 0 L-16 -10 Q-21 0 -16 10 Z" fill="#ff6b9d"/><path d="M0 0 L16 -10 Q21 0 16 10 Z" fill="#ff6b9d"/>
+      <path d="M-12 -5 L-5 -1 M12 -5 L5 -1" stroke="#fff" stroke-width="1.6" opacity=".6" stroke-linecap="round"/>
+      <circle r="5" fill="#f03e83"/></g>`,
+  flower: `<g transform="translate(52 30)" fill="#ffd6e7" stroke="#f783ac" stroke-width="1.2">
+      <circle cx="0" cy="-6.5" r="6"/><circle cx="6.2" cy="-2" r="6"/><circle cx="3.8" cy="5.3" r="6"/>
+      <circle cx="-3.8" cy="5.3" r="6"/><circle cx="-6.2" cy="-2" r="6"/>
+      <circle r="4.2" fill="#ffd43b" stroke="#fab005"/></g>`,
+  shades: `<g>
+      <path d="M45 61 L33 56 M115 61 L127 56" stroke="#2b2b3a" stroke-width="3" stroke-linecap="round"/>
+      <rect x="44" y="55" width="28" height="17" rx="8" fill="#2b2b3a"/><rect x="88" y="55" width="28" height="17" rx="8" fill="#2b2b3a"/>
+      <path d="M72 61 Q80 57 88 61" stroke="#2b2b3a" stroke-width="3" fill="none"/>
+      <path d="M50 60 L59 60 M94 60 L103 60" stroke="#fff" stroke-width="2.2" opacity=".55" stroke-linecap="round"/></g>`,
+  tophat: `<g>
+      <rect x="59" y="-6" width="42" height="32" rx="4" fill="#343a40"/>
+      <rect x="59" y="16" width="42" height="7" fill="#e64980"/>
+      <ellipse cx="80" cy="26" rx="36" ry="7" fill="#212529"/>
+      <path d="M64 -2 L64 14" stroke="#fff" stroke-width="2.5" opacity=".15" stroke-linecap="round"/></g>`,
+  crown: `<g>
+      <path d="M58 28 L60 6 L70 17 L80 1 L90 17 L100 6 L102 28 Z" fill="#ffd43b" stroke="#f59f00" stroke-width="1.6" stroke-linejoin="round"/>
+      <circle cx="80" cy="19" r="3.4" fill="#ff6b6b"/><circle cx="67" cy="22" r="2.4" fill="#4dabf7"/><circle cx="93" cy="22" r="2.4" fill="#4dabf7"/></g>`,
+};
+
+// Draws what the pig wears. Head items stay off while a school cap, hard hat or ice bag is on;
+// sunglasses replace the youth form's glasses.
+function renderWear(root, wear, accKey) {
+  const g = root.querySelector('#wear');
+  const headId = wear?.head && !accKey ? wear.head : null;
+  const faceId = wear?.face || null;
+  const key = `${headId}|${faceId}`;
+  if (g.dataset.key === key) return;
+  g.dataset.key = key;
+  g.innerHTML = (headId ? WEAR_SVG[headId] : '') + (faceId ? WEAR_SVG[faceId] : '');
+  root.classList.toggle('wear-face', !!faceId);
+}
+
 // ---------- growth forms ----------
 
 const OUTFIT = {
@@ -99,9 +141,9 @@ const OUTFIT = {
     <path d="M76.5 118 L83.5 116 M76 124 L84 122" stroke="#91a7ff" stroke-width="1.5"/>`,
   bowtie: `<path d="M80 112 L67 104.5 Q65 112 67 119.5 Z M80 112 L93 104.5 Q95 112 93 119.5 Z" fill="#7048e8"/>
     <circle cx="80" cy="112" r="3.2" fill="#5f3dc4"/>`,
-  glasses: `<g fill="rgba(255,255,255,.2)" stroke="#6b4b57" stroke-width="2.2">
+  glasses: `<g class="glasses"><g fill="rgba(255,255,255,.2)" stroke="#6b4b57" stroke-width="2.2">
       <circle cx="58" cy="64" r="12.5"/><circle cx="102" cy="64" r="12.5"/></g>
-    <path d="M70.5 62 Q80 57 89.5 62 M45.5 62 L34 57 M114.5 62 L126 57" fill="none" stroke="#6b4b57" stroke-width="2.2" stroke-linecap="round"/>`,
+    <path d="M70.5 62 Q80 57 89.5 62 M45.5 62 L34 57 M114.5 62 L126 57" fill="none" stroke="#6b4b57" stroke-width="2.2" stroke-linecap="round"/></g>`,
   pacifier: `<g class="paci"><ellipse cx="80" cy="99" rx="10.5" ry="6.8" fill="#91d5ff" stroke="#4dabf7" stroke-width="1.5"/>
     <circle cx="80" cy="99" r="2.8" fill="#fff"/>
     <circle cx="80" cy="108.5" r="5" fill="none" stroke="#ffd43b" stroke-width="3"/></g>`,
@@ -204,6 +246,7 @@ const PIG_SVG = `
     <g id="mouth"></g>
     <g id="outfitOver"></g>
     <g id="faceAcc"></g>
+    <g id="wear"></g>
     <g id="dirt" opacity="0" fill="#9c7b5b">
       <ellipse cx="60" cy="120" rx="6" ry="4"/><ellipse cx="100" cy="127" rx="5" ry="3.5"/>
       <circle cx="108" cy="44" r="3.5"/><circle cx="52" cy="52" r="2.5"/><circle cx="68" cy="38" r="2.2"/>
@@ -261,6 +304,11 @@ const PetView = {
     this.wrap.classList.toggle(cls, on);
   },
 
+  // Mini mode shows only the face: crop the drawing to the head
+  setMini(on) {
+    this.svg.setAttribute('viewBox', on ? '18 2 124 108' : '0 0 160 150');
+  },
+
   setFacing(dir) {
     this.svg.style.transform = dir < 0 ? 'scaleX(-1)' : '';
   },
@@ -306,16 +354,21 @@ const PetView = {
     this.setPose('sick', s.health < 40);
     this.setPose('sleeping', game.sleeping);
 
-    const type = s.activity?.type;
-    this.setPose('studying', type === 'study');
+    const a = s.activity;
+    const type = a?.type;
+    this.setPose('studying', type === 'study' || (type === 'hobby' && a.id !== 'soccer'));
     this.setPose('working', type === 'work');
+    this.setPose('dining', type === 'help' && a.id === 'meal');
     if (Date.now() >= this.propUntil) {
       if (type === 'study') this.setProp('📖', 'prop-study');
-      else if (type === 'work') this.setProp(JOB_BY_ID[s.activity.id].icon, 'prop-work');
+      else if (type === 'work') this.setProp(JOB_BY_ID[a.id].icon, 'prop-work');
+      else if (type === 'help') this.setProp(a.id === 'meal' ? '🍱' : '🌡️', 'prop-study');
+      else if (type === 'hobby') this.setProp(HOBBY_BY_ID[a.id].icon, a.id === 'soccer' ? 'prop-toy' : 'prop-study');
       else this.setProp('', '');
     }
+    renderWear(this.wrap, s.wear, accKeyFor(s));
 
-    const accKey = s.activity && ACCESSORIES[s.activity.type] ? s.activity.type : s.health < 40 ? 'icebag' : null;
+    const accKey = accKeyFor(s);
     if (accKey !== this.accKey) {
       this.accKey = accKey;
       this.acc.innerHTML = accKey ? ACCESSORIES[accKey] : '';

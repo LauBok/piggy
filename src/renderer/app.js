@@ -44,6 +44,7 @@ const App = {
     Game.takeLevelUp(); // growth while closed is shown by the new form, no need to announce
     const fedWhileAway = Game.takeSelfCare();
     await Motion.init();
+    if (Game.s.mini) await this.setMini(true);
     this.bindInput();
     window.pet.onAct((action, id) => this.act(action, id));
     window.pet.onStateRequest(() => this.push());
@@ -134,12 +135,9 @@ const App = {
       }
       case 'help':
         res = Game.help(id);
-        if (res.ok && id === 'meal') {
-          PetView.flash('eat', 1600);
-          PetView.showProp(FREE_HELP_BY_ID.meal.icon, 'prop-eat', 1600);
-          this.pose('eating', 1600);
-          this.hold(2500);
-        }
+        break;
+      case 'hobby':
+        res = Game.startHobby(id);
         break;
       case 'minigame': {
         const [name, result] = String(id).split(':');
@@ -194,6 +192,9 @@ const App = {
         Game.reset();
         res = { msg: '一只新的小猪诞生啦！' };
         break;
+      case 'mini':
+        this.setMini(!Game.s.mini);
+        return;
       case 'quit':
         Game.save();
         window.pet.quit();
@@ -271,8 +272,34 @@ const App = {
     document.body.classList.remove('lifted');
     PetView.setPose('dragged', false);
     PetView.flash('surprised', 500);
+    if (Game.s.mini) {
+      PetView.setPose('airborne', false);
+      this.setPeek(await Motion.dropMini(pos));
+      return;
+    }
     Motion.drop(pos);
     if (!Motion.falling) PetView.setPose('airborne', false);
+  },
+
+  // Mini mode: just a small face that stays put and keeps quiet (a red dot when it needs you)
+  async setMini(on) {
+    Game.s.mini = on;
+    this.setPeek(null);
+    document.body.classList.toggle('mini', on);
+    PetView.setMini(on);
+    const pos = await window.pet.setMini(on);
+    await new Promise((r) => requestAnimationFrame(r)); // let the window size settle before measuring
+    Motion.x = on ? pos.x : clamp(pos.x, Motion.minX, Motion.maxX);
+    Motion.y = pos.y;
+    Motion.place();
+    if (!on) Motion.startFall();
+    Game.save();
+    this.push();
+  },
+
+  // Which screen edge the mini face is hiding behind, if any
+  setPeek(edge) {
+    for (const e of ['left', 'right', 'bottom']) document.body.classList.toggle(`peek-${e}`, e === edge);
   },
 
   onLand(height, jetted) {
@@ -317,6 +344,7 @@ const App = {
       e.preventDefault();
       window.pet.openHome('status');
     });
+    hit.addEventListener('dblclick', () => Game.s.mini && this.setMini(false));
 
     // The window is mostly transparent: let clicks fall through to the desktop
     // except over the pet and the overview card (elements marked .hit)
@@ -376,6 +404,7 @@ const App = {
     }
 
     if (!this.hovered) document.body.classList.remove('hover');
+    document.body.classList.toggle('needy', !!needLine());
     PetView.update(Game);
     UI.refresh();
     this.push();

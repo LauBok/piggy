@@ -23,6 +23,12 @@ const effChips = (effects) =>
 
 const chip = (text, color) => `<span class="eff" style="--c:${color}">${text}</span>`;
 
+// what a piece of furniture does, e.g. 睡觉恢复 ×1.5, 解锁弹琴
+const bonusChips = (bonus = {}) =>
+  Object.entries(bonus)
+    .map(([k, v]) => chip(v === 1 ? `解锁${BONUS_NAME[k]}` : `${BONUS_NAME[k]} ×${v}`, '#845ef7'))
+    .join('');
+
 const reqChips = (reqs) => reqs.map((r) => `<span class="req ${r.ok ? 'ok' : 'no'}">${esc(r.text)}</span>`).join('');
 
 const ring = (key, color) => `<svg viewBox="0 0 40 40"><circle class="track" cx="20" cy="20" r="16"/>
@@ -32,6 +38,9 @@ let snap = null;
 let page = new URLSearchParams(location.search).get('tab') || 'status';
 let lastKey = '';
 let resetArmed = false;
+let updInfo = null; // versions and pending updates, from the main process
+let updBusy = false;
+let updChecked = false;
 let shopCat = 'food';
 let treeSel = null;
 let schoolStage = null;
@@ -46,6 +55,8 @@ const freeToAct = () => !snap.busy && !snap.sleeping;
 function activityIcon(a) {
   if (a.type === 'study') return COURSE_BY_ID[a.id].icon;
   if (a.type === 'work') return JOB_BY_ID[a.id].icon;
+  if (a.type === 'help') return FREE_HELP_BY_ID[a.id].icon;
+  if (a.type === 'hobby') return HOBBY_BY_ID[a.id].icon;
   return '🛁';
 }
 
@@ -87,15 +98,25 @@ const PAGES = {
         : { action: 'sleep', icon: '😴', name: '睡觉', ok: free },
       { action: 'play', icon: '🤸', name: '玩耍', ok: free && !snap.sleeping },
       { action: 'follow', icon: '🐾', name: '跟随', ok: true, on: s.follow },
+      { action: 'mini', icon: '🫣', name: '迷你', ok: true, on: s.mini },
       ...FREE_HELP.map((h) => {
         const wait = Math.max(0, ((s.helpReady[h.id] || 0) - Date.now()) / 60000);
-        const ok = !snap.sleeping && wait <= 0 && !(h.maxHealth && s.health >= h.maxHealth);
+        const ok = freeToAct() && wait <= 0 && !(h.maxHealth && s.health >= h.maxHealth);
         return { action: 'help', id: h.id, icon: h.icon, name: h.name, ok, sub: wait > 0 ? `⏱ ${Math.ceil(wait)} 分` : '免费' };
       }),
     ];
-    return `${act}${growth}<div class="stats">${stats}</div>
-      <div class="tiles">${tiles.map((t) => `<button class="tile ${t.on ? 'on' : ''}" data-action="${t.action}" ${t.id ? `data-id="${t.id}"` : ''} ${t.ok ? '' : 'disabled'}>
-        <span class="tile-ic">${t.icon}</span><b>${t.name}</b>${t.sub ? `<small>${t.sub}</small>` : ''}</button>`).join('')}</div>`;
+    // hobbies: unlocked by the electives, locked ones show which subject opens them
+    const hobbies = HOBBIES.map((h) => {
+      const eff = hobbyEffects(s, h);
+      const wait = Math.max(0, ((s.hobbyReady[h.id] || 0) - Date.now()) / 60000);
+      const lock = hobbyLock(s, h);
+      if (lock) return { action: 'hobby', id: h.id, icon: h.icon, name: h.name, ok: false, sub: `${lock.why === 'subject' ? '🔒' : '🛒'} ${lock.text}`, locked: true };
+      return { action: 'hobby', id: h.id, icon: h.icon, name: h.name, ok: freeToAct() && wait <= 0, sub: wait > 0 ? `⏱ ${Math.ceil(wait)} 分` : `心情 +${eff.mood}` };
+    });
+    const tileRow = (list) => `<div class="tiles">${list.map((t) => `<button class="tile ${t.on ? 'on' : ''} ${t.locked ? 'locked' : ''}"
+      data-action="${t.action}" ${t.id ? `data-id="${t.id}"` : ''} ${t.ok ? '' : 'disabled'}>
+      <span class="tile-ic">${t.icon}</span><b>${t.name}</b>${t.sub ? `<small>${t.sub}</small>` : ''}</button>`).join('')}</div>`;
+    return `${act}${growth}<div class="stats">${stats}</div>${tileRow(tiles)}${tileRow(hobbies)}`;
   },
 
   bag() {
@@ -123,6 +144,21 @@ const PAGES = {
           effects = { mood: Math.round(it.effects.mood * fun) };
           badge = fun < 0.5 ? '<span class="badge soft">😑 玩腻了</span>' : '';
         }
+        if (it.cat === 'wear') {
+          const worn = s.wear[it.slot] === it.id;
+          label = worn ? '摘下' : '戴上';
+          ok = true;
+          badge = worn ? '<span class="badge">✓</span>' : '';
+        }
+        if (it.cat === 'furniture') {
+          // only the best piece of each kind is in use
+          const better = ITEMS.some((x) => x.group === it.group && x.price > it.price && inv[x.id]);
+          return `<div class="card goods ${better ? 'locked' : ''}">
+            <div class="goods-ic">${it.icon}</div><b>${it.name}</b>
+            <div class="effs">${bonusChips(it.bonus)}</div>
+            <button class="btn ${better ? '' : 'done'}" disabled>${better ? '闲置' : '使用中'}</button>
+          </div>`;
+        }
         return `<div class="card goods">
           ${badge}
           <div class="goods-ic">${it.icon}</div><b>${it.name}</b>
@@ -138,11 +174,11 @@ const PAGES = {
     const pills = SHOP_CATS.map((c) => `<button class="pill ${c.id === shopCat ? 'on' : ''}" data-action="shopCat" data-id="${c.id}">${c.icon} ${c.name}</button>`).join('');
     const goods = ITEMS.filter((it) => it.cat === shopCat).map((it) => {
       const owned = s.inventory[it.id] || 0;
-      const toyOwned = it.cat === 'toy' && owned;
+      const toyOwned = ['toy', 'wear', 'furniture'].includes(it.cat) && owned;
       return `<div class="card goods">
         ${owned ? `<span class="badge soft">${toyOwned ? '已拥有' : `已有 ${owned}`}</span>` : ''}
         <div class="goods-ic">${it.icon}</div><b>${it.name}</b>
-        <div class="effs">${effChips(it.effects)}${it.cooldown ? chip(`⏱ ${it.cooldown} 分`, '#868e96') : ''}</div>
+        <div class="effs">${effChips(it.effects)}${bonusChips(it.bonus)}${it.cooldown ? chip(`⏱ ${it.cooldown} 分`, '#868e96') : ''}</div>
         <button class="btn" data-action="buy" data-id="${it.id}" ${toyOwned || s.money < it.price ? 'disabled' : ''}>
           ${toyOwned ? '已拥有' : `🪙 ${it.price}`}</button>
       </div>`;
@@ -207,7 +243,7 @@ const PAGES = {
         majors = per.filter((p) => p.n > 0)
           .map((p) => `<i class="${p.n === p.total ? 'got' : ''}" title="${p.m.name} ${p.n}/${p.total}">${p.m.icon}</i>`).join('');
       } else {
-        const list = COURSES.filter((c) => c.stage === st.id);
+        const list = COURSES.filter((c) => c.stage === st.id && !c.elective);
         frac = done(list) / list.length;
         got = frac === 1;
       }
@@ -249,7 +285,7 @@ const PAGES = {
     const center = `<div class="fcenter ${st}" style="left:${xMid}px;width:${W.mid}px">
       <div class="fc-top">${sibBtn(prevSib, 'back', '‹')}<small>${at + 1} / ${siblings.length}</small>${sibBtn(nextSib, 'fwd', '›')}</div>
       <div class="fc-ic">${sel.icon}</div><b>${label(sel)}</b>
-      <div class="effs">${chip(`⏱ ${sel.minutes} 分`, '#868e96')}${fee ? chip(`🪙 ${fee}`, '#f59f00') : ''}</div>
+      <div class="effs">${sel.elective ? chip('选修', '#845ef7') : ''}${chip(`⏱ ${sel.minutes} 分`, '#868e96')}${fee ? chip(`🪙 ${fee}`, '#f59f00') : ''}</div>
       ${st === 'done' ? '' : `<div class="reqs">${reqChips(courseReqs(s, sel).slice(0, 1))}</div>`}
       ${btn}</div>`;
 
@@ -317,7 +353,19 @@ const PAGES = {
   more() {
     const s = snap.s;
     const degs = degrees(s);
-    return `<div class="card form"><h3>名字</h3>
+    // version and the one update button: check, or apply whatever is waiting
+    const u = updInfo;
+    let btn = '<button class="btn" data-action="checkUpdate">检查更新</button>';
+    if (!u) btn = '';
+    else if (!u.packaged) btn = '<button class="btn" disabled>开发版</button>';
+    else if (updBusy) btn = '<button class="btn" disabled>检查中…</button>';
+    else if (u.contentUpdate) btn = `<button class="btn" data-action="applyUpdate">更新到 ${u.contentUpdate}</button>`;
+    else if (u.update?.ready) btn = `<button class="btn" data-action="applyUpdate">重启更新到 ${u.update.version}</button>`;
+    else if (u.update?.downloading) btn = `<button class="btn" disabled>下载中 ${u.update.version}…</button>`;
+    else if (u.update) btn = `<button class="btn" data-action="applyUpdate">下载 ${u.update.version}</button>`;
+    else if (updChecked) btn = '<button class="btn ghost" data-action="checkUpdate">✓ 已是最新</button>';
+    const ver = u ? `<div class="card form version"><div><b>🐷 v${u.app}</b>${u.content !== u.app ? `<small>内容 v${u.content}</small>` : ''}</div>${btn}</div>` : '';
+    return `${ver}<div class="card form"><h3>名字</h3>
         <div class="field"><input id="nameInput" maxlength="8" value="${esc(s.name)}" />
           <button class="btn" data-action="rename">保存</button></div></div>
       ${degs.length ? `<div class="card form"><h3>学历</h3>
@@ -339,7 +387,7 @@ function structKey() {
     page, s.inventory, Math.floor(s.money), s.level, s.courses, s.activity && [s.activity.type, s.activity.id],
     s.follow, s.name, resetArmed, shopCat, treeSel, schoolStage, schoolMajor, workFilter, gameBlock(), minuteTick,
     page === 'work' ? [Math.round(s.hunger), Math.round(s.energy)] : 0,
-    s.helpReady, s.health >= MIN_HEALTH_TO_ACT, page === 'bag' ? s.toyBored : 0, page === 'games' ? s.playDay : 0,
+    s.helpReady, s.hobbyReady, s.wear, s.health >= MIN_HEALTH_TO_ACT, page === 'more' ? [updInfo, updBusy, updChecked] : 0, page === 'bag' ? s.toyBored : 0, page === 'games' ? s.playDay : 0,
   ]);
 }
 
@@ -392,6 +440,12 @@ function go(id) {
   if (id !== 'games') activeGame = null;
   page = id;
   update();
+  if (id === 'more') {
+    window.home.updateStatus().then((info) => {
+      updInfo = info;
+      update();
+    });
+  }
 }
 
 let toastTimer;
@@ -440,6 +494,7 @@ const Avatar = {
     this.dirt.setAttribute('opacity', s.clean < 50 ? ((50 - s.clean) / 50).toFixed(2) : 0);
     this.root.classList.toggle('sick', s.health < 40);
     this.root.classList.toggle('sleeping', sleeping);
+    renderWear(this.root, s.wear, null);
   },
 };
 
@@ -447,6 +502,18 @@ const Avatar = {
 const LOCAL = {
   go,
   shopCat: (id) => { shopCat = id; update(); },
+  checkUpdate: async () => {
+    updBusy = true;
+    update();
+    updInfo = await window.home.checkUpdate();
+    updBusy = false;
+    updChecked = true;
+    update();
+  },
+  applyUpdate: async () => {
+    updInfo = await window.home.applyUpdate();
+    update();
+  },
   focus: (id, data) => {
     treeDir = data.dir || '';
     treeSel = id;
@@ -510,3 +577,7 @@ window.home.onState((s) => {
 window.home.onToast(toast);
 window.home.onTab(go);
 window.home.ready();
+window.home.updateStatus().then((info) => {
+  updInfo = info;
+  update();
+});

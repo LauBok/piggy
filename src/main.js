@@ -21,10 +21,31 @@ let dragTimer = null;
 
 const savePath = () => path.join(app.getPath('userData'), 'save.json');
 
+// The pet window is full size, or just big enough for the face in mini mode
+const FULL_SIZE = { w: WIN_W, h: WIN_H };
+const MINI_SIZE = { w: 96, h: 84 };
+let size = FULL_SIZE;
+
 // setBounds instead of setPosition: on scaled Windows displays setPosition can slowly grow the window
 function moveTo(x, y) {
-  win.setBounds({ x: Math.round(x), y: Math.round(y), width: WIN_W, height: WIN_H });
+  win.setBounds({ x: Math.round(x), y: Math.round(y), width: size.w, height: size.h });
 }
+
+// Switch size around the bottom centre, where the pig stands; returns the new position
+ipcMain.handle('win:mini', (_e, on) => {
+  const b = win.getBounds();
+  size = on ? MINI_SIZE : FULL_SIZE;
+  const x = Math.round(b.x + b.width / 2 - size.w / 2);
+  const y = Math.round(b.y + b.height - size.h);
+  moveTo(x, y);
+  return { x, y };
+});
+
+ipcMain.handle('screen:display', () => {
+  const b = win.getBounds();
+  const d = screen.getDisplayNearestPoint({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+  return { bounds: d.bounds, workArea: d.workArea };
+});
 
 function createWindow() {
   const { workArea } = screen.getPrimaryDisplay();
@@ -121,6 +142,7 @@ function buildTrayMenu() {
   const items = [
     { label: '显示小猪', click: () => win.show() },
     { label: '打开小窝', click: () => openHome() },
+    { label: '迷你模式', click: () => win.webContents.send('pet:act', 'mini') },
   ];
   if (contentUpdate) items.push({ label: `更新内容到 ${contentUpdate}（重新加载）`, click: applyContent });
   if (update?.ready) items.push({ label: `重启并更新到 ${update.version}`, click: () => autoUpdater.quitAndInstall() });
@@ -138,15 +160,42 @@ function applyContent() {
 }
 
 // New game content: tell the pet and offer it in the tray (it also applies on the next start)
-function setupContentUpdates() {
-  const found = (version) => {
-    contentUpdate = version;
-    buildTrayMenu();
-    win.webContents.send('pet:update', { version, content: true });
-  };
-  content.check(found);
-  setInterval(() => content.check(found), 6 * 3600 * 1000);
+function contentFound(version) {
+  contentUpdate = version;
+  buildTrayMenu();
+  win.webContents.send('pet:update', { version, content: true });
 }
+
+function setupContentUpdates() {
+  content.check(contentFound);
+  setInterval(() => content.check(contentFound), 6 * 3600 * 1000);
+}
+
+// For the 设置 page: versions and what update, if any, is waiting
+const updateStatus = () => ({
+  packaged: app.isPackaged,
+  app: require('../package.json').version,
+  content: content.version(),
+  contentUpdate,
+  update,
+});
+
+ipcMain.handle('update:status', () => updateStatus());
+
+ipcMain.handle('update:check', async () => {
+  if (app.isPackaged) await autoUpdater.checkForUpdates().catch(() => {});
+  await content.check(contentFound);
+  return updateStatus();
+});
+
+// Applies whatever is waiting: new content reloads the windows, a downloaded app update
+// installs and restarts, and on Mac a new app version opens the download page
+ipcMain.handle('update:apply', () => {
+  if (contentUpdate) applyContent();
+  else if (update?.ready) autoUpdater.quitAndInstall();
+  else if (update) shell.openExternal(RELEASES_URL);
+  return updateStatus();
+});
 
 function createTray() {
   tray = new Tray(trayIcon());
@@ -166,7 +215,10 @@ function setupUpdates() {
     buildTrayMenu();
     win.webContents.send('pet:update', update);
   };
-  autoUpdater.on('update-available', (info) => !canInstall && tell(false, info.version));
+  autoUpdater.on('update-available', (info) => {
+    if (canInstall) update = { version: info.version, ready: false, downloading: true };
+    else tell(false, info.version);
+  });
   autoUpdater.on('update-downloaded', (info) => tell(true, info.version));
   autoUpdater.on('error', (err) => console.log('update check failed:', err?.message));
   const check = () => autoUpdater.checkForUpdates().catch(() => {});

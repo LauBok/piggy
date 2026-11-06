@@ -11,9 +11,42 @@ function fmtTime(sec) {
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }
 
-// All courses of a stage (and major, for university stages) are done
+// All required courses of a stage (and major, for university stages) are done; electives don't count
 function stageDone(s, stageId, majorId) {
-  return COURSES.filter((c) => c.stage === stageId && (!majorId || c.major === majorId)).every((c) => s.courses[c.id]);
+  return COURSES.filter((c) => c.stage === stageId && !c.elective && (!majorId || c.major === majorId)).every((c) => s.courses[c.id]);
+}
+
+// How far an elective subject was studied: 0 (not at all) to 3 (high school)
+const subjectLevel = (s, subject) => COURSES.filter((c) => c.subject === subject && s.courses[c.id]).length;
+
+// Combined furniture bonus for one effect (sleep, bath, study, moodDrain, piano, paint):
+// the best item owned in each furniture group counts, and groups multiply
+function homeBonus(s, key) {
+  const best = {};
+  for (const it of ITEMS) {
+    if (it.cat !== 'furniture' || !s.inventory[it.id]) continue;
+    if (!best[it.group] || it.price > best[it.group].price) best[it.group] = it;
+  }
+  return Object.values(best).reduce((k, it) => k * (it.bonus[key] ?? 1), 1);
+}
+
+// Owns what a hobby needs: a furniture group (any piano) or an item (the ball)
+const hasTool = (s, tool) =>
+  ITEM_BY_ID[tool] ? !!s.inventory[tool] : ITEMS.some((it) => it.group === tool && s.inventory[it.id]);
+
+// Why a hobby can't be done yet ({ why: 'subject' | 'tool', text }), or null
+function hobbyLock(s, hobby) {
+  if (!subjectLevel(s, hobby.subject)) return { why: 'subject', text: SUBJECT_BY_ID[hobby.subject].name };
+  if (!hasTool(s, hobby.tool)) return { why: 'tool', text: hobby.toolName };
+  return null;
+}
+
+// A hobby's effects for this pig: stronger the further its subject was studied and with
+// better furniture; null if locked
+function hobbyEffects(s, hobby) {
+  if (hobbyLock(s, hobby)) return null;
+  const k = (1 + 0.3 * (subjectLevel(s, hobby.subject) - 1)) * homeBonus(s, hobby.id);
+  return Object.fromEntries(Object.entries(hobby.effects).map(([key, v]) => [key, v > 0 ? Math.round(v * k) : v]));
 }
 
 function reqMet(s, token) {
