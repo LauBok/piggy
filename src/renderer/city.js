@@ -3,11 +3,13 @@
 // at their shops and people stroll the paths. Game state only comes in as snapshots; clicks and
 // entering go out through the callbacks given to City.init().
 
-const PIG_SCALE = 0.38;
-const NPC_SCALE = 0.3;
-const WALKER_SCALE = 0.24;
+const PIG_SCALE = 0.52;
+const NPC_SCALE = 0.42;
+const WALKER_SCALE = 0.34;
 const WALK_SPEED = 190; // px per second
 const FX_EVERY = 2600;
+// how close the camera is: world pixels are drawn this many screen pixels big
+const ZOOM = 1.45;
 const KEY_DIRS = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0], arrowup: [0, -1], arrowleft: [-1, 0], arrowdown: [0, 1], arrowright: [1, 0] };
 // places you go into through a door, by walking up into it
 const DOOR_KINDS = ['building', 'home', 'pavilion', 'stage', 'houses'];
@@ -56,6 +58,7 @@ class PigSprite {
     this.root.classList.toggle('sleeping', sleeping);
     const accKey = accKeyFor(s);
     renderWear(this.root, s.wear, accKey);
+    renderLook(this.root, s.look);
     if (accKey !== this.accKey) {
       this.accKey = accKey;
       this.acc.innerHTML = accKey ? ACCESSORIES[accKey] : '';
@@ -64,6 +67,34 @@ class PigSprite {
 }
 
 const POSES = ['walking', 'working', 'studying', 'dining', 'dig', 'riding', 'jump'];
+
+// The pig using an item where it stands (in town or at home): food goes to its mouth and it
+// chews, a toy makes it jump about, soap and medicine sparkle. root: the pig drawing; host: where
+// the item and the little effects float.
+function playUse(root, host, it) {
+  const kind = { food: 'eating', toy: 'jump', hygiene: 'washing', medicine: 'eating' }[it.cat];
+  clearTimeout(root.useTimer);
+  root.classList.remove('eating', 'jump', 'washing');
+  void root.offsetWidth;
+  root.classList.add(kind);
+  host.querySelector('.use-prop')?.remove();
+  const prop = document.createElement('div');
+  prop.className = `use-prop use-${kind}`;
+  prop.textContent = it.icon;
+  host.appendChild(prop);
+  const fx = { eating: it.cat === 'medicine' ? '💗' : '😋', jump: '🎵', washing: '✨' }[kind];
+  setTimeout(() => {
+    const f = document.createElement('div');
+    f.className = 'use-fx';
+    f.textContent = fx;
+    host.appendChild(f);
+    setTimeout(() => f.remove(), 1200);
+  }, 900);
+  root.useTimer = setTimeout(() => {
+    root.classList.remove(kind);
+    prop.remove();
+  }, 1700);
+}
 
 const City = {
   cam: { x: 0, y: 0 },
@@ -130,7 +161,7 @@ const City = {
     const decoSvgG = (d) => `<g class="deco"><title>${d.name}</title>${decoSvg(d)}</g>`;
     const all = [...PLACES.map((p) => ({ p, svg: placeSvg })), ...DECOS.map((p) => ({ p, svg: decoSvgG }))]
       .sort((a, b) => a.p.y + a.p.h - (b.p.y + b.p.h));
-    svg.innerHTML = `${groundSvg()}${farmSvg()}${all.map((o) => o.svg(o.p)).join('')}<g id="donations"></g>${scenerySvg()}${signsSvg()}`;
+    svg.innerHTML = `${groundSvg()}${farmSvg()}${all.map((o) => o.svg(o.p)).join('')}<g id="donations"></g>${scenerySvg()}${marketSvg()}${signsSvg()}`;
     this.homeTier = -1;
     this.donated = '';
   },
@@ -156,6 +187,12 @@ const City = {
         renderFace(gold.querySelector('#eyes'), gold.querySelector('#mouth'), 'cheerful');
       }
     }
+    // the vegetable patch, redrawn when a plot changes stage
+    const crops = (s.farm || []).map((p) => (p ? `${p.seed}:${plotProgress(p) >= 1 ? 2 : plotProgress(p) >= 0.4 ? 1 : 0}` : '')).join();
+    if (crops !== this.crops) {
+      this.crops = crops;
+      document.getElementById('gardenCrops').innerHTML = gardenCrops(s.farm || []);
+    }
     for (const p of PLACES) {
       if (!p.minLevel) continue;
       this.world.querySelector(`[data-place="${p.id}"]`).classList.toggle('locked', s.level < p.minLevel);
@@ -169,14 +206,33 @@ const City = {
       { y: 780, x1: 1300, x2: 2440, sp: 'bear' }, { y: 2378, x1: 1270, x2: 2420, sp: 'duck' },
       { y: 968, x1: 1270, x2: 2420, sp: 'dog' }, { y: 1528, x1: 1270, x2: 2420, sp: 'sheep' },
     ];
+    this.walkerLines = [];
     document.getElementById('walkers').innerHTML = lanes.map((l, i) => {
       const dx = l.x2 - l.x1;
       const dur = dx / 30;
-      return `<div class="actor walker" style="transform:translate(${l.x1}px,${l.y}px)">
+      this.walkerLines.push(PASSER_LINES[l.sp]);
+      return `<div class="actor walker" data-walker="${i}" style="transform:translate(${l.x1}px,${l.y}px)">
         <div class="a-move patrol" style="--dx:${dx}px;--dur:${dur}s;animation-delay:${-i * 13}s">
+          <div class="npc-say"></div>
           <div class="a-face patrol-face" style="--dur:${dur}s;animation-delay:${-i * 13}s"><div class="a-sprite hop" style="--k:${WALKER_SCALE}">${animalSvg(l.sp)}</div></div>
         </div></div>`;
     }).join('') + this.pastureAnimals();
+  },
+
+  // Right-click a passer-by or a farm animal: it stops for a moment and says something
+  chat(el) {
+    const lines = this.walkerLines[el.dataset.walker];
+    const say = el.querySelector('.npc-say');
+    say.textContent = lines[Math.floor(Math.random() * lines.length)];
+    say.classList.remove('on');
+    void say.offsetWidth;
+    say.classList.add('on');
+    el.classList.add('talking');
+    clearTimeout(el.timer);
+    el.timer = setTimeout(() => {
+      el.classList.remove('talking');
+      say.classList.remove('on');
+    }, 2600);
   },
 
   // The ranch animals ambling about their pasture
@@ -187,8 +243,10 @@ const City = {
       const y = p.y + 80 + ((i * 131) % (p.h - 120));
       const dx = 40 + ((i * 37) % 60);
       const dur = 9 + i * 2;
-      return `<div class="actor walker" style="transform:translate(${x}px,${y}px)">
+      this.walkerLines.push(PASSER_LINES[a]);
+      return `<div class="actor walker farm" data-walker="${this.walkerLines.length - 1}" style="transform:translate(${x}px,${y}px)">
         <div class="a-move patrol" style="--dx:${dx}px;--dy:${(i % 3) * 10 - 10}px;--dur:${dur}s;animation-delay:${-i * 3}s">
+          <div class="npc-say"></div>
           <div class="a-face patrol-face" style="--dur:${dur}s;--f:-1;animation-delay:${-i * 3}s"><span class="farm-animal">${a}</span></div></div></div>`;
     }).join('');
   },
@@ -196,6 +254,10 @@ const City = {
   // ---------- neighbours ----------
 
   npcPos(n) {
+    if (n.spot != null) {
+      const h = PLACE_BY_ID.neighbors.houses[n.spot];
+      return { x: h.x + 44, y: h.y - 6 };
+    }
     const d = PLACE_BY_ID[n.place].door;
     return { x: d.x + 50, y: d.y + 8 };
   },
@@ -205,7 +267,7 @@ const City = {
       const { x, y } = this.npcPos(n);
       return `<div class="actor npc" data-npc="${n.id}" style="transform:translate(${x}px,${y}px)">
         <div class="npc-bubble" data-wish="${n.id}"></div><div class="npc-say" data-say="${n.id}"></div>
-        <div class="a-sprite" style="--k:${NPC_SCALE}">${animalSvg(n.species)}</div></div>`;
+        <div class="a-sprite" style="--k:${n.small ? NPC_SCALE * 0.72 : NPC_SCALE}">${animalSvg(n.species)}</div></div>`;
     }).join('');
   },
 
@@ -235,15 +297,24 @@ const City = {
 
   // ---------- camera ----------
 
+  // how much of the world fits in the view
+  get viewW() {
+    return this.vp.clientWidth / ZOOM;
+  },
+
+  get viewH() {
+    return this.vp.clientHeight / ZOOM;
+  },
+
   setCam(x, y) {
-    this.cam.x = clamp(x, 0, WORLD.w - this.vp.clientWidth);
-    this.cam.y = clamp(y, 0, WORLD.h - this.vp.clientHeight);
-    this.world.style.transform = `translate3d(${-Math.round(this.cam.x)}px, ${-Math.round(this.cam.y)}px, 0)`;
+    this.cam.x = clamp(x, 0, WORLD.w - this.viewW);
+    this.cam.y = clamp(y, 0, WORLD.h - this.viewH);
+    this.world.style.transform = `translate3d(${-Math.round(this.cam.x * ZOOM)}px, ${-Math.round(this.cam.y * ZOOM)}px, 0) scale(${ZOOM})`;
     this.updateMinimap();
   },
 
   camFor(px, py) {
-    return { x: px - this.vp.clientWidth / 2, y: py - 30 - this.vp.clientHeight / 2 };
+    return { x: px - this.viewW / 2, y: py - 30 - this.viewH / 2 };
   },
 
   centerOnPig() {
@@ -255,8 +326,8 @@ const City = {
   flyTo(px, py, ms = 650) {
     this.follow = false;
     const t = this.camFor(px, py + 30);
-    const tx = clamp(t.x, 0, WORLD.w - this.vp.clientWidth);
-    const ty = clamp(t.y, 0, WORLD.h - this.vp.clientHeight);
+    const tx = clamp(t.x, 0, WORLD.w - this.viewW);
+    const ty = clamp(t.y, 0, WORLD.h - this.viewH);
     const from = { ...this.cam };
     const t0 = performance.now();
     cancelAnimationFrame(this.flyRaf);
@@ -302,7 +373,7 @@ const City = {
         this.vp.classList.add('dragging');
         this.hideTip();
       }
-      this.setCam(press.cx - dx, press.cy - dy);
+      this.setCam(press.cx - dx / ZOOM, press.cy - dy / ZOOM);
     });
     window.addEventListener('pointerup', () => {
       press = null;
@@ -324,17 +395,25 @@ const City = {
       if (pl) return this.goInto(pl.dataset.place);
       // anywhere else: walk there
       const r = this.vp.getBoundingClientRect();
-      const x = e.clientX - r.left + this.cam.x;
-      const y = e.clientY - r.top + this.cam.y;
+      const x = (e.clientX - r.left) / ZOOM + this.cam.x;
+      const y = (e.clientY - r.top) / ZOOM + this.cam.y;
       if (this.canWalk(true) && walkable(x, y)) this.walkTo({ x, y });
     }, true);
+    // right-click someone to talk to them
+    this.vp.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const w = e.target.closest('[data-walker]');
+      if (w) return this.chat(w);
+      const npc = e.target.closest('[data-npc]');
+      if (npc) this.cb.onNpc(npc.dataset.npc);
+    });
     this.vp.addEventListener('wheel', (e) => {
       e.preventDefault();
       cancelAnimationFrame(this.flyRaf);
       this.follow = false;
       const sx = e.shiftKey ? e.deltaY : e.deltaX;
       const sy = e.shiftKey ? 0 : e.deltaY;
-      this.setCam(this.cam.x + sx, this.cam.y + sy);
+      this.setCam(this.cam.x + sx / ZOOM, this.cam.y + sy / ZOOM);
     }, { passive: false });
     this.vp.addEventListener('mouseover', (e) => {
       const pl = e.target.closest('[data-place]');
@@ -364,7 +443,7 @@ const City = {
     if (down && [' ', 'e', 'enter'].includes(k) && !this.locked) {
       const p = this.doorNear(60);
       if (p) {
-        this.cb.onEnter(p.id);
+        this.enter(p.id);
         return true;
       }
     }
@@ -386,6 +465,21 @@ const City = {
   lock(on) {
     this.locked = on;
     if (on) this.keys.clear();
+    // coming back out of a building: the pig steps out of its door
+    if (!on && this.inside) {
+      const p = PLACE_BY_ID[this.inside];
+      this.inside = null;
+      if (!this.at?.place && !this.route) {
+        this.placePig(p.entry.x, p.entry.y);
+        this.follow = true;
+      }
+    }
+  },
+
+  // Go into a place (its sheet opens)
+  enter(id) {
+    this.inside = id;
+    this.cb.onEnter(id);
   },
 
   // A place whose door is right in front of the pig
@@ -401,8 +495,8 @@ const City = {
   // Click on a place: walk to its door and go in (or just go in if the pig can't walk now)
   goInto(id) {
     const p = PLACE_BY_ID[id];
-    if (!this.canWalk() || Math.hypot(this.pos.x - p.entry.x, this.pos.y - p.entry.y) < 30) return this.cb.onEnter(id);
-    this.walkTo(p.entry, () => this.cb.onEnter(id));
+    if (!this.canWalk() || Math.hypot(this.pos.x - p.entry.x, this.pos.y - p.entry.y) < 30) return this.enter(id);
+    this.walkTo(p.entry, () => this.enter(id));
   },
 
   npcTip(id) {
@@ -516,7 +610,7 @@ const City = {
           const p = PLACES.find((q) => DOOR_KINDS.includes(q.kind) && Math.abs(x - q.door.x) < 26 && y >= q.door.y - 4 && y - q.door.y < 30);
           if (p) {
             this.keys.clear();
-            this.cb.onEnter(p.id);
+            this.enter(p.id);
           }
         }
       }
@@ -743,6 +837,11 @@ const City = {
     setTimeout(() => el.remove(), 1600);
   },
 
+  // Eat something, play with a toy, wash: a short animation on the pig
+  react(it) {
+    playUse(this.sprite.root, this.actor, it);
+  },
+
   // ---------- the menu over the pig ----------
 
   togglePigMenu(open = !this.menuOpen) {
@@ -775,6 +874,13 @@ const City = {
     svg += `<path d="${ptsD(RIVER)}" stroke="#7cc4ea" stroke-width="${RIVER_W * 2}" fill="none"/>`;
     for (const f of [...FIELDS, PASTURE]) svg += `<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="10" fill="${f.crop ? '#c9a27a' : '#a9dc8a'}"/>`;
     for (const d of DECOS) svg += `<rect x="${d.x}" y="${d.y}" width="${d.w}" height="${d.h}" rx="12" fill="#d8d0c6"/>`;
+    if (big) {
+      // names for the buildings you can't go in, and the fields
+      const label = (x, y, t) => `<text x="${x}" y="${y}" class="mp-minor">${t}</text>`;
+      for (const d of DECOS) svg += label(d.x + d.w / 2, d.y + d.h / 2, `${d.icon} ${d.name}`);
+      for (const f of FIELDS) svg += label(f.x + f.w / 2, f.y + f.h / 2, '🌱 农田');
+      svg += label(PASTURE.x + PASTURE.w / 2, PASTURE.y + PASTURE.h / 2, '🐄 牧场');
+    }
     for (const p of PLACES) {
       const locked = s && p.minLevel && s.level < p.minLevel;
       svg += `<g class="mp ${locked ? 'locked' : ''}" ${big ? `data-mplace="${p.id}"` : ''}>
@@ -798,8 +904,8 @@ const City = {
     if (!v) return;
     v.setAttribute('x', this.cam.x);
     v.setAttribute('y', this.cam.y);
-    v.setAttribute('width', this.vp.clientWidth);
-    v.setAttribute('height', this.vp.clientHeight);
+    v.setAttribute('width', this.viewW);
+    v.setAttribute('height', this.viewH);
     if (this.pos) {
       const pig = document.getElementById('mmPig');
       pig.setAttribute('cx', this.pos.x);
@@ -812,15 +918,68 @@ const City = {
     }
   },
 
+  // The big map opens zoomed in around the pig; drag to look around, wheel to zoom
   openMap() {
     const el = document.getElementById('mapView');
     el.innerHTML = `<div class="mv-head"><b>🗺️ 猪猪城地图</b><button class="sh-x" data-action="closeMap">✕</button></div>
-      <svg viewBox="0 0 ${WORLD.w} ${WORLD.h}" preserveAspectRatio="xMidYMid meet">${this.mapSvg(true)}
-        <g transform="translate(${this.pos.x} ${this.pos.y})"><circle r="34" class="mv-pig"/><text y="4" class="mp-ic">🐷</text></g></svg>`;
+      <div class="mv-box"><svg>${this.mapSvg(true)}
+        <g transform="translate(${this.pos.x} ${this.pos.y})"><circle r="34" class="mv-pig"/><text y="4" class="mp-ic">🐷</text></g></svg></div>`;
     el.classList.add('on');
-    el.onclick = (e) => {
+    const box = el.querySelector('.mv-box');
+    const svg = box.querySelector('svg');
+    const bw = box.clientWidth;
+    const bh = box.clientHeight;
+    // scale: screen pixels per map pixel, from the whole map fitting up to fairly close
+    const minK = Math.min(bw / WORLD.w, bh / WORLD.h);
+    const maxK = 0.9;
+    const v = { k: 0.42, x: 0, y: 0 };
+    const show = () => {
+      v.k = clamp(v.k, minK, maxK);
+      const w = bw / v.k;
+      const h = bh / v.k;
+      v.x = w >= WORLD.w ? (WORLD.w - w) / 2 : clamp(v.x, 0, WORLD.w - w);
+      v.y = h >= WORLD.h ? (WORLD.h - h) / 2 : clamp(v.y, 0, WORLD.h - h);
+      svg.setAttribute('viewBox', `${v.x} ${v.y} ${w} ${h}`);
+    };
+    v.x = this.pos.x - bw / v.k / 2;
+    v.y = this.pos.y - bh / v.k / 2;
+    show();
+    let press = null;
+    let dragged = false;
+    box.onpointerdown = (e) => {
+      press = { x: e.clientX, y: e.clientY, vx: v.x, vy: v.y };
+      dragged = false;
+      box.setPointerCapture(e.pointerId);
+    };
+    box.onpointermove = (e) => {
+      if (!press) return;
+      const dx = e.clientX - press.x;
+      const dy = e.clientY - press.y;
+      if (!dragged && Math.hypot(dx, dy) < 5) return;
+      dragged = true;
+      box.classList.add('dragging');
+      v.x = press.vx - dx / v.k;
+      v.y = press.vy - dy / v.k;
+      show();
+    };
+    box.onpointerup = () => {
+      press = null;
+      box.classList.remove('dragging');
+    };
+    // zoom around the point under the mouse
+    box.onwheel = (e) => {
+      e.preventDefault();
+      const r = box.getBoundingClientRect();
+      const mx = v.x + (e.clientX - r.left) / v.k;
+      const my = v.y + (e.clientY - r.top) / v.k;
+      v.k = clamp(v.k * (e.deltaY < 0 ? 1.15 : 1 / 1.15), minK, maxK);
+      v.x = mx - (e.clientX - r.left) / v.k;
+      v.y = my - (e.clientY - r.top) / v.k;
+      show();
+    };
+    box.onclick = (e) => {
       const t = e.target.closest('[data-mplace]');
-      if (!t) return;
+      if (!t || dragged) return;
       this.closeMap();
       this.flyToPlace(t.dataset.mplace);
     };

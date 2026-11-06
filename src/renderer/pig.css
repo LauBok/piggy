@@ -340,3 +340,13 @@
   from { transform: scale(0.75) translateY(2px); }
   to { transform: scale(1.1) translateY(-3px); }
 }
+
+/* salon fur colours: tint the fur only, not eyes, clothes or hats */
+.fur-cream .skin { filter: saturate(0.25) brightness(1.1); }
+.fur-choco .skin { filter: sepia(1) saturate(1.5) hue-rotate(-28deg) brightness(0.66); }
+.fur-lilac .skin { filter: hue-rotate(-50deg) saturate(0.8); }
+.fur-mint .skin { filter: hue-rotate(140deg) saturate(0.75) brightness(1.05); }
+.fur-gold .skin { filter: sepia(0.7) saturate(2.6) hue-rotate(5deg) brightness(1.05); }
+
+/* a hairstyle hides the little curl on top */
+.has-hair .tuft { display: none; }

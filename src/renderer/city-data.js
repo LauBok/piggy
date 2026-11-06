@@ -46,6 +46,7 @@ const RIVER_X = (() => {
 const riverXAt = (y) => RIVER_X[clamp(Math.round(y), 0, WORLD.h)];
 // wooden bridges where roads cross the river
 const BRIDGES = [860, 1330, 2050].map((y) => ({ x: riverXAt(y), y }));
+const BRIDGE_HALF = RIVER_W + 42; // half the deck's length: past the banks on both sides
 
 // Regions, each with its own feel. ground: how its ground is drawn. sign: where its name board stands.
 const DISTRICTS = [
@@ -62,13 +63,16 @@ const ROAD_DEFS = [
   // village lane, from the forest steps down through the village
   { pts: [[504, 430], [480, 720], [520, 1000], [560, 1340], [520, 1700], [560, 2000], [600, 2560]] },
   // over the north bridge to the school walkway, on to the building site
-  { pts: [[480, 760], [800, 830], [BRIDGES[0].x, 860], [1300, 790], [1900, 760], [2460, 770], [2830, 760]] },
+  { pts: [[480, 760], [800, 830], [BRIDGES[0].x - BRIDGE_HALF, 860]] },
+  { pts: [[BRIDGES[0].x + BRIDGE_HALF, 860], [1300, 790], [1900, 760], [2460, 770], [2830, 760]] },
   // up the steps to the hot spring
   { pts: [[1550, 790], [1550, 430], [1600, 360], [1700, 350]] },
   // over the middle bridge into town
-  { pts: [[560, 1340], [880, 1320], [BRIDGES[1].x, 1330], [1270, 1330]] },
+  { pts: [[560, 1340], [880, 1320], [BRIDGES[1].x - BRIDGE_HALF, 1330]] },
+  { pts: [[BRIDGES[1].x + BRIDGE_HALF, 1330], [1270, 1330]] },
   // over the south bridge onto the shopping street
-  { pts: [[560, 2000], [880, 2050], [BRIDGES[2].x, 2050], [1250, 2050]] },
+  { pts: [[560, 2000], [880, 2050], [BRIDGES[2].x - BRIDGE_HALF, 2050]] },
+  { pts: [[BRIDGES[2].x + BRIDGE_HALF, 2050], [1250, 2050]] },
   // up in the hills
   { pts: [[200, 380], [504, 400], [900, 360], [1454, 400], [2000, 360], [2600, 380]] },
   // the park's winding paths
@@ -85,6 +89,7 @@ const ROAD_DEFS = [
   { stone: true, pts: [[2440, 770], [2440, 2370]] },
   { stone: true, pts: [[1250, 2050], [2440, 2050]] },
   { stone: true, pts: [[1250, 2370], [2440, 2370]] },
+  { stone: true, pts: [[2440, 2370], [2910, 2400]] },
 ];
 const ROADS = ROAD_DEFS.map((r) => ({ ...r, line: r.stone ? r.pts : smoothLine(r.pts) }));
 
@@ -115,6 +120,8 @@ const PLACES = [
     look: { body: '#fff9db', roof: 'dome', roofColor: '#ffd43b', win: [1, 4], extra: 'columns' } },
   { id: 'bank', name: '存钱罐银行', icon: '🐷', kind: 'building', x: 2130, y: 1060, w: 210, h: 160, sheet: 'jobs',
     look: { body: '#fff0f6', roof: 'pediment', roofColor: '#f783ac', win: [1, 3], extra: 'columns' } },
+  { id: 'supermarket', name: '超市', icon: '🛒', kind: 'building', x: 1290, y: 1280, w: 180, h: 190, sheet: 'shop',
+    look: { body: '#e7f5ff', roof: 'flat', roofColor: '#1c7ed6', awning: ['#fa5252', '#fff'], win: [1, 3], extra: ['carts'] } },
   { id: 'plaza', name: '中心广场', icon: '⛲', kind: 'plaza', x: 1720, y: 1268, w: 360, h: 236, sheet: 'jobs' },
   { id: 'artpalace', name: '艺术宫', icon: '🎻', kind: 'building', x: 2130, y: 1300, w: 280, h: 200, sheet: 'jobs',
     look: { body: '#fff0f6', roof: 'dome', roofColor: '#cc5de8', win: [2, 4], extra: 'columns' } },
@@ -127,31 +134,39 @@ const PLACES = [
   { id: 'chess', name: '棋亭', icon: '♟️', kind: 'pavilion', x: 2560, y: 820, w: 180, h: 150, sheet: 'chess' },
   { id: 'stage', name: '露天舞台', icon: '🎤', kind: 'stage', x: 3160, y: 700, w: 240, h: 170, sheet: 'jobs' },
   { id: 'lake', name: '鸭鸭湖', icon: '🦆', kind: 'lake', x: 2860, y: 1060, w: 440, h: 300, sheet: 'jobs' },
-  { id: 'field', name: '球场', icon: '⚽', kind: 'field', x: 2560, y: 1600, w: 300, h: 200, sheet: 'field' },
+  { id: 'field', name: '球场', icon: '⚽', kind: 'field', x: 2500, y: 1650, w: 280, h: 190, sheet: 'field' },
+
+  // the furniture warehouse, on its own big lot
+  { id: 'furniture', name: '家具城', icon: '🛋️', kind: 'building', x: 2720, y: 2140, w: 380, h: 220, sheet: 'furniture',
+    look: { body: '#f4ece4', roof: 'flat', roofColor: '#a9805b', awning: ['#94d82d', '#fff'], win: [1, 4], extra: ['warehouse', 'sofaout'] } },
 
   // pig village
   { id: 'home', name: '猪猪的家', icon: '🏠', kind: 'home', x: 260, y: 1120, w: 210, h: 180, sheet: 'home' },
   { id: 'kinder', name: '幼儿园', icon: '🧸', kind: 'building', x: 700, y: 1530, w: 170, h: 150, sheet: 'jobs',
     look: { body: '#fff3bf', roof: 'gable', roofColor: '#ffa94d', win: [1, 2], extra: 'balloons' } },
+  { id: 'farm', name: '农牧市场', icon: '🧺', kind: 'building', x: 620, y: 1150, w: 210, h: 140, sheet: 'shop',
+    look: { body: '#fff4e6', roof: 'gable', roofColor: '#94d82d', awning: ['#ff922b', '#fff'], win: [1, 2], extra: ['stalls'] } },
+  { id: 'garden', name: '菜园', icon: '🌱', kind: 'garden', x: 70, y: 1150, w: 170, h: 130, sheet: 'garden' },
   { id: 'neighbors', name: '邻居家', icon: '🏡', kind: 'houses', x: 100, y: 1620, w: 360, h: 330, sheet: 'jobs' },
 
   // shopping street: shoulder to shoulder
-  { id: 'bakery', name: '面包房', icon: '🍞', kind: 'building', x: 1290, y: 1850, w: 170, h: 150, sheet: 'shop', cat: 'food',
+  { id: 'bakery', name: '面包房', icon: '🍞', kind: 'building', x: 1290, y: 1850, w: 170, h: 150, sheet: 'shop',
     look: { body: '#fff4e6', roof: 'gable', roofColor: '#e8a87c', awning: ['#ff8787', '#fff'], win: [1, 2] } },
-  { id: 'bubble', name: '泡泡屋', icon: '🧼', kind: 'building', x: 1470, y: 1860, w: 160, h: 140, sheet: 'shop', cat: 'hygiene',
+  { id: 'bubble', name: '泡泡屋', icon: '🧼', kind: 'building', x: 1470, y: 1860, w: 160, h: 140, sheet: 'shop',
     look: { body: '#e3fafc', roof: 'dome', roofColor: '#74c0fc', awning: ['#4dabf7', '#fff'], win: [1, 2], extra: 'bubbles' } },
-  { id: 'toy', name: '玩具店', icon: '🧸', kind: 'building', x: 1720, y: 1850, w: 170, h: 150, sheet: 'shop', cat: 'toy',
+  { id: 'toy', name: '玩具店', icon: '🧸', kind: 'building', x: 1720, y: 1850, w: 170, h: 150, sheet: 'shop',
     look: { body: '#fff9db', roof: 'gable', roofColor: '#fcc419', awning: ['#ffa94d', '#fff'], win: [1, 2] } },
-  { id: 'clothes', name: '服装店', icon: '🎀', kind: 'building', x: 1900, y: 1860, w: 180, h: 140, sheet: 'shop', cat: 'wear',
+  { id: 'clothes', name: '服装店', icon: '🎀', kind: 'building', x: 1900, y: 1860, w: 180, h: 140, sheet: 'shop',
     look: { body: '#fff0f6', roof: 'flat', roofColor: '#f783ac', awning: ['#f783ac', '#fff'], win: [1, 2] } },
-  { id: 'furniture', name: '家具城', icon: '🛋️', kind: 'building', x: 2120, y: 1830, w: 220, h: 170, sheet: 'furniture',
-    look: { body: '#f4ece4', roof: 'gable', roofColor: '#a9805b', awning: ['#94d82d', '#fff'], win: [2, 3] } },
-  { id: 'store', name: '小卖部', icon: '🏪', kind: 'building', x: 1280, y: 2190, w: 160, h: 140, sheet: 'jobs',
+
+  { id: 'store', name: '小卖部', icon: '🏪', kind: 'building', x: 1280, y: 2190, w: 160, h: 140, sheet: 'shop',
     look: { body: '#ebfbee', roof: 'flat', roofColor: '#40c057', awning: ['#40c057', '#fff'], win: [1, 2] } },
-  { id: 'restaurant', name: '小猪餐馆', icon: '🍜', kind: 'building', x: 1460, y: 2170, w: 220, h: 160, sheet: 'jobs',
+  { id: 'restaurant', name: '小猪餐馆', icon: '🍜', kind: 'building', x: 1460, y: 2170, w: 220, h: 160, sheet: 'shop',
     look: { body: '#fff5f5', roof: 'gable', roofColor: '#e03131', awning: ['#e03131', '#fff'], win: [1, 3], extra: 'lantern' } },
   { id: 'artschool', name: '艺术培训', icon: '🎼', kind: 'building', x: 1720, y: 2180, w: 180, h: 150, sheet: 'jobs',
     look: { body: '#f8f0fc', roof: 'gable', roofColor: '#9775fa', win: [2, 2], extra: 'note' } },
+  { id: 'salon', name: '美容院', icon: '💇', kind: 'building', x: 1915, y: 2185, w: 180, h: 145, sheet: 'salon',
+    look: { body: '#f8f0fc', roof: 'gable', roofColor: '#f06595', awning: ['#f06595', '#fff'], win: [1, 2] } },
   { id: 'courier', name: '快递站', icon: '📦', kind: 'building', x: 2120, y: 2190, w: 220, h: 140, sheet: 'jobs',
     look: { body: '#fff3bf', roof: 'flat', roofColor: '#f59f00', win: [1, 2], extra: 'garage' } },
 ];
@@ -159,7 +174,6 @@ const PLACE_BY_ID = Object.fromEntries(PLACES.map((p) => [p.id, p]));
 
 // Buildings that are just part of town (you can't go in), to fill the streets and the countryside
 const DECOS = [
-  { name: '公寓', icon: '🏢', x: 1300, y: 1270, w: 160, h: 200, look: { body: '#ffe3e3', roof: 'flat', roofColor: '#fa5252', win: [4, 3] } },
   { name: '书店', icon: '📚', x: 1490, y: 1300, w: 170, h: 170, look: { body: '#fff4e6', roof: 'gable', roofColor: '#94d82d', awning: ['#2f9e44', '#fff'], win: [1, 2] } },
   { name: '电影院', icon: '🎬', x: 1730, y: 1540, w: 220, h: 160, look: { body: '#f3f0ff', roof: 'flat', roofColor: '#7048e8', win: [1, 3] } },
   { name: '咖啡馆', icon: '☕', x: 1962, y: 1580, w: 118, h: 120, look: { body: '#f8f0e3', roof: 'gable', roofColor: '#a9805b', awning: ['#a9805b', '#fff'], win: [1, 2] } },
@@ -173,7 +187,6 @@ const DECOS = [
 const FIELDS = [
   { x: 90, y: 560, w: 330, h: 330, crop: ['🥕', '🥬', '🌽'] },
   { x: 640, y: 910, w: 200, h: 150, crop: ['🎃'] },
-  { x: 90, y: 1150, w: 140, h: 120, crop: ['🍓'] },
 ];
 const PASTURE = { x: 80, y: 2080, w: 420, h: 400, animals: ['🐄', '🐑', '🐑', '🐐', '🐄', '🐔'] };
 
@@ -182,7 +195,15 @@ const COTTAGES = [[0, 0], [200, 30], [40, 190]];
 const COTTAGE_W = 150;
 const COTTAGE_H = 130;
 
+// Little touches that make buildings recognisable (see facade() in city-art.js)
+const PLACE_EXTRAS = {
+  bakery: ['chimney', 'breadwin'], toy: ['teddy', 'balloons'], clothes: ['mannequin'], restaurant: ['lantern', 'chimney'],
+  canteen: ['chimney'], clinic: ['cross', 'ambulance'], courier: ['garage', 'truck'], artschool: ['note', 'keys'],
+  office: ['glass'], tower: ['antenna', 'helipad', 'glass'], salon: ['pole'],
+};
+
 for (const p of PLACES) {
+  if (PLACE_EXTRAS[p.id]) p.look.extra = PLACE_EXTRAS[p.id];
   p.door = { x: p.x + p.w / 2, y: p.y + p.h };
   // where the pig stands to go in
   p.entry = { x: p.door.x, y: p.door.y + 18 };
@@ -206,14 +227,14 @@ const DONATION_SPOTS = {
 
 // ---------- what blocks walking ----------
 
-const PIG_R = 14; // half the pig's width at its feet
+const PIG_R = 18; // half the pig's width at its feet
 
 // Rectangles [x1, y1, x2, y2] and ellipses { cx, cy, rx, ry } the pig can't walk into
 const BLOCKERS = (() => {
   const rects = [];
   const ellipses = [];
   for (const p of PLACES) {
-    if (['building', 'home', 'pavilion', 'stage'].includes(p.kind)) rects.push([p.x, p.y, p.x + p.w, p.y + p.h - 4]);
+    if (['building', 'home', 'pavilion', 'stage', 'garden'].includes(p.kind)) rects.push([p.x, p.y, p.x + p.w, p.y + p.h - 4]);
     if (p.kind === 'lake') ellipses.push({ cx: p.x + p.w / 2, cy: p.y + p.h / 2 + 6, rx: p.w / 2, ry: p.h / 2 - 6 });
     if (p.kind === 'spring') ellipses.push({ cx: p.x + p.w / 2, cy: p.y + p.h - 70, rx: p.w / 2 - 10, ry: 56 });
   }
@@ -231,7 +252,7 @@ const BLOCKERS = (() => {
   return { rects, ellipses };
 })();
 
-const onBridge = (x, y) => BRIDGES.some((b) => Math.abs(x - b.x) < 70 && Math.abs(y - b.y) < 24);
+const onBridge = (x, y) => BRIDGES.some((b) => Math.abs(x - b.x) < BRIDGE_HALF && Math.abs(y - b.y) < 22);
 
 function walkable(x, y) {
   if (x < 20 || y < 30 || x > WORLD.w - 20 || y > WORLD.h - 12) return false;
@@ -465,7 +486,33 @@ function sceneOf(snap) {
 const jobsAt = (placeId) => JOBS.filter((j) => JOB_SCENES[j.id].place === placeId);
 
 // Where a stat ring in the bar takes you: somewhere that helps with it
-const STAT_PLACE = { hunger: 'bakery', clean: 'bubble', energy: 'home', health: 'clinic', mood: 'chess' };
+const STAT_PLACE = { hunger: 'supermarket', clean: 'bubble', energy: 'home', health: 'clinic', mood: 'chess' };
 
 // The old pages of the home window (tray menu, right-click), as places
-const TAB_TO_PLACE = { status: null, bag: 'bag', shop: 'bakery', school: 'primary', work: 'tower', games: 'chess', more: 'settings' };
+const TAB_TO_PLACE = { status: null, bag: 'bag', shop: 'supermarket', school: 'primary', work: 'tower', games: 'chess', more: 'settings' };
+
+// What passers-by and the farm animals say when you right-click them
+const PASSER_LINES = {
+  cat: ['今天天气真好~', '我去买小鱼干🐟', '喵？', '你也来逛街呀'],
+  rabbit: ['胡萝卜打折啦🥕', '跳跳跳~', '小猪你好呀', '我在找兔婆婆'],
+  bear: ['哪里有蜂蜜卖🍯', '嗷~好困', '散步真舒服', '要去公园吗？'],
+  duck: ['嘎嘎！', '去湖边游泳咯🦆', '嘎…好像迷路了', '你见过嘎嘎大厨吗？'],
+  dog: ['汪！一起跑步吗', '我在找骨头🦴', '今天也加油！', '汪汪~'],
+  sheep: ['咩~好热', '刚剪了毛，凉快！', '咩咩~你好', '诊所在那边哦'],
+  '🐄': ['哞~', '哞——今天的草真香', '哞？'],
+  '🐑': ['咩~', '咩咩咩', '要摸摸我的毛吗？'],
+  '🐐': ['咩咩！', '我什么都能吃！'],
+  '🐔': ['咯咯哒🥚', '咯咯？', '下了个蛋！'],
+};
+
+// One line under each place's name on its screen
+const PLACE_TAGLINES = {
+  truffle: '树下的泥土里藏着香喷喷的松露', spring: '泡一泡，烦恼全跑光', site: '新城区正在盖楼',
+  primary: '一起读书写字吧', middle: '初中和高中都在这里', college: '学士、硕士、博士', museum: '星星、火箭和恐龙骨头',
+  tower: '城里所有的活儿都在这儿接', office: '敲键盘的声音从不停', cityhall: '户口、学历和捐建', bank: '每一枚金币都有家',
+  supermarket: '吃的用的，一站买齐', plaza: '喷泉边总有人在唱歌', artpalace: '音乐会和画展', canteen: '免费的热饭，管饱',
+  clinic: '绵绵医生在等你', chess: '龟爷爷总在等人下棋', stage: '今晚有演出', lake: '鸭子们在游泳', field: '来踢一场！',
+  home: '最舒服的地方', kinder: '小朋友们在做游戏', farm: '刚从地里摘的，新鲜！', garden: '种点什么吧',
+  neighbors: '邻居们的小房子', bakery: '每天清晨新鲜出炉', bubble: '香香的泡泡', toy: '新玩具到货啦', clothes: '今天穿什么好呢',
+  furniture: '把家布置得漂漂亮亮', salon: '换个新造型吧', store: '缺什么都可以来看看', restaurant: '热腾腾的饭菜', artschool: '学琴、学画画', courier: '包裹送到家门口',
+};

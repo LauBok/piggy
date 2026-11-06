@@ -127,6 +127,29 @@ const WEAR_SVG = {
       <circle cx="80" cy="19" r="3.4" fill="#ff6b6b"/><circle cx="67" cy="22" r="2.4" fill="#4dabf7"/><circle cx="93" cy="22" r="2.4" fill="#4dabf7"/></g>`,
 };
 
+// ---------- the salon: fur colour and hairstyle ----------
+
+const HAIR_SVG = {
+  bangs: '<path d="M38 52 Q40 22 80 20 Q120 22 122 52 Q112 40 100 46 Q90 36 80 44 Q70 36 60 46 Q48 40 38 52 Z" fill="#8c5a3c" stroke="#6b4129" stroke-width="1.5"/>',
+  curls: [[50, 30], [64, 20], [80, 16], [96, 20], [110, 30], [58, 36], [102, 36]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="10" fill="#d9a066" stroke="#a9744a" stroke-width="1.5"/>`).join(''),
+  bun: '<circle cx="80" cy="12" r="14" fill="#6b4129" stroke="#4a2c1e" stroke-width="1.5"/><path d="M56 28 Q80 10 104 28" stroke="#6b4129" stroke-width="8" fill="none" stroke-linecap="round"/><rect x="70" y="20" width="20" height="5" rx="2" fill="#ff6b9d"/>',
+  mohawk: '<path d="M70 26 L66 2 L76 14 L80 -4 L84 14 L94 2 L90 26 Z" fill="#ff6b9d" stroke="#e64980" stroke-width="1.5" stroke-linejoin="round"/>',
+};
+
+// Puts the salon's look on a pig drawing: a colour class for the fur, and a hairstyle
+function renderLook(root, look) {
+  const color = look?.color || 'pink';
+  const hair = look?.hair || '';
+  const key = `${color}|${hair}`;
+  if (root.dataset.look === key) return;
+  root.dataset.look = key;
+  for (const c of [...root.classList]) if (c.startsWith('fur-')) root.classList.remove(c);
+  root.classList.add(`fur-${color}`);
+  root.classList.toggle('has-hair', !!hair);
+  const g = root.querySelector('#hair');
+  if (g) g.innerHTML = hair ? HAIR_SVG[hair] : '';
+}
+
 // Draws what the pig wears. Head items stay off while a school cap, hard hat or ice bag is on;
 // sunglasses replace the youth form's glasses.
 function renderWear(root, wear, accKey) {
@@ -229,29 +252,30 @@ const PIG_SVG = `
   <ellipse id="shadow" cx="80" cy="145" rx="40" ry="5" fill="rgba(140,60,90,.16)"/>
   <g id="cartBack"></g>
   <g id="grow"><g class="pig"><g class="breathe">
-    <path class="tail" d="M113 118 c10 -2 12 9 5 9 c-6 0 -4 -9 4 -10" fill="none" stroke="#f28fae" stroke-width="3" stroke-linecap="round"/>
-    <ellipse cx="80" cy="116" rx="36" ry="26" fill="url(#gBody)" ${OUTLINE}/>
+    <path class="tail skin" d="M113 118 c10 -2 12 9 5 9 c-6 0 -4 -9 4 -10" fill="none" stroke="#f28fae" stroke-width="3" stroke-linecap="round"/>
+    <ellipse class="skin" cx="80" cy="116" rx="36" ry="26" fill="url(#gBody)" ${OUTLINE}/>
     <ellipse cx="80" cy="123" rx="19" ry="12" fill="#fff2f6" opacity=".8"/>
-    <g class="leg leg-a"><ellipse cx="63" cy="137" rx="9.5" ry="7.5" fill="#ffb5c9" ${OUTLINE}/></g>
-    <g class="leg leg-b"><ellipse cx="97" cy="137" rx="9.5" ry="7.5" fill="#ffb5c9" ${OUTLINE}/></g>
-    <g class="arm arm-l"><ellipse cx="47" cy="115" rx="7" ry="9" fill="#ffbccf" ${OUTLINE}/></g>
-    <g class="arm arm-r"><ellipse cx="113" cy="115" rx="7" ry="9" fill="#ffbccf" ${OUTLINE}/></g>
+    <g class="leg leg-a skin"><ellipse cx="63" cy="137" rx="9.5" ry="7.5" fill="#ffb5c9" ${OUTLINE}/></g>
+    <g class="leg leg-b skin"><ellipse cx="97" cy="137" rx="9.5" ry="7.5" fill="#ffb5c9" ${OUTLINE}/></g>
+    <g class="arm arm-l skin"><ellipse cx="47" cy="115" rx="7" ry="9" fill="#ffbccf" ${OUTLINE}/></g>
+    <g class="arm arm-r skin"><ellipse cx="113" cy="115" rx="7" ry="9" fill="#ffbccf" ${OUTLINE}/></g>
     <g id="outfitUnder"></g>
-    <g class="ear ear-l">
+    <g class="ear ear-l skin">
       <path d="M42 44 C30 30 28 14 34 10 C42 8 58 18 66 28 Z" fill="url(#gBody)" ${OUTLINE}/>
       <path d="M44 37 C37 28 36 19 39 16 C45 15 53 22 58 28 Z" fill="#ff9ab6"/>
     </g>
-    <g class="ear ear-r">
+    <g class="ear ear-r skin">
       <path d="M118 44 C130 30 132 14 126 10 C118 8 102 18 94 28 Z" fill="url(#gBody)" ${OUTLINE}/>
       <path d="M116 37 C123 28 124 19 121 16 C115 15 107 22 102 28 Z" fill="#ff9ab6"/>
     </g>
-    <ellipse cx="80" cy="66" rx="50" ry="44" fill="url(#gHead)" ${OUTLINE}/>
-    <path d="M77 23 q-3 -9 5 -10 q5 0 2 5" fill="none" stroke="#f2a0b8" stroke-width="2.2" stroke-linecap="round"/>
+    <ellipse class="skin" cx="80" cy="66" rx="50" ry="44" fill="url(#gHead)" ${OUTLINE}/>
+    <g id="hair"></g>
+    <path class="skin tuft" d="M77 23 q-3 -9 5 -10 q5 0 2 5" fill="none" stroke="#f2a0b8" stroke-width="2.2" stroke-linecap="round"/>
     <ellipse cx="43" cy="82" rx="13" ry="8" fill="url(#gCheek)"/>
     <ellipse cx="117" cy="82" rx="13" ry="8" fill="url(#gCheek)"/>
     <circle cx="39" cy="79" r="1.7" fill="#fff" opacity=".8"/><circle cx="113" cy="79" r="1.7" fill="#fff" opacity=".8"/>
     <g id="eyes"></g>
-    <ellipse cx="80" cy="84" rx="13.5" ry="9.5" fill="url(#gSnout)" stroke="#f08aa8" stroke-width="1.3"/>
+    <ellipse class="skin" cx="80" cy="84" rx="13.5" ry="9.5" fill="url(#gSnout)" stroke="#f08aa8" stroke-width="1.3"/>
     <ellipse cx="75" cy="84.5" rx="2.4" ry="3.5" fill="#c94f76"/>
     <ellipse cx="85" cy="84.5" rx="2.4" ry="3.5" fill="#c94f76"/>
     <ellipse cx="75.5" cy="79.5" rx="3.6" ry="1.4" fill="#fff" opacity=".65"/>
@@ -379,6 +403,7 @@ const PetView = {
       else this.setProp('', '');
     }
     renderWear(this.wrap, s.wear, accKeyFor(s));
+    renderLook(this.wrap, s.look);
 
     const accKey = accKeyFor(s);
     if (accKey !== this.accKey) {

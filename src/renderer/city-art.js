@@ -127,17 +127,46 @@ function groundSvg() {
   return svg;
 }
 
+// The river: sandy banks, a wet edge, deeper water in the middle, with reeds, stones and lily pads
 function riverSvg() {
   const d = ptsD(RIVER);
-  let svg = `<path d="${d}" stroke="#b8a37f" stroke-width="${RIVER_W * 2 + 14}" fill="none" stroke-linecap="round"/>
-    <path d="${d}" stroke="#7cc4ea" stroke-width="${RIVER_W * 2}" fill="none" stroke-linecap="round"/>
-    <path d="${d}" stroke="#a5d8ff" stroke-width="${RIVER_W}" fill="none" stroke-linecap="round" opacity=".6"/>
-    <path class="ripple" d="${d}" stroke="#fff" stroke-width="2.5" fill="none" stroke-dasharray="10 40" opacity=".7"/>`;
-  // wooden bridges
+  const rnd = seeded(17);
+  let svg = `<path d="${d}" stroke="#e6d7ae" stroke-width="${RIVER_W * 2 + 30}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${d}" stroke="#a8c98f" stroke-width="${RIVER_W * 2 + 10}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+    <path d="${d}" stroke="#6db6e2" stroke-width="${RIVER_W * 2}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${d}" stroke="#5aa6d6" stroke-width="${RIVER_W * 0.9}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+    <path class="ripple" d="${d}" stroke="#d6f0ff" stroke-width="2" fill="none" stroke-dasharray="6 54" opacity=".8" transform="translate(-12 0)"/>
+    <path class="ripple slow" d="${d}" stroke="#d6f0ff" stroke-width="2" fill="none" stroke-dasharray="10 70" opacity=".6" transform="translate(13 0)"/>`;
+  // things along the banks and on the water, away from the bridges
+  const nearBridge = (y) => BRIDGES.some((b) => Math.abs(y - b.y) < 60);
+  for (let i = 8; i < RIVER.length - 4; i += 7) {
+    const [x, y] = RIVER[i];
+    if (nearBridge(y) || y < CLIFF.y + CLIFF.h + 30) continue;
+    const side = rnd() < 0.5 ? -1 : 1;
+    const bx = x + side * (RIVER_W + 8 + rnd() * 6);
+    const r = rnd();
+    if (r < 0.3) {
+      svg += [0, 1, 2, 3].map((k) => `<path d="M${bx + k * 4 - 6} ${y + 6} q${side * 2} -14 ${side * 4 - 2} -22" stroke="#5c940d" stroke-width="2.4" fill="none" stroke-linecap="round"/>`).join('')
+        + `<ellipse cx="${bx + 4 * side}" cy="${y - 16}" rx="2.5" ry="6" fill="#8c6239"/>`;
+    } else if (r < 0.5) {
+      svg += `<ellipse cx="${bx}" cy="${y}" rx="10" ry="7" fill="#ced4da" stroke="#adb5bd"/><ellipse cx="${bx + side * 12}" cy="${y + 6}" rx="6" ry="4.5" fill="#dee2e6" stroke="#adb5bd"/>`;
+    } else if (r < 0.72) {
+      const lx = x + (rnd() - 0.5) * RIVER_W;
+      svg += `<path d="M${lx} ${y} m-9 0 a9 6 0 1 0 18 0 a9 6 0 1 0 -18 0 M${lx} ${y} l7 -3" fill="#82c91e" stroke="#5c940d" stroke-width="1.2"/>`
+        + (rnd() < 0.4 ? `<circle cx="${lx - 2}" cy="${y - 2}" r="2.6" fill="#ffc9de"/>` : '');
+    }
+  }
+  // wooden bridges carrying the roads straight across, on stone footings
   for (const b of BRIDGES) {
-    svg += `<g><rect x="${b.x - 72}" y="${b.y - 22}" width="144" height="44" rx="6" fill="#c08a5b" stroke="#8c6239" stroke-width="2"/>
-      ${[...Array(9)].map((_, i) => `<path d="M${b.x - 64 + i * 16} ${b.y - 20} V${b.y + 20}" stroke="#a9744a" stroke-width="2"/>`).join('')}
-      <rect x="${b.x - 74}" y="${b.y - 28}" width="148" height="7" rx="3" fill="#8c6239"/><rect x="${b.x - 74}" y="${b.y + 20}" width="148" height="7" rx="3" fill="#8c6239"/></g>`;
+    const L = BRIDGE_HALF;
+    svg += `<g><ellipse cx="${b.x}" cy="${b.y + 26}" rx="${RIVER_W + 6}" ry="8" fill="#3d7fb0" opacity=".35"/>
+      <rect x="${b.x - L - 8}" y="${b.y - 22}" width="20" height="46" rx="4" fill="#ced4da" stroke="#adb5bd"/>
+      <rect x="${b.x + L - 12}" y="${b.y - 22}" width="20" height="46" rx="4" fill="#ced4da" stroke="#adb5bd"/>
+      <rect x="${b.x - L + 6}" y="${b.y - 19}" width="${2 * L - 12}" height="38" fill="#c9935e" stroke="#8c6239" stroke-width="2"/>
+      ${[...Array(Math.floor((2 * L - 16) / 12))].map((_, i) => `<path d="M${b.x - L + 14 + i * 12} ${b.y - 18} V${b.y + 18}" stroke="#a9744a" stroke-width="1.6"/>`).join('')}
+      <rect x="${b.x - L + 4}" y="${b.y - 26}" width="${2 * L - 8}" height="6" rx="3" fill="#8c6239"/>
+      <rect x="${b.x - L + 4}" y="${b.y + 18}" width="${2 * L - 8}" height="6" rx="3" fill="#8c6239"/>
+      ${[-1, 0, 1].map((k) => `<rect x="${b.x + k * (L - 14) - 3}" y="${b.y - 32}" width="6" height="10" rx="2" fill="#6f4a2b"/>`).join('')}</g>`;
   }
   return svg;
 }
@@ -166,6 +195,49 @@ function cliffSvg() {
   svg += `<rect x="${wx - RIVER_W}" y="${y - 30}" width="${RIVER_W * 2}" height="${h + 34}" fill="#a5d8ff"/>
     <g class="falls">${[0, 1, 2, 3].map((i) => `<path d="M${wx - 24 + i * 16} ${y - 26} V${y + h}" stroke="#fff" stroke-width="3" stroke-dasharray="8 10" opacity=".85"/>`).join('')}</g>
     <ellipse cx="${wx}" cy="${y + h + 6}" rx="${RIVER_W + 8}" ry="9" fill="#fff" opacity=".7"/>`;
+  return svg;
+}
+
+// The shopping street dressed up: entrance arches, bunting over the street, billboards and stalls
+function marketSvg() {
+  let svg = '';
+  // arches where the town's streets come in, with the street's name
+  for (const x of [1700, 2100]) {
+    const y = 1800;
+    svg += `<g><rect x="${x - 40}" y="${y - 70}" width="10" height="74" rx="3" fill="#e03131"/><rect x="${x + 30}" y="${y - 70}" width="10" height="74" rx="3" fill="#e03131"/>
+      <path d="M${x - 50} ${y - 70} Q${x} ${y - 96} ${x + 50} ${y - 70}" stroke="#c92a2a" stroke-width="10" fill="none" stroke-linecap="round"/>
+      <rect x="${x - 34}" y="${y - 92}" width="68" height="24" rx="5" fill="#ffd43b" stroke="#e67700" stroke-width="2"/>
+      <text class="boardtext" x="${x}" y="${y - 80}">商业街</text>
+      <ellipse cx="${x - 35}" cy="${y - 54}" rx="7" ry="9" fill="#ff6b6b" stroke="#c92a2a"/><ellipse cx="${x + 35}" cy="${y - 54}" rx="7" ry="9" fill="#ff6b6b" stroke="#c92a2a"/></g>`;
+  }
+  // bunting strung along both shopping streets
+  const colors = ['#ff8787', '#ffd43b', '#74c0fc', '#8ce99a', '#b197fc'];
+  for (const y of [2016, 2336]) {
+    for (let x = 1270; x < 2420; x += 230) {
+      const x2 = Math.min(2430, x + 230);
+      svg += `<path d="M${x} ${y} Q${(x + x2) / 2} ${y + 16} ${x2} ${y}" stroke="#868e96" stroke-width="1.2" fill="none"/>`;
+      for (let k = 1; k < 10; k++) {
+        const t = k / 10;
+        const fx = x + (x2 - x) * t;
+        const fy = y + 16 * 2 * t * (1 - t) * 2 * 0.5 * 2;
+        svg += `<path d="M${fx - 5} ${fy} L${fx + 5} ${fy} L${fx} ${fy + 10} Z" fill="${colors[(k + x / 230) % colors.length | 0]}"/>`;
+      }
+      svg += `<rect x="${x - 2}" y="${y - 26}" width="4" height="30" fill="#868e96"/>`;
+    }
+  }
+  // billboards
+  const board = (x, y, ch, text, c) => `<g><rect x="${x - 3}" y="${y - 20}" width="6" height="22" fill="#868e96"/><rect x="${x + 41}" y="${y - 20}" width="6" height="22" fill="#868e96"/>
+    <rect x="${x - 14}" y="${y - 66}" width="72" height="48" rx="6" fill="#fff" stroke="${c}" stroke-width="3"/>
+    ${emo(x + 22, y - 52, 18, ch)}<text class="adtext" x="${x + 22}" y="${y - 30}" fill="${c}">${text}</text></g>`;
+  svg += board(1420, 2150, '🍦', '买一送一', '#f06595') + board(1960, 2150, '🎉', '开业大吉', '#e8590c') + board(2300, 2150, '🥤', '新品上市', '#1c7ed6');
+  // stalls along the street
+  svg += `<g><rect x="1600" y="2112" width="56" height="30" rx="5" fill="#fff" stroke="#f783ac" stroke-width="2"/>
+      <path d="M1594 2112 Q1628 2084 1662 2112 Z" fill="#ff8fab"/>${emo(1628, 2098, 18, '🍦')}
+      <circle cx="1608" cy="2146" r="6" fill="#495057"/><circle cx="1648" cy="2146" r="6" fill="#495057"/></g>
+    <g><path d="M1820 2150 V2096" stroke="#adb5bd" stroke-width="1.5"/>${['#ff6b6b', '#ffd43b', '#74c0fc', '#b197fc'].map((c, i) => `<path d="M1820 2100 L${1806 + i * 9} 2070" stroke="#ced4da"/><ellipse class="bob" cx="${1806 + i * 9}" cy="${2062 - (i % 2) * 6}" rx="7" ry="9" fill="${c}"/>`).join('')}${emo(1834, 2142, 18, '🐻')}</g>
+    <g><rect x="2180" y="2116" width="70" height="26" rx="4" fill="#c08a5b" stroke="#8c6239"/>
+      <path d="M2172 2116 L2258 2116 L2250 2096 L2180 2096 Z" fill="#40c057"/><path d="M2180 2096 L2190 2116 M2200 2096 L2205 2116 M2220 2096 L2220 2116 M2240 2096 L2235 2116" stroke="#fff" stroke-width="4"/>
+      ${emo(2196, 2126, 14, '🍎')}${emo(2214, 2126, 14, '🍊')}${emo(2232, 2126, 14, '🍇')}</g>`;
   return svg;
 }
 
@@ -394,7 +466,7 @@ function facade(p) {
   const win = (wx, wy, ww, wh) => `<rect x="${wx}" y="${wy}" width="${ww}" height="${wh}" rx="4" fill="#e7f5ff" stroke="${line}" stroke-width="1.2"/>
     <path d="M${wx + 4} ${wy + wh - 4} L${wx + ww - 6} ${wy + 4}" stroke="#fff" stroke-width="2.4" opacity=".9" stroke-linecap="round"/>`;
   // between columns, if any: the three gaps, the middle one has the door
-  const colX = L.extra === 'columns' ? [0, 1, 2].map((i) => x + 10 + (i + 0.5) * ((w - 20) / 3)) : null;
+  const colX = [].concat(L.extra || []).includes('columns') ? [0, 1, 2].map((i) => x + 10 + (i + 0.5) * ((w - 20) / 3)) : null;
   const xs = (n) => colX || [...Array(n)].map((_, c) => x + 12 + ((w - 24) / n) * (c + 0.5));
   const aboveH = winBottom - doorH - 6 - winTop;
   if (rows === 1 || aboveH / rows < 20) {
@@ -415,52 +487,117 @@ function facade(p) {
   // door
   const dw = Math.min(26, w * 0.2);
   const dy = y + h - 8 - doorH;
-  if (L.extra === 'garage') {
+  if ([].concat(L.extra || []).includes('garage')) {
     svg += `<rect x="${x + w - 62}" y="${y + h - 46}" width="52" height="38" rx="3" fill="#ffe066" stroke="${line}" stroke-width="1.2"/>`;
     for (let i = 1; i < 5; i++) svg += `<path d="M${x + w - 62} ${y + h - 46 + i * 7.6} h52" stroke="${line}" stroke-width="1"/>`;
   }
   svg += `<path d="M${cx - dw / 2} ${y + h - 8} V${dy + dw / 2} A${dw / 2} ${dw / 2} 0 0 1 ${cx + dw / 2} ${dy + dw / 2} V${y + h - 8} Z" fill="${darker(rc, 0.12)}" stroke="${darker(rc, 0.3)}" stroke-width="1.2"/>
     <circle cx="${cx + dw / 2 - 5}" cy="${y + h - 8 - doorH / 2.4}" r="1.8" fill="#fff3bf"/>`;
 
-  // extras
-  switch (L.extra) {
-    case 'columns':
-      for (let i = 0; i < 4; i++) {
-        const px = x + 10 + i * ((w - 20) / 3) - 4;
-        if (Math.abs(px + 4 - cx) < dw) continue;
-        svg += `<rect x="${px}" y="${by + 6}" width="8" height="${bh - 14}" rx="2" fill="#fff" stroke="${line}" stroke-width="1"/>`;
-      }
-      break;
-    case 'flag':
-      svg += `<path d="M${cx} ${y + 2} V${y - 26}" stroke="#868e96" stroke-width="2"/><path d="M${cx} ${y - 26} L${cx + 18} ${y - 20} L${cx} ${y - 14} Z" fill="#ff6b6b" class="flag"/>`;
-      break;
-    case 'antenna':
-      svg += `<path d="M${cx + 30} ${y} V${y - 22}" stroke="#868e96" stroke-width="2"/><circle cx="${cx + 30}" cy="${y - 24}" r="3" fill="#ff6b6b" class="blink-light"/>`;
-      break;
-    case 'clock':
-      svg += `<circle cx="${cx}" cy="${y + 20}" r="8" fill="#fff" stroke="${darker(rc)}" stroke-width="1.5"/><path d="M${cx} ${y + 20} V${y + 15} M${cx} ${y + 20} H${cx + 4}" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>`;
-      break;
-    case 'balloons':
-      svg += `<path d="M${x + w - 8} ${by + 6} q-4 -16 -2 -30" stroke="#adb5bd" fill="none"/><ellipse cx="${x + w - 10}" cy="${by - 30}" rx="7" ry="8.5" fill="#ff8787" class="bob"/>
-        <path d="M${x + w - 4} ${by + 6} q4 -14 6 -24" stroke="#adb5bd" fill="none"/><ellipse cx="${x + w + 2}" cy="${by - 22}" rx="6" ry="7.5" fill="#74c0fc" class="bob"/>`;
-      break;
-    case 'bubbles':
-      svg += `<g class="rise"><circle cx="${x + 18}" cy="${y + 6}" r="6" fill="#fff" stroke="#a5d8ff" stroke-width="1.5"/><circle cx="${x + 30}" cy="${y - 8}" r="4" fill="#fff" stroke="#a5d8ff" stroke-width="1.5"/></g>`;
-      break;
-    case 'lantern':
-      for (const lx of [x + 16, x + w - 16]) svg += `<ellipse cx="${lx}" cy="${by + 30}" rx="7" ry="9" fill="#ff6b6b" stroke="#c92a2a" stroke-width="1"/><rect x="${lx - 4}" y="${by + 19}" width="8" height="3" fill="#ffd43b"/>`;
-      break;
-    case 'note':
-      svg += emo(x + w - 18, y + 6, 18, '🎵', 'class="bob"');
-      break;
-    case 'cross':
-      svg += `<rect x="${cx - 4}" y="${by + 8}" width="8" height="22" rx="2" fill="#ff6b6b"/><rect x="${cx - 11}" y="${by + 15}" width="22" height="8" rx="2" fill="#ff6b6b"/>`;
-      break;
+  // decorations that make each building its own
+  const extras = [].concat(L.extra || []);
+  const ground = y + h;
+  for (const ex of extras) {
+    switch (ex) {
+      case 'columns':
+        for (let i = 0; i < 4; i++) {
+          const px = x + 10 + i * ((w - 20) / 3) - 4;
+          if (Math.abs(px + 4 - cx) < dw) continue;
+          svg += `<rect x="${px}" y="${by + 6}" width="8" height="${bh - 14}" rx="2" fill="#fff" stroke="${line}" stroke-width="1"/>`;
+        }
+        break;
+      case 'flag':
+        svg += `<path d="M${cx} ${y + 2} V${y - 26}" stroke="#868e96" stroke-width="2"/><path d="M${cx} ${y - 26} L${cx + 18} ${y - 20} L${cx} ${y - 14} Z" fill="#ff6b6b" class="flag"/>`;
+        break;
+      case 'antenna':
+        svg += `<path d="M${cx + 30} ${y} V${y - 22}" stroke="#868e96" stroke-width="2"/><circle cx="${cx + 30}" cy="${y - 24}" r="3" fill="#ff6b6b" class="blink-light"/>`;
+        break;
+      case 'helipad':
+        svg += `<circle cx="${x + 40}" cy="${y + roofH / 2 - 2}" r="12" fill="#fff" stroke="#fab005" stroke-width="2"/>${emo(x + 40, y + roofH / 2 - 1, 12, 'H', 'fill="#fab005" font-weight="bold"')}`;
+        break;
+      case 'glass':
+        svg += `<path d="M${x + 8} ${ground - 30} L${x + w * 0.55} ${by + 6} L${x + w * 0.7} ${by + 6} L${x + 22} ${ground - 30} Z" fill="#fff" opacity=".22"/>`;
+        break;
+      case 'clock':
+        svg += `<circle cx="${cx}" cy="${y + 20}" r="8" fill="#fff" stroke="${darker(rc)}" stroke-width="1.5"/><path d="M${cx} ${y + 20} V${y + 15} M${cx} ${y + 20} H${cx + 4}" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>`;
+        break;
+      case 'balloons':
+        svg += `<path d="M${x + w - 8} ${by + 6} q-4 -16 -2 -30" stroke="#adb5bd" fill="none"/><ellipse cx="${x + w - 10}" cy="${by - 30}" rx="7" ry="8.5" fill="#ff8787" class="bob"/>
+          <path d="M${x + w - 4} ${by + 6} q4 -14 6 -24" stroke="#adb5bd" fill="none"/><ellipse cx="${x + w + 2}" cy="${by - 22}" rx="6" ry="7.5" fill="#74c0fc" class="bob"/>`;
+        break;
+      case 'bubbles':
+        svg += `<g class="rise"><circle cx="${x + 18}" cy="${y + 6}" r="6" fill="#fff" stroke="#a5d8ff" stroke-width="1.5"/><circle cx="${x + 30}" cy="${y - 8}" r="4" fill="#fff" stroke="#a5d8ff" stroke-width="1.5"/></g>`;
+        break;
+      case 'lantern':
+        for (const lx of [x + 16, x + w - 16]) svg += `<ellipse cx="${lx}" cy="${by + 30}" rx="7" ry="9" fill="#ff6b6b" stroke="#c92a2a" stroke-width="1"/><rect x="${lx - 4}" y="${by + 19}" width="8" height="3" fill="#ffd43b"/>`;
+        break;
+      case 'note':
+        svg += emo(x + w - 18, y + 6, 18, '🎵', 'class="bob"');
+        break;
+      case 'cross':
+        svg += `<rect x="${cx - 4}" y="${by + 8}" width="8" height="22" rx="2" fill="#ff6b6b"/><rect x="${cx - 11}" y="${by + 15}" width="22" height="8" rx="2" fill="#ff6b6b"/>`;
+        break;
+      case 'pole':
+        // a barber's pole by the door, stripes turning
+        svg += `<rect x="${cx + dw / 2 + 8}" y="${ground - 50}" width="12" height="44" rx="6" fill="#fff" stroke="${line}"/>
+          <g class="pole-stripes" clip-path="inset(0)">${[0, 1, 2, 3].map((i) => `<path d="M${cx + dw / 2 + 8} ${ground - 46 + i * 11} l12 -8" stroke="#fa5252" stroke-width="4"/>`).join('')}</g>
+          <circle cx="${cx + dw / 2 + 14}" cy="${ground - 52}" r="5" fill="#ffd43b"/>`;
+        break;
+      case 'chimney':
+        svg += `<rect x="${x + w - 46}" y="${y - 14}" width="16" height="26" fill="#c9a77c" stroke="${darker('#c9a77c')}"/>
+          <circle class="puff" cx="${x + w - 38}" cy="${y - 22}" r="6"/><circle class="puff" cx="${x + w - 33}" cy="${y - 32}" r="5" style="animation-delay:-1.6s"/>`;
+        break;
+      case 'breadwin':
+        svg += emo(x + 30, ground - 26, 16, '🥐') + emo(x + w - 30, ground - 26, 16, '🍞');
+        break;
+      case 'mannequin':
+        svg += emo(x + 32, ground - 30, 20, '👗') + emo(x + w - 32, ground - 30, 20, '👒');
+        break;
+      case 'keys':
+        svg += `<rect x="${x + 6}" y="${ground - 22}" width="${w - 12}" height="12" fill="#fff" stroke="${line}"/>`;
+        for (let k = x + 12; k < x + w - 12; k += 10) svg += `<rect x="${k}" y="${ground - 22}" width="5" height="7" fill="#343a40"/>`;
+        break;
+      case 'teddy':
+        svg += emo(x + 20, by - 8, 22, '🧸', 'class="bob"');
+        break;
+      case 'carts':
+        svg += emo(x + w + 18, ground - 6, 20, '🛒') + emo(x + w + 40, ground - 4, 18, '🛒');
+        break;
+      case 'ambulance':
+        svg += emo(x + w + 30, ground - 8, 30, '🚑');
+        break;
+      case 'truck':
+        svg += emo(x - 30, ground - 8, 32, '🚚');
+        break;
+      case 'stalls':
+        // crates of fresh produce out front
+        for (const [ox, ch] of [[-24, '🍎'], [w + 4, '🥕'], [w + 34, '🌽']]) {
+          svg += `<rect x="${x + ox}" y="${ground - 20}" width="26" height="18" rx="2" fill="#c08a5b" stroke="#8c6239"/>${emo(x + ox + 13, ground - 24, 15, ch)}`;
+        }
+        break;
+      case 'warehouse':
+        // wide roll-up doors and a loading dock
+        for (const ox of [24, w - 104]) {
+          svg += `<rect x="${x + ox}" y="${ground - 58}" width="80" height="50" rx="3" fill="#e9ecef" stroke="${line}"/>`;
+          for (let i = 1; i < 6; i++) svg += `<path d="M${x + ox} ${ground - 58 + i * 8.3} h80" stroke="#ced4da"/>`;
+        }
+        svg += `<path d="M${x} ${ground - 4} H${x + w}" stroke="#fab005" stroke-width="5" stroke-dasharray="14 10"/>`;
+        break;
+      case 'sofaout':
+        svg += emo(x + w + 34, ground - 12, 30, '🛋️') + emo(x + w + 70, ground - 14, 26, '🪴') + emo(x - 30, ground - 12, 28, '🪑');
+        break;
+    }
   }
 
+  // a wooden name board across the front
+  const nameW = p.name.length * 15 + 22;
+  const boardY = L.awning ? by - 12 : by + 4;
+  svg += `<rect x="${cx - nameW / 2}" y="${boardY}" width="${nameW}" height="22" rx="5" fill="#fff8e7" stroke="${darker(rc, 0.15)}" stroke-width="2"/>
+    <text class="boardtext" x="${cx}" y="${boardY + 11.5}">${p.name}</text>`;
+
   // sign: a round badge with the place's emoji
-  if (!['gable', 'tower', 'pediment'].includes(L.roof)) signY = dy - 14;
-  if (L.extra !== 'cross' || L.roof !== 'flat') {
+  if (!['gable', 'tower', 'pediment'].includes(L.roof)) signY = Math.min(dy - 14, boardY - 18);
+  if (!extras.includes('cross') || L.roof !== 'flat') {
     svg += `<circle cx="${cx}" cy="${signY}" r="12" fill="#fff" stroke="${darker(rc, 0.1)}" stroke-width="1.5"/>${emo(cx, signY + 1, 14, p.icon)}`;
   }
   return svg;
@@ -554,6 +691,13 @@ const PLACE_ART = {
       <g class="paddle">${emo(cx - 30, cy + 4, 18, '🦆')}</g><g class="paddle" style="animation-delay:-2s">${emo(cx + 34, cy - 16, 14, '🦆')}</g>
       ${[0, 1, 2].map((i) => `<path d="M${p.x + 10 + i * 6} ${cy + 26} q-2 -16 2 -26" stroke="#69db7c" stroke-width="2.5" fill="none"/>`).join('')}`;
   },
+  // the vegetable patch by the pig's home: six plots; what grows in them is drawn by gardenCrops()
+  garden(p) {
+    let svg = `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="8" fill="#c9a27a"/>`;
+    for (const b of gardenPlots(p)) svg += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="5" fill="url(#pSoil)" stroke="#8c6239" stroke-width="1.5"/>`;
+    svg += fence(p.x - 8, p.y - 4, p.w + 16, p.h + 8, [p.x + p.w / 2 - 22, p.x + p.w / 2 + 22]);
+    return svg + `<g id="gardenCrops"></g>`;
+  },
   houses(p) {
     let svg = '';
     const colors = [['#ffe3e3', '#ff8787'], ['#e3fafc', '#3bc9db'], ['#fff3bf', '#fab005']];
@@ -563,6 +707,25 @@ const PLACE_ART = {
 };
 
 // A little house with its gable to the front; the two roof slopes run back and up
+// The six plots of the vegetable patch, three by two
+function gardenPlots(p) {
+  const pw = (p.w - 28) / 3;
+  const ph = (p.h - 26) / 2;
+  return [...Array(GARDEN_PLOTS)].map((_, i) => ({ x: p.x + 8 + (i % 3) * (pw + 6), y: p.y + 8 + Math.floor(i / 3) * (ph + 10), w: pw, h: ph }));
+}
+
+// What's growing in each plot: a sprout, a leafy plant, or the ripe crop
+function gardenCrops(farm) {
+  return gardenPlots(PLACE_BY_ID.garden).map((b, i) => {
+    const p = farm[i];
+    if (!p) return '';
+    const k = plotProgress(p);
+    const seed = ITEM_BY_ID[p.seed];
+    const ch = k >= 1 ? seed.icon : k < 0.4 ? '🌱' : '🌿';
+    return emo(b.x + b.w / 2, b.y + b.h / 2, k >= 1 ? 24 : 14 + 8 * k, ch, k >= 1 ? 'class="bob"' : '');
+  }).join('');
+}
+
 function cottage(x, y, w, h, body, roof) {
   const cx = x + w / 2;
   const eave = y + 56;
@@ -668,6 +831,11 @@ const SPECIES = {
   owl: { body: '#a47148', belly: '#f1dcc5', ears: 'owl', snout: 'beak', discs: true, acc: 'specs' },
   turtle: { body: '#8ce99a', belly: '#d8f5a2', ears: 'none', snout: 'small', shell: true },
   duck: { body: '#fff9db', line: '#ffe066', belly: '#fff', ears: 'none', snout: 'bill', acc: 'chef' },
+  fox: { body: '#ff922b', belly: '#fff4e6', ears: 'tri', inner: '#fff4e6', snout: 'muzzle', tail: 'fox', acc: 'apron' },
+  panda: { body: '#ffffff', line: '#ced4da', belly: '#fff', ears: 'round', inner: '#343a40', earFill: '#343a40', snout: 'small', patches: true, limbs: '#343a40', acc: 'cane' },
+  hedgehog: { body: '#c08a5b', belly: '#ffe8cc', head: '#ffe8cc', ears: 'round', inner: '#e6c9a8', snout: 'small', spikes: true, acc: 'bow' },
+  cow: { body: '#ffffff', line: '#ced4da', belly: '#fff', ears: 'floppy', inner: '#ffc9de', snout: 'cow', cowSpots: true, horns: true },
+  bunny: { body: '#ffffff', line: '#dee2e6', belly: '#fff', ears: 'long', inner: '#ffc9c9', snout: 'bunny' },
 };
 
 function animalSvg(species) {
@@ -678,6 +846,8 @@ function animalSvg(species) {
   let back = '';
   if (sp.tail === 'curl') back += `<path d="M112 118 q16 -6 14 -20 q-2 -8 -9 -2" fill="none" stroke="${sp.body}" stroke-width="7" stroke-linecap="round"/>`;
   if (sp.tail === 'stripe') back += `<path d="M110 126 q30 -4 30 -26" fill="none" stroke="#868e96" stroke-width="12" stroke-linecap="round"/><path d="M128 120 l6 -4 M135 110 l6 -2" stroke="#495057" stroke-width="5" stroke-linecap="round"/>`;
+  if (sp.tail === 'fox') back += `<path d="M108 128 C148 132 154 96 140 84 C132 100 120 108 106 112 Z" fill="${sp.body}" ${O}/><path d="M146 92 C150 100 148 112 140 118 C138 108 140 100 146 92 Z" fill="#fff"/>`;
+  if (sp.spikes) back += [...Array(11)].map((_, i) => { const a = Math.PI * (0.95 + (i / 10) * 1.1); return `<path d="M${80 + Math.cos(a) * 40} ${78 + Math.sin(a) * 44} L${80 + Math.cos(a) * 62} ${78 + Math.sin(a) * 64} L${80 + Math.cos(a + 0.18) * 40} ${78 + Math.sin(a + 0.18) * 44} Z" fill="#8c6239"/>`; }).join('');
   if (sp.tail === 'bushy') back += `<path d="M108 132 C150 130 152 70 128 52 C112 42 104 62 120 72 C134 84 126 112 106 116 Z" fill="${sp.body}" ${O}/><path d="M120 66 C134 80 132 106 114 114" fill="none" stroke="${sp.belly}" stroke-width="5" stroke-linecap="round" opacity=".7"/>`;
   let ears = '';
   const earL = (d) => `<path d="${d}" fill="${head}" ${O}/>`;
@@ -690,7 +860,7 @@ function animalSvg(species) {
         <g class="ear ear-r">${earL('M108 32 C120 -10 104 -24 96 -4 C92 8 94 22 96 30 Z')}<path d="M105 26 C112 0 104 -12 100 -2 C98 8 99 18 100 24 Z" fill="${sp.inner}"/></g>`;
       break;
     case 'round':
-      ears = `<circle cx="42" cy="32" r="15" fill="${head}" ${O}/><circle cx="118" cy="32" r="15" fill="${head}" ${O}/>
+      ears = `<circle cx="42" cy="32" r="15" fill="${sp.earFill || head}" ${O}/><circle cx="118" cy="32" r="15" fill="${sp.earFill || head}" ${O}/>
         <circle cx="42" cy="32" r="8" fill="${sp.inner}"/><circle cx="118" cy="32" r="8" fill="${sp.inner}"/>`;
       break;
     case 'tuft':
@@ -714,8 +884,11 @@ function animalSvg(species) {
     : '';
   const limbs = `<ellipse cx="63" cy="137" rx="9.5" ry="7" fill="${sp.shell ? sp.body : darker(sp.body, 0.06)}" ${O}/>
     <ellipse cx="97" cy="137" rx="9.5" ry="7" fill="${sp.shell ? sp.body : darker(sp.body, 0.06)}" ${O}/>
-    <ellipse cx="46" cy="114" rx="7" ry="9" fill="${sp.body}" ${O}/><ellipse cx="114" cy="114" rx="7" ry="9" fill="${sp.body}" ${O}/>`;
+    <ellipse cx="46" cy="114" rx="7" ry="9" fill="${sp.limbs || sp.body}" ${O}/><ellipse cx="114" cy="114" rx="7" ry="9" fill="${sp.limbs || sp.body}" ${O}/>`;
   let face = '';
+  if (sp.cowSpots) face += '<ellipse cx="46" cy="50" rx="12" ry="9" fill="#343a40"/><ellipse cx="114" cy="44" rx="9" ry="7" fill="#343a40"/>';
+  if (sp.horns) face += '<path d="M52 30 q-10 -14 -2 -22 M108 30 q10 -14 2 -22" stroke="#e9c46a" stroke-width="7" fill="none" stroke-linecap="round"/>';
+  if (sp.patches) face += `<ellipse cx="58" cy="66" rx="14" ry="17" transform="rotate(-20 58 66)" fill="#343a40"/><ellipse cx="102" cy="66" rx="14" ry="17" transform="rotate(20 102 66)" fill="#343a40"/>`;
   if (sp.mask) face += `<path d="M30 62 Q58 40 80 58 Q102 40 130 62 Q120 82 100 74 Q80 66 60 74 Q40 82 30 62 Z" fill="#495057"/>`;
   if (sp.discs) face += `<circle cx="58" cy="64" r="19" fill="${sp.belly}"/><circle cx="102" cy="64" r="19" fill="${sp.belly}"/>`;
   face += eyeSvg(58, 64, 'normal') + eyeSvg(102, 64, 'normal');
@@ -733,6 +906,9 @@ function animalSvg(species) {
       face += `<path d="M76 82 L84 82 L80 87 Z" fill="#ff8fab"/><path class="line thin" d="M74 92 Q77 96 80 90 Q83 96 86 92"/>
         <path d="M60 86 L40 82 M60 90 L40 92 M100 86 L120 82 M100 90 L120 92" stroke="#868e96" stroke-width="1.3" stroke-linecap="round"/>`;
       break;
+    case 'cow':
+      face += '<ellipse cx="80" cy="90" rx="22" ry="14" fill="#ffc9de" stroke="#f783ac" stroke-width="1.4"/><ellipse cx="72" cy="90" rx="3" ry="4" fill="#c2255c"/><ellipse cx="88" cy="90" rx="3" ry="4" fill="#c2255c"/>';
+      break;
     case 'beak':
       face += `<path d="M72 80 L88 80 L80 96 Z" fill="#ff922b" stroke="#e8590c" stroke-width="1.2" stroke-linejoin="round"/>`;
       break;
@@ -749,6 +925,12 @@ function animalSvg(species) {
       break;
     case 'bell':
       acc = `<path d="M60 104 Q80 112 100 104" stroke="#e64980" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="80" cy="112" r="5" fill="#fcc419" stroke="#f59f00"/>`;
+      break;
+    case 'cane':
+      acc = `<path d="M122 96 V140 M122 96 q0 -10 -9 -10" stroke="#8c6239" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+      break;
+    case 'bow':
+      acc = `<g transform="translate(104 26) rotate(15)"><path d="M0 0 L-12 -8 Q-16 0 -12 8 Z M0 0 L12 -8 Q16 0 12 8 Z" fill="#ff6b9d"/><circle r="4" fill="#f03e83"/></g>`;
       break;
     case 'pencil':
       acc = `<rect x="100" y="22" width="30" height="6" rx="2" transform="rotate(-20 115 25)" fill="#fcc419" stroke="#f59f00"/>`;
@@ -939,72 +1121,194 @@ const VEHICLES = {
 };
 
 // ---------- the dollhouse in the home sheet ----------
-// 720×300 drawing. Furniture groups and decorations sit in fixed spots per house tier.
+// The house cut open at the front, 720×360: each room is a little box seen from the front and
+// a bit above, with a back wall, side walls and a floor going back. Furniture stands on the
+// floor at fixed spots (u: left to right, v: back to front), and the pig's diplomas hang on the
+// study's back wall.
 
 const DOLLHOUSE = [
-  // 小猪窝: one round room, everything squeezed in
+  // 小猪窝: one cosy room under a round roof
   {
-    rooms: [{ x: 160, y: 40, w: 400, h: 240, wall: '#ffe3ec', floor: '#f3c7a5', dome: true }],
-    spots: { bed: [210, 236], tub: [290, 242], desk: [370, 236], sofa: [450, 240], piano: [510, 232], easel: [250, 176], bubbler: [320, 196], pot: [480, 182], kitchen: [430, 176] },
-    decor: [[200, 120], [520, 120]],
-    pig: [360, 294],
+    roof: 'dome',
+    rooms: [{ x: 150, y: 70, w: 420, h: 250, wall: '#ffe3ec', floor: '#e9b98f', study: true }],
+    spots: { bed: [0, 0.16, 0.3], tub: [0, 0.4, 0.22], desk: [0, 0.64, 0.25], piano: [0, 0.88, 0.3], bubbler: [0, 0.42, 0.55],
+      sofa: [0, 0.55, 0.85], easel: [0, 0.88, 0.8], kitchen: [0, 0.12, 0.8], pot: [0, 0.27, 0.88] },
   },
-  // 公寓: two rooms side by side
+  // 公寓: bedroom and bath, living room and study
   {
-    rooms: [{ x: 70, y: 60, w: 290, h: 220, wall: '#fff0f6', floor: '#f3c7a5' }, { x: 360, y: 60, w: 290, h: 220, wall: '#e7f5ff', floor: '#d8c2a8' }],
-    spots: { bed: [120, 238], tub: [200, 244], desk: [290, 236], sofa: [420, 240], piano: [520, 232], easel: [600, 232], bubbler: [160, 180], pot: [470, 180], kitchen: [560, 178] },
-    decor: [[110, 110], [240, 110], [420, 110], [600, 110], [330, 180]],
-    pig: [360, 294],
+    roof: 'gable',
+    rooms: [{ x: 60, y: 90, w: 300, h: 230, wall: '#fff0f6', floor: '#e9b98f' }, { x: 360, y: 90, w: 300, h: 230, wall: '#e7f5ff', floor: '#d9b48c', study: true }],
+    spots: { bed: [0, 0.25, 0.35], tub: [0, 0.75, 0.3], bubbler: [0, 0.78, 0.72], desk: [1, 0.22, 0.28], piano: [1, 0.78, 0.28],
+      sofa: [1, 0.45, 0.82], easel: [1, 0.88, 0.78], kitchen: [0, 0.2, 0.85], pot: [1, 0.14, 0.86] },
   },
-  // 别墅: two floors, four rooms, a strip of garden
+  // 别墅: two floors, four rooms
   {
-    rooms: [{ x: 40, y: 20, w: 320, h: 130, wall: '#e5dbff', floor: '#d8c2a8' }, { x: 360, y: 20, w: 320, h: 130, wall: '#e3fafc', floor: '#d8c2a8' },
-      { x: 40, y: 150, w: 320, h: 130, wall: '#fff0f6', floor: '#f3c7a5' }, { x: 360, y: 150, w: 320, h: 130, wall: '#fff9db', floor: '#f3c7a5' }],
-    spots: { bed: [100, 120], tub: [440, 120], desk: [250, 120], bubbler: [520, 112], sofa: [120, 250], piano: [230, 244], easel: [310, 244], kitchen: [450, 244], pot: [540, 248] },
-    decor: [[80, 64], [180, 64], [320, 64], [400, 64], [620, 64], [80, 194], [330, 194], [620, 194], [640, 250]],
-    pig: [360, 294],
+    roof: 'gable',
+    rooms: [{ x: 50, y: 40, w: 310, h: 145, wall: '#e5dbff', floor: '#d9b48c' }, { x: 360, y: 40, w: 310, h: 145, wall: '#e3fafc', floor: '#cfd8dc' },
+      { x: 50, y: 185, w: 310, h: 145, wall: '#fff9db', floor: '#e9b98f', study: true }, { x: 360, y: 185, w: 310, h: 145, wall: '#fff0f6', floor: '#e9b98f' }],
+    spots: { bed: [0, 0.3, 0.45], tub: [1, 0.35, 0.45], bubbler: [1, 0.72, 0.6], desk: [2, 0.25, 0.35], piano: [2, 0.75, 0.35], easel: [2, 0.88, 0.85],
+      sofa: [3, 0.3, 0.75], kitchen: [3, 0.72, 0.35], pot: [3, 0.86, 0.8] },
   },
-  // 城堡: the villa plus a tower room on top
+  // 城堡: the villa plus a stargazing room in the tower
   {
-    rooms: [{ x: 290, y: 0, w: 140, h: 70, wall: '#1c2541', floor: '#3a506b' },
-      { x: 40, y: 70, w: 320, h: 105, wall: '#e5dbff', floor: '#d8c2a8' }, { x: 360, y: 70, w: 320, h: 105, wall: '#e3fafc', floor: '#d8c2a8' },
-      { x: 40, y: 175, w: 320, h: 105, wall: '#fff0f6', floor: '#f3c7a5' }, { x: 360, y: 175, w: 320, h: 105, wall: '#fff9db', floor: '#f3c7a5' }],
-    spots: { bed: [100, 150], tub: [440, 150], desk: [250, 150], bubbler: [520, 146], sofa: [120, 256], piano: [230, 250], easel: [310, 250], kitchen: [450, 252], pot: [540, 256] },
-    decor: [[320, 40], [400, 40], [80, 104], [180, 104], [320, 104], [400, 104], [620, 104], [80, 208], [330, 208], [620, 208], [640, 256], [580, 104], [180, 208], [470, 208]],
-    pig: [360, 294],
+    roof: 'castle',
+    rooms: [{ x: 280, y: 0, w: 160, h: 95, wall: '#2b2d54', floor: '#5c5f8f' },
+      { x: 50, y: 95, w: 310, h: 118, wall: '#e5dbff', floor: '#d9b48c' }, { x: 360, y: 95, w: 310, h: 118, wall: '#e3fafc', floor: '#cfd8dc' },
+      { x: 50, y: 213, w: 310, h: 118, wall: '#fff9db', floor: '#e9b98f', study: true }, { x: 360, y: 213, w: 310, h: 118, wall: '#fff0f6', floor: '#e9b98f' }],
+    spots: { bed: [1, 0.3, 0.45], tub: [2, 0.35, 0.45], bubbler: [2, 0.72, 0.6], desk: [3, 0.25, 0.35], piano: [3, 0.75, 0.35], easel: [3, 0.88, 0.85],
+      sofa: [4, 0.3, 0.75], kitchen: [4, 0.72, 0.35], pot: [4, 0.86, 0.8] },
   },
 ];
 
 // Which spot the pig stands at for what it's doing at home
 const HOME_SPOT_FOR = { sleep: 'bed', bath: 'tub', piano: 'piano', paint: 'easel' };
+// decorations that hang on a wall rather than stand on the floor
+const WALL_DECOR = ['painting', 'lamp', 'stars'];
+
+// A room's box: where its back wall and floor are
+function roomBox(r) {
+  const d = Math.min(r.w, r.h) * 0.2;
+  return { ...r, d, bx: r.x + d, bw: r.w - 2 * d, by: r.y + d * 0.55, fy: r.y + r.h - d * 1.25 };
+}
+
+// A spot on a room's floor (u across, v from the back wall to the front), with a size for things there
+function floorPt(b, u, v) {
+  const backX = b.bx + u * b.bw;
+  const frontX = b.x + u * b.w;
+  return { x: backX + (frontX - backX) * v, y: b.fy + (b.y + b.h - b.fy) * v, k: (0.72 + 0.35 * v) * clamp(b.h / 230, 0.6, 1) };
+}
+
+const wallPt = (b, u, t) => ({ x: b.bx + u * b.bw, y: b.by + t * (b.fy - b.by) });
+
+function roomSvg(b) {
+  const { x, y, w, h, bx, bw, by, fy } = b;
+  const right = bx + bw;
+  let svg = `<polygon points="${x},${y} ${x + w},${y} ${right},${by} ${bx},${by}" fill="${lighter(b.wall, 0.4)}"/>
+    <polygon points="${x},${y} ${bx},${by} ${bx},${fy} ${x},${y + h}" fill="${darker(b.wall, 0.07)}"/>
+    <polygon points="${x + w},${y} ${right},${by} ${right},${fy} ${x + w},${y + h}" fill="${darker(b.wall, 0.12)}"/>
+    <rect x="${bx}" y="${by}" width="${bw}" height="${fy - by}" fill="${b.wall}"/>`;
+  // a soft wallpaper stripe on the back wall
+  for (let sx = bx + 14; sx < right; sx += 28) svg += `<rect x="${sx}" y="${by}" width="9" height="${fy - by}" fill="#fff" opacity=".18"/>`;
+  svg += `<polygon points="${bx},${fy} ${right},${fy} ${x + w},${y + h} ${x},${y + h}" fill="${b.floor}"/>`;
+  // floorboards running toward the back
+  for (let i = 1; i < 8; i++) svg += `<path d="M${bx + (bw * i) / 8} ${fy} L${x + (w * i) / 8} ${y + h}" stroke="${darker(b.floor, 0.1)}" stroke-width="1.5"/>`;
+  svg += `<rect x="${bx}" y="${fy - 6}" width="${bw}" height="6" fill="${darker(b.wall, 0.18)}"/>`;
+  // a window on the back wall, except in the study where the diplomas hang
+  if (!b.study) {
+    const wx = bx + bw / 2;
+    const wy = by + (fy - by) * 0.18;
+    const ww = Math.min(60, bw * 0.3);
+    const wh = (fy - by) * 0.42;
+    svg += `<rect x="${wx - ww / 2}" y="${wy}" width="${ww}" height="${wh}" rx="6" fill="#d0ebff" stroke="#fff" stroke-width="4"/>
+      <path d="M${wx} ${wy} V${wy + wh} M${wx - ww / 2} ${wy + wh / 2} H${wx + ww / 2}" stroke="#fff" stroke-width="3"/>`;
+  }
+  return svg;
+}
+
+// The outside of the house: thick walls around the rooms, the roof, a strip of garden
+function houseShellSvg(D, boxes) {
+  const x1 = Math.min(...boxes.map((b) => b.x));
+  const x2 = Math.max(...boxes.map((b) => b.x + b.w));
+  const top = Math.min(...boxes.filter((b) => b.w > 200).map((b) => b.y));
+  const bottom = Math.max(...boxes.map((b) => b.y + b.h));
+  const cx = (x1 + x2) / 2;
+  let svg = `<rect x="0" y="${bottom}" width="720" height="${DH_VIEW.y + DH_VIEW.h - bottom}" fill="#b2f2bb"/>
+    <rect x="0" y="${bottom}" width="720" height="6" fill="#8ce99a"/>`;
+  for (let i = 0; i < 14; i++) svg += flower(20 + i * 52 + (i % 3) * 7, bottom + 16 + (i % 2) * 10, ['#ff8fab', '#ffd43b', '#b197fc'][i % 3]);
+  if (D.roof === 'dome') {
+    svg += `<path d="M${x1 - 16} ${top + 8} A${(x2 - x1) / 2 + 16} 70 0 0 1 ${x2 + 16} ${top + 8} Z" fill="#ff8fab" stroke="#e64980" stroke-width="3"/>
+      <path d="M${x1 + 30} ${top - 22} Q${cx} ${top - 66} ${x2 - 60} ${top - 30}" stroke="#fff" stroke-width="5" fill="none" opacity=".4" stroke-linecap="round"/>`;
+  } else if (D.roof === 'gable') {
+    const peak = Math.max(4, top - 80);
+    svg += `<path d="M${x1 - 24} ${top + 6} L${x1 + 30} ${peak} L${x2 - 30} ${peak} L${x2 + 24} ${top + 6} Z" fill="#ff8fab" stroke="#e64980" stroke-width="3" stroke-linejoin="round"/>`;
+    for (let ry = peak + 14; ry < top; ry += 14) {
+      const k = (ry - peak) / (top + 6 - peak);
+      svg += `<path d="M${x1 + 30 - 54 * k} ${ry} L${x2 - 30 + 54 * k} ${ry}" stroke="#f06595" stroke-width="1.5" opacity=".6"/>`;
+    }
+    svg += `<rect x="${x1 + 26}" y="${peak - 6}" width="${x2 - x1 - 52}" height="10" rx="5" fill="#e64980"/>`;
+  } else {
+    // castle: pink towers with flags either side of the tower room
+    for (const tx of [x1 - 10, x2 - 40]) {
+      svg += `<rect x="${tx}" y="${top - 60}" width="50" height="${bottom - top + 60}" fill="#ffd6e2" stroke="#f2a0b8" stroke-width="3"/>
+        <path d="M${tx - 8} ${top - 58} L${tx + 25} ${top - 110} L${tx + 58} ${top - 58} Z" fill="#cc5de8" stroke="#ae3ec9" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M${tx + 25} ${top - 110} V${top - 132}" stroke="#868e96" stroke-width="2"/><path d="M${tx + 25} ${top - 132} l18 5 l-18 5 Z" fill="#ff6b9d" class="flag"/>`;
+    }
+    svg += `<path d="M${270} ${8} L${360} ${-40} L${450} ${8} Z" fill="#cc5de8" stroke="#ae3ec9" stroke-width="3" stroke-linejoin="round"/>`;
+  }
+  // the house's cut walls between and around the rooms, drawn over the rooms
+  const walls = boxes.map((b) => `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="none" stroke="#f3a5bc" stroke-width="7" stroke-linejoin="round"/>`).join('');
+  return { back: svg, walls };
+}
+
+// The drawing's area for each house: rooms sit at y 0–330, roofs and towers reach up above that
+const DH_VIEWS = [{ y: -10, h: 370 }, { y: -10, h: 370 }, { y: -60, h: 420 }, { y: -140, h: 500 }];
+let DH_VIEW = DH_VIEWS[0];
 
 function dollhouseHtml(s, pigHtml) {
   const tier = homeTier(s);
   const D = DOLLHOUSE[tier];
-  let rooms = D.rooms.map((r) => r.dome
-    ? `<path d="M${r.x} ${r.y + r.h} V${r.y + 90} A${r.w / 2} 100 0 0 1 ${r.x + r.w} ${r.y + 90} V${r.y + r.h} Z" fill="${r.wall}" stroke="#f2a0b8" stroke-width="4"/>
-       <rect x="${r.x}" y="${r.y + r.h - 34}" width="${r.w}" height="34" fill="${r.floor}"/>`
-    : `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${r.wall}" stroke="#f2a0b8" stroke-width="4"/>
-       <rect x="${r.x + 2}" y="${r.y + r.h - 26}" width="${r.w - 4}" height="24" fill="${r.floor}"/>
-       <rect x="${r.x + r.w / 2 - 22}" y="${r.y + 16}" width="44" height="30" rx="6" fill="#d0ebff" stroke="#f2a0b8" stroke-width="2"/>`).join('');
-  if (tier === 2 || tier === 3) rooms += `<rect x="0" y="280" width="720" height="20" rx="6" fill="#b2f2bb"/>`;
-  else rooms += `<rect x="0" y="280" width="720" height="20" rx="6" fill="#d3f9d8"/>`;
-  // the best piece of each furniture group, in its spot
+  DH_VIEW = DH_VIEWS[tier];
+  const boxes = D.rooms.map(roomBox);
+  const shell = houseShellSvg(D, boxes);
+  let svg = shell.back + boxes.map(roomSvg).join('') + shell.walls;
+  if (tier === 3) svg += `<g opacity=".9">${[[310, 22], [350, 14], [400, 26], [330, 40], [420, 44]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="#fff3bf"/>`).join('')}</g>`;
+  const pct = (p) => `left:${(p.x / 720) * 100}%;top:${((p.y - DH_VIEW.y) / DH_VIEW.h) * 100}%`;
+  const item = (p, ch, size, title, cls = '') => `<span class="dh-item ${cls}" style="${pct(p)};font-size:${Math.round(size * p.k)}px" title="${esc(title)}">${ch}</span>`;
+
+  // furniture: the best piece of each group, in its spot
   const best = {};
   for (const it of ITEMS) {
     if (it.cat !== 'furniture' || !s.inventory[it.id] || it.group === 'house') continue;
     if (!best[it.group] || it.price > best[it.group].price) best[it.group] = it;
   }
-  const at = ([x, y], ch, size, title) => `<span class="dh-item" style="left:${(x / 720) * 100}%;top:${(y / 300) * 100}%;font-size:${size}px" title="${esc(title)}">${ch}</span>`;
-  let items = Object.values(best).map((it) => (D.spots[it.group] ? at(D.spots[it.group], it.icon, 34, it.name) : '')).join('');
+  const spot = (group) => {
+    const [r, u, v] = D.spots[group];
+    return floorPt(boxes[r], u, v);
+  };
+  const things = [];
+  for (const it of Object.values(best)) if (D.spots[it.group]) things.push({ p: spot(it.group), html: (p) => item(p, it.icon, 54, it.name) });
   // empty spots for the basics show faintly, as a hint of what could go there
   for (const [group, ch] of [['bed', '🛏️'], ['tub', '🛁'], ['desk', '📝'], ['sofa', '🛋️']]) {
-    if (!best[group]) items += `<span class="dh-item ghost" style="left:${(D.spots[group][0] / 720) * 100}%;top:${(D.spots[group][1] / 300) * 100}%" data-action="fly" data-id="furniture">${ch}</span>`;
+    if (!best[group]) things.push({ p: spot(group), html: (p) => `<span class="dh-item ghost" style="${pct(p)};font-size:${Math.round(46 * p.k)}px" title="家具城有卖">${ch}</span>` });
   }
-  items += ownedDecor(s).slice(0, D.decor.length).map((it, i) => at(D.decor[i], it.icon, 26, it.name)).join('');
+
+  // decorations: wall ones on the back walls' sides, the rest in the floor's front corners
+  const wallSpots = boxes.flatMap((b) => [wallPt(b, 0.14, 0.32), wallPt(b, 0.86, 0.32)].map((p) => ({ ...p, k: clamp(b.h / 230, 0.6, 1) })));
+  const floorSpots = boxes.flatMap((b) => [floorPt(b, 0.06, 0.96), floorPt(b, 0.94, 0.96), floorPt(b, 0.5, 0.55)]);
+  let decorHtml = '';
+  for (const it of ownedDecor(s).slice(0, decorSlots(s))) {
+    const onWall = WALL_DECOR.includes(it.id);
+    const p = (onWall ? wallSpots : floorSpots).shift();
+    if (!p) continue;
+    if (onWall) decorHtml += item(p, it.icon, 40, it.name, 'on-wall');
+    else things.push({ p, html: (q) => item(q, it.icon, 44, it.name) });
+  }
+
+  // diplomas, framed on the study wall: one per degree earned
+  const study = boxes.find((b) => b.study);
+  const degs = degrees(s);
+  const shown = degs.slice(0, 10);
+  const perRow = 5;
+  const diplomas = shown.map((d, i) => {
+    const row = Math.floor(i / perRow);
+    const inRow = Math.min(perRow, shown.length - row * perRow);
+    const col = i % perRow;
+    const p = wallPt(study, 0.5 + (col - (inRow - 1) / 2) * 0.17, 0.2 + row * 0.38);
+    const k = clamp(study.h / 230, 0.6, 1);
+    return `<div class="dh-diploma" style="${pct(p)};--k:${k}" title="${esc(d)}"><i>🎓</i><span>${esc(d.replace(/毕业$/, ''))}</span></div>`;
+  }).join('') + (degs.length > shown.length ? `<div class="dh-diploma more" style="${pct(wallPt(study, 0.95, 0.6))}">+${degs.length - shown.length}</div>` : '');
+
+  // the pig, by whatever it's using
   const a = s.activity;
   const spotKey = a && HOME_SPOT_FOR[a.type === 'hobby' ? a.id : a.type];
-  const pigAt = spotKey && best[spotKey] ? D.spots[spotKey] : D.pig;
-  const pig = `<div class="dh-pig" style="left:${(pigAt[0] / 720) * 100}%;top:${(pigAt[1] / 300) * 100}%">${pigHtml}</div>`;
-  return `<div class="dollhouse"><svg viewBox="0 0 720 300" preserveAspectRatio="xMidYMax meet">${rooms}</svg>${items}${pig}</div>`;
+  const pigP = spotKey && best[spotKey] ? (() => {
+    const [r, u, v] = D.spots[spotKey];
+    return floorPt(boxes[r], clamp(u + 0.1, 0, 1), clamp(v + 0.25, 0, 1));
+  })() : floorPt(boxes[tier === 3 ? 3 : tier === 2 ? 2 : 0], 0.5, 0.92);
+  things.push({ p: pigP, html: (p) => `<div class="dh-pig" style="${pct(p)};width:${Math.round(96 * p.k)}px">${pigHtml}</div>` });
+
+  // things further back are drawn first
+  things.sort((m, n) => m.p.y - n.p.y);
+  return `<div class="dollhouse" style="aspect-ratio:720 / ${DH_VIEW.h}"><svg viewBox="0 ${DH_VIEW.y} 720 ${DH_VIEW.h}" preserveAspectRatio="xMidYMid meet">${svg}</svg>
+    ${diplomas}${decorHtml}${things.map((t) => t.html(t.p)).join('')}</div>`;
 }

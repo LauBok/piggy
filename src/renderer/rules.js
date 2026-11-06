@@ -119,15 +119,26 @@ const wishDone = (s, id) => s.npc?.[id]?.wish === dayKey();
 
 // The value of a neighbour's perk once they like the pig enough, or `base`
 function npcPerk(s, key, base) {
-  const n = NPCS.find((x) => x.perk.key === key && hearts(s, x.id) >= NPC_PERK_HEARTS);
+  const n = NPCS.find((x) => x.perk?.key === key && hearts(s, x.id) >= NPC_PERK_HEARTS);
   return n ? n.perk.v : base;
 }
 
-// What an item costs this pig, after any neighbour's discount
-function priceOf(s, it) {
-  const n = NPCS.find((x) => x.perk.key === 'discount' && x.perk.cats.includes(it.cat) && hearts(s, x.id) >= NPC_PERK_HEARTS);
-  return n ? Math.round(it.price * n.perk.v) : it.price;
+// Who runs a shop (null if nobody does)
+const keeperOf = (placeId) => NPCS.find((n) => n.place === placeId && n.spot == null) || null;
+
+// A shop's price multiplier for this pig: the friendlier its keeper, the cheaper
+function shopDiscount(s, placeId) {
+  const k = keeperOf(placeId);
+  if (!k) return 1;
+  return (SHOP_DISCOUNTS.find(([h]) => hearts(s, k.id) >= h) || [0, 1])[1];
 }
+
+// What an item costs this pig in a shop
+const priceOf = (s, it, placeId) => (placeId ? Math.round(it.price * shopDiscount(s, placeId)) : it.price);
+
+// Hearts a hidden item needs before it's sold (0: not hidden)
+const heartsNeeded = (it) => (it.npc ? it.hearts || NPC_MAX_HEARTS : 0);
+const hiddenLocked = (s, it) => !!it.npc && hearts(s, it.npc) < heartsNeeded(it);
 
 const payOf = (s, job) => Math.round(job.pay * npcPerk(s, 'pay', 1));
 const playCap = (s) => PLAY_EXP_DAILY + npcPerk(s, 'playCap', 0);
@@ -137,7 +148,7 @@ const playCap = (s) => PLAY_EXP_DAILY + npcPerk(s, 'playCap', 0);
 function npcWish(id, day = dayKey()) {
   const wishers = [...NPCS].sort((a, b) => hashStr(day + a.id) - hashStr(day + b.id)).slice(0, NPC_WISHES_PER_DAY);
   if (!wishers.some((n) => n.id === id)) return null;
-  const own = NPC_BY_ID[id].perk.cats || [];
+  const own = NPC_BY_ID[id].perk?.cats || [];
   const pool = ITEMS.filter((it) => WISH_CATS.includes(it.cat) && !it.npc && it.price <= WISH_MAX_PRICE && !own.includes(it.cat));
   return pool[hashStr(id + day) % pool.length].id;
 }
@@ -151,13 +162,13 @@ const decorSlots = (s) => DECOR_SLOTS[homeTier(s)];
 const HOUSE_NAMES = ['小猪窝', '温馨公寓', '花园别墅', '猪猪城堡'];
 
 // Why an item can't be bought right now, or null
-function buyBlock(s, it) {
+function buyBlock(s, it, placeId) {
   if (ONCE_CATS.includes(it.cat) && s.inventory[it.id]) return `已经有${it.name}啦`;
-  if (it.npc && hearts(s, it.npc) < NPC_MAX_HEARTS) return `和${NPC_BY_ID[it.npc].name}再熟一点才卖给你`;
+  if (hiddenLocked(s, it)) return `和${NPC_BY_ID[it.npc].name}再熟一点才卖给你`;
   if (it.tier && homeTier(s) >= it.tier) return '已经住上更好的房子啦';
   if (it.needsTier && homeTier(s) < it.needsTier) return `要住进${HOUSE_NAMES[it.needsTier]}才放得下`;
   if (it.cat === 'decor' && ownedDecor(s).length >= decorSlots(s)) return '家里摆满啦，换个大房子吧';
-  if (s.money < priceOf(s, it)) return '金币不够…去打工赚钱吧';
+  if (s.money < priceOf(s, it, placeId)) return '金币不够…去打工赚钱吧';
   return null;
 }
 
@@ -214,3 +225,9 @@ const formFor = (level) => FORMS.filter((f) => level >= f.min).pop();
 
 // How to say doing a job: "当洗碗工" for a role, just "拱松露" when the name is already an action
 const jobVerb = (job) => (job.doing ? job.name : `当${job.name}`);
+
+// ---------- the vegetable patch ----------
+
+// How far a planted plot has grown: 0 to 1 (ripe)
+const plotProgress = (p) => clamp((Date.now() - p.at) / 60000 / ITEM_BY_ID[p.seed].grow, 0, 1);
+const fmtGrow = (min) => (min >= 60 ? `${+(min / 60).toFixed(1)} 小时` : `${min} 分钟`);

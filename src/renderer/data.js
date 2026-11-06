@@ -375,6 +375,7 @@ const SHOP_CATS = [
   { id: 'toy', name: '玩具', icon: '🧸', desc: '买一次可以反复玩，玩完要歇一会儿' },
   { id: 'medicine', name: '药物', icon: '💊', desc: '生病时吃，恢复健康' },
   { id: 'wear', name: '装扮', icon: '🎀', desc: '买一次，可以随时戴上或摘下' },
+  { id: 'seed', name: '种子', icon: '🌱', desc: '种在家门口的菜园里' },
   { id: 'furniture', name: '家具', icon: '🛋️', desc: '摆在家里，一直有效' },
   { id: 'decor', name: '装饰', icon: '🪴', desc: '摆在家里，只是好看' },
   { id: 'city', name: '捐建', icon: '⛲', desc: '捐给猪猪城，地图上会出现' },
@@ -403,21 +404,28 @@ const TOY_MIN_FUN = 0.2;
 const TOY_BORED_RECOVER_H = 2;
 
 const ITEMS = [
-  { id: 'apple', cat: 'food', name: '苹果', icon: '🍎', price: 5, effects: { hunger: 8, mood: 1 } },
-  { id: 'bread', cat: 'food', name: '面包', icon: '🍞', price: 10, effects: { hunger: 15 } },
-  { id: 'milk', cat: 'food', name: '牛奶', icon: '🥛', price: 12, effects: { hunger: 10, health: 2 } },
-  { id: 'rice', cat: 'food', name: '米饭', icon: '🍚', price: 18, effects: { hunger: 25 } },
-  { id: 'dumpling', cat: 'food', name: '饺子', icon: '🥟', price: 28, effects: { hunger: 35, mood: 3 } },
-  { id: 'burger', cat: 'food', name: '汉堡', icon: '🍔', price: 35, effects: { hunger: 45, mood: 5, health: -2 } },
-  { id: 'pizza', cat: 'food', name: '披萨', icon: '🍕', price: 50, effects: { hunger: 60, mood: 5 } },
-  { id: 'cake', cat: 'food', name: '蛋糕', icon: '🍰', price: 60, effects: { hunger: 30, mood: 15 } },
-  { id: 'feast', cat: 'food', name: '满汉全席', icon: '🍲', price: 200, effects: { hunger: 100, mood: 20, health: 5 } },
+  { id: 'apple', cat: 'food', shops: ['farm', 'store', 'supermarket'], name: '苹果', icon: '🍎', price: 5, effects: { hunger: 8, mood: 1 } },
+  { id: 'bread', cat: 'food', shops: ['bakery', 'store', 'supermarket'], name: '面包', icon: '🍞', price: 10, effects: { hunger: 15 } },
+  { id: 'milk', cat: 'food', shops: ['farm', 'store', 'supermarket'], name: '牛奶', icon: '🥛', price: 12, effects: { hunger: 10, health: 2 } },
+  { id: 'rice', cat: 'food', shops: ['supermarket', 'restaurant'], name: '米饭', icon: '🍚', price: 18, effects: { hunger: 25 } },
+  { id: 'dumpling', cat: 'food', shops: ['restaurant', 'supermarket'], name: '饺子', icon: '🥟', price: 28, effects: { hunger: 35, mood: 3 } },
+  { id: 'burger', cat: 'food', shops: ['restaurant'], name: '汉堡', icon: '🍔', price: 35, effects: { hunger: 45, mood: 5, health: -2 } },
+  { id: 'pizza', cat: 'food', shops: ['restaurant'], name: '披萨', icon: '🍕', price: 50, effects: { hunger: 60, mood: 5 } },
+  { id: 'cake', cat: 'food', shops: ['bakery'], name: '蛋糕', icon: '🍰', price: 60, effects: { hunger: 30, mood: 15 } },
+  { id: 'croissant', cat: 'food', shops: ['bakery'], name: '牛角包', icon: '🥐', price: 14, effects: { hunger: 18, mood: 2 } },
+  { id: 'donut', cat: 'food', shops: ['bakery'], name: '甜甜圈', icon: '🍩', price: 16, effects: { hunger: 12, mood: 6 } },
+  { id: 'egg', cat: 'food', shops: ['farm', 'supermarket'], name: '鸡蛋', icon: '🥚', price: 8, effects: { hunger: 12, health: 1 } },
+  { id: 'carrot', cat: 'food', shops: ['farm'], name: '胡萝卜', icon: '🥕', price: 6, effects: { hunger: 10, health: 1 } },
+  { id: 'corn', cat: 'food', shops: ['farm'], name: '玉米', icon: '🌽', price: 9, effects: { hunger: 16 } },
+  { id: 'strawberry', cat: 'food', shops: ['farm'], name: '草莓', icon: '🍓', price: 12, effects: { hunger: 6, mood: 6 } },
+  { id: 'pumpkin', cat: 'food', shops: ['farm'], name: '南瓜', icon: '🎃', price: 24, effects: { hunger: 35, health: 2 } },
+  { id: 'feast', cat: 'food', shops: ['restaurant'], name: '满汉全席', icon: '🍲', price: 200, effects: { hunger: 100, mood: 20, health: 5 } },
 
-  { id: 'wipes', cat: 'hygiene', name: '湿巾', icon: '🧻', price: 5, effects: { clean: 10 } },
-  { id: 'soap', cat: 'hygiene', name: '香皂', icon: '🧼', price: 15, effects: { clean: 25 } },
-  { id: 'shampoo', cat: 'hygiene', name: '洗发水', icon: '🧴', price: 30, effects: { clean: 40 } },
-  { id: 'bodywash', cat: 'hygiene', name: '沐浴露', icon: '🚿', price: 60, effects: { clean: 70, mood: 5 } },
-  { id: 'spa', cat: 'hygiene', name: '泡泡浴', icon: '🛁', price: 120, effects: { clean: 100, mood: 15 } },
+  { id: 'wipes', cat: 'hygiene', shops: ['store', 'supermarket'], name: '湿巾', icon: '🧻', price: 5, effects: { clean: 10 } },
+  { id: 'soap', cat: 'hygiene', shops: ['bubble', 'store', 'supermarket'], name: '香皂', icon: '🧼', price: 15, effects: { clean: 25 } },
+  { id: 'shampoo', cat: 'hygiene', shops: ['bubble', 'supermarket'], name: '洗发水', icon: '🧴', price: 30, effects: { clean: 40 } },
+  { id: 'bodywash', cat: 'hygiene', shops: ['bubble'], name: '沐浴露', icon: '🚿', price: 60, effects: { clean: 70, mood: 5 } },
+  { id: 'spa', cat: 'hygiene', shops: ['bubble'], name: '泡泡浴', icon: '🛁', price: 120, effects: { clean: 100, mood: 15 } },
 
   { id: 'ball', cat: 'toy', name: '皮球', icon: '⚽', price: 30, effects: { mood: 12 }, cooldown: 20 },
   { id: 'blocks', cat: 'toy', name: '积木', icon: '🧩', price: 60, effects: { mood: 18 }, cooldown: 30 },
@@ -426,7 +434,7 @@ const ITEMS = [
   { id: 'car', cat: 'toy', name: '遥控车', icon: '🏎️', price: 220, effects: { mood: 38 }, cooldown: 45 },
   { id: 'console', cat: 'toy', name: '游戏机', icon: '🎮', price: 400, effects: { mood: 50 }, cooldown: 60 },
 
-  { id: 'vitamin', cat: 'medicine', name: '维生素', icon: '🍬', price: 20, effects: { health: 10 } },
+  { id: 'vitamin', cat: 'medicine', shops: ['clinic', 'supermarket'], name: '维生素', icon: '🍬', price: 20, effects: { health: 10 } },
   { id: 'coldmed', cat: 'medicine', name: '感冒药', icon: '💊', price: 45, effects: { health: 30, mood: -3 } },
   { id: 'fevermed', cat: 'medicine', name: '退烧药', icon: '🌡️', price: 70, effects: { health: 45, mood: -3 } },
   { id: 'firstaid', cat: 'medicine', name: '急救包', icon: '🩹', price: 150, effects: { health: 80 } },
@@ -437,6 +445,12 @@ const ITEMS = [
   { id: 'shades', cat: 'wear', slot: 'face', name: '酷酷墨镜', icon: '🕶️', price: 200, effects: {} },
   { id: 'tophat', cat: 'wear', slot: 'head', name: '绅士礼帽', icon: '🎩', price: 350, effects: {} },
   { id: 'crown', cat: 'wear', slot: 'head', name: '小皇冠', icon: '👑', price: 600, effects: {} },
+
+  // seeds for the vegetable patch at home: grow: real minutes until ripe, yield: how many come up
+  { id: 'seed_carrot', cat: 'seed', shops: ['farm'], crop: 'carrot', name: '胡萝卜种子', icon: '🥕', price: 8, grow: 90, yield: 3, effects: {} },
+  { id: 'seed_strawberry', cat: 'seed', shops: ['farm'], crop: 'strawberry', name: '草莓种子', icon: '🍓', price: 15, grow: 150, yield: 3, effects: {} },
+  { id: 'seed_corn', cat: 'seed', shops: ['farm'], crop: 'corn', name: '玉米种子', icon: '🌽', price: 12, grow: 180, yield: 3, effects: {} },
+  { id: 'seed_pumpkin', cat: 'seed', shops: ['farm'], crop: 'pumpkin', name: '南瓜种子', icon: '🎃', price: 30, grow: 360, yield: 2, effects: {} },
 
   // furniture for the pig's home, bought once. Only the best item of each group counts.
   // bonus multiplies: sleep (energy regained asleep), bath (free bath), study (exp from classes),
@@ -483,9 +497,24 @@ const ITEMS = [
   { id: 'ferris', cat: 'city', name: '摩天轮', icon: '🎡', price: 100000, effects: {} },
   { id: 'statue', cat: 'city', name: '金猪雕像', icon: '🐷', price: 300000, effects: {} },
 
+  // hidden goods: a shop starts selling them once its keeper likes the pig enough (npc, hearts)
+  { id: 'baguette', cat: 'food', npc: 'fox', hearts: 3, shops: ['bakery'], name: '法棍', icon: '🥖', price: 18, effects: { hunger: 32 } },
+  { id: 'berrycake', cat: 'food', npc: 'fox', hearts: 6, shops: ['bakery'], name: '草莓蛋糕', icon: '🎂', price: 45, effects: { hunger: 35, mood: 18 } },
+  { id: 'lavender', cat: 'hygiene', npc: 'raccoon', hearts: 3, shops: ['bubble'], name: '薰衣草皂', icon: '💜', price: 22, effects: { clean: 45, mood: 3 } },
+  { id: 'bathsalt', cat: 'hygiene', npc: 'raccoon', hearts: 6, shops: ['bubble'], name: '牛奶浴盐', icon: '🧂', price: 70, effects: { clean: 90, mood: 12 } },
+  { id: 'rope', cat: 'toy', npc: 'squirrel', hearts: 3, shops: ['toy'], name: '跳绳', icon: '🪢', price: 50, effects: { mood: 20 }, cooldown: 15 },
+  { id: 'puzzle', cat: 'toy', npc: 'squirrel', hearts: 6, shops: ['toy'], name: '拼图', icon: '🧩', price: 140, effects: { mood: 34 }, cooldown: 25 },
+  { id: 'bed_bear', cat: 'furniture', group: 'bed', npc: 'bear', hearts: 3, name: '熊师傅手作床', icon: '🛏️', price: 800, effects: {}, bonus: { sleep: 1.5 } },
+  { id: 'sofa_bear', cat: 'furniture', group: 'sofa', npc: 'bear', hearts: 6, name: '熊熊沙发', icon: '🛋️', price: 1500, effects: {}, bonus: { moodDrain: 0.7 } },
+  { id: 'lozenge', cat: 'medicine', npc: 'sheep', hearts: 3, name: '润喉糖', icon: '🍬', price: 14, effects: { health: 14, mood: 2 } },
+  { id: 'tonic', cat: 'medicine', npc: 'sheep', hearts: 6, name: '营养补剂', icon: '🧃', price: 55, effects: { health: 50 } },
+  { id: 'freshmilk', cat: 'food', npc: 'cow', hearts: 3, shops: ['farm'], name: '新鲜牛奶', icon: '🍼', price: 10, effects: { hunger: 14, health: 3 } },
+  { id: 'seed_melon', cat: 'seed', npc: 'cow', hearts: 6, shops: ['farm'], crop: 'watermelon', name: '西瓜种子', icon: '🍉', price: 25, grow: 240, yield: 4, effects: {} },
+  { id: 'watermelon', cat: 'food', shops: [], name: '西瓜', icon: '🍉', price: 30, effects: { hunger: 28, mood: 8 } },
+
   // sold only by a neighbour who loves the pig (npc: who, at NPC_MAX_HEARTS)
   { id: 'cap', cat: 'wear', slot: 'head', npc: 'dog', name: '工作帽', icon: '🧢', price: 250, effects: {} },
-  { id: 'carrotcake', cat: 'food', npc: 'rabbit', name: '胡萝卜蛋糕', icon: '🥕', price: 80, effects: { hunger: 40, mood: 20 } },
+  { id: 'carrotcake', cat: 'food', npc: 'fox', name: '胡萝卜蛋糕', icon: '🧁', price: 80, effects: { hunger: 40, mood: 20 } },
   { id: 'bubbler', cat: 'furniture', group: 'bubbler', npc: 'raccoon', name: '泡泡机', icon: '🫧', price: 2000, effects: {}, bonus: { bath: 1.2 } },
   { id: 'pinecone', cat: 'toy', npc: 'squirrel', name: '松果陀螺', icon: '🌰', price: 200, effects: { mood: 35 }, cooldown: 20 },
   { id: 'starclip', cat: 'wear', slot: 'head', npc: 'cat', name: '星星发卡', icon: '⭐', price: 300, effects: {} },
@@ -499,26 +528,54 @@ const ITEMS = [
 const BONUS_NAME = { sleep: '睡觉恢复', bath: '洗澡', study: '学习经验', moodDrain: '心情消耗', piano: '弹琴', paint: '画画', food: '食物效果' };
 const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
+// Where things are sold, for items that don't list their own shops
+const SHOP_FOR_CAT = { food: ['bakery'], hygiene: ['bubble'], toy: ['toy'], medicine: ['clinic'], wear: ['clothes'], furniture: ['furniture'], decor: ['furniture'], city: ['cityhall'], seed: ['farm'] };
+const shopsOf = (it) => it.shops || SHOP_FOR_CAT[it.cat] || [];
+
+// The salon: fur colours and hairstyles (price in coins; the first of each is the pig's own)
+const LOOK_COLORS = [
+  { id: 'pink', name: '粉粉原色', price: 0 }, { id: 'cream', name: '奶白', price: 200 }, { id: 'choco', name: '巧克力', price: 300 },
+  { id: 'lilac', name: '香芋紫', price: 500 }, { id: 'mint', name: '薄荷绿', price: 500 }, { id: 'gold', name: '金闪闪', price: 1200 },
+];
+const LOOK_HAIR = [
+  { id: '', name: '不要发型', price: 0 }, { id: 'bangs', name: '齐刘海', price: 150 }, { id: 'curls', name: '小卷毛', price: 250 },
+  { id: 'bun', name: '丸子头', price: 200 }, { id: 'mohawk', name: '莫西干', price: 300 },
+];
+
+// The vegetable patch at home
+const GARDEN_PLOTS = 6;
+
 // ---------- neighbours in Pig City ----------
 // Hearts go from 0 to NPC_MAX_HEARTS: +1 for the first hello of the day, +2 for a wish granted.
 // At NPC_PERK_HEARTS each one gives a perk; at the max their shop sells their special item.
 const NPC_PERK_HEARTS = 5;
 const NPC_MAX_HEARTS = 10;
 const NPC_WISHES_PER_DAY = 3;
+// A shop keeper's discount on their own goods, by hearts: [hearts, price multiplier]
+const SHOP_DISCOUNTS = [[10, 0.85], [6, 0.9], [3, 0.95]];
 // what neighbours wish for: cheap everyday things
 const WISH_CATS = ['food', 'hygiene', 'medicine'];
 const WISH_MAX_PRICE = 70;
 
 const NPCS = [
   { id: 'dog', name: '柴柴', species: 'dog', place: 'tower', hello: ['今天也加油💪', '有新活儿哦📋', '汪！早呀🌞'], perk: { key: 'pay', v: 1.05, text: '打工工资 +5%' } },
-  { id: 'rabbit', name: '兔婆婆', species: 'rabbit', place: 'bakery', hello: ['刚出炉的🍞', '多吃点呀', '乖孩子😊'], perk: { key: 'discount', cats: ['food'], v: 0.9, text: '食物 9 折' } },
-  { id: 'raccoon', name: '浣浣', species: 'raccoon', place: 'bubble', hello: ['洗干净没🫧', '香香的✨', '别把泥带进来！'], perk: { key: 'discount', cats: ['hygiene'], v: 0.9, text: '卫生用品 9 折' } },
+  { id: 'fox', name: '狐狸阿姨', species: 'fox', place: 'bakery', hello: ['刚出炉的🍞', '多吃点呀', '乖孩子😊'] },
+  { id: 'raccoon', name: '浣浣', species: 'raccoon', place: 'bubble', hello: ['洗干净没🫧', '香香的✨', '别把泥带进来！'] },
   { id: 'squirrel', name: '栗栗', species: 'squirrel', place: 'toy', hello: ['来玩来玩🎈', '新玩具到啦！', '吱吱~'], perk: { key: 'toyRecover', v: 2, text: '玩腻的玩具恢复快一倍' } },
-  { id: 'cat', name: '咪咪', species: 'cat', place: 'clothes', hello: ['还行吧😼', '这个衬你🎀', '喵~'], perk: { key: 'discount', cats: ['wear'], v: 0.9, text: '装扮 9 折' } },
-  { id: 'bear', name: '熊师傅', species: 'bear', place: 'furniture', hello: ['结实着呢🪵', '慢慢挑', '嘿咻！'], perk: { key: 'discount', cats: ['furniture', 'decor'], v: 0.9, text: '家具和装饰 9 折' } },
+  { id: 'cat', name: '咪咪', species: 'cat', place: 'clothes', hello: ['还行吧😼', '这个衬你🎀', '喵~'] },
+  { id: 'bear', name: '熊师傅', species: 'bear', place: 'furniture', hello: ['结实着呢🪵', '慢慢挑', '嘿咻！'] },
   { id: 'sheep', name: '绵绵医生', species: 'sheep', place: 'clinic', hello: ['多喝水哦💧', '早睡早起~', '咩~'], perk: { key: 'clinicCd', v: 0.5, text: '免费看病等待减半' } },
   { id: 'owl', name: '咕咕校长', species: 'owl', place: 'primary', hello: ['好好学习📚', '咕咕~', '知识就是力量'], perk: { key: 'study', v: 1.05, text: '上课经验 ×1.05' } },
   { id: 'turtle', name: '龟爷爷', species: 'turtle', place: 'chess', hello: ['来一盘？♟️', '慢慢来…', '呵呵呵'], perk: { key: 'playCap', v: 10, text: '每日游戏经验上限 +10' } },
   { id: 'duck', name: '嘎嘎大厨', species: 'duck', place: 'canteen', hello: ['开饭啦🍚', '嘎嘎！', '管饱！'], perk: { key: 'canteen', v: 10, text: '食堂饱食 +10' } },
 ];
+// the farm market's keeper
+NPCS.push({ id: 'cow', name: '牛大叔', species: 'cow', place: 'farm', hello: ['今早刚挤的奶🥛', '地里的菜可水灵了', '哞~来看看'] });
+
+// the neighbours in the cottages next door (spot: which cottage); just friends, no perk
+NPCS.push(
+  { id: 'rabbit', name: '小兔', species: 'bunny', place: 'neighbors', spot: 0, small: true, hello: ['小猪哥哥好！', '一起玩跳房子吧🐰', '我今天得了小红花🌸'] },
+  { id: 'panda', name: '熊猫爷爷', species: 'panda', place: 'neighbors', spot: 1, hello: ['吃竹子吗？🎋', '年轻真好啊', '慢慢走，别摔着'] },
+  { id: 'hedgehog', name: '刺猬妹妹', species: 'hedgehog', place: 'neighbors', spot: 2, hello: ['小心别被扎到哦', '我在种花🌷', '嘻嘻~'] },
+);
 const NPC_BY_ID = Object.fromEntries(NPCS.map((n) => [n.id, n]));

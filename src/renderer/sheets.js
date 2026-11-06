@@ -61,14 +61,20 @@ function hobbyTile(snap, h) {
 
 // ---------- pieces ----------
 
-function goodsCard(snap, it) {
+function goodsCard(snap, it, placeId) {
   const s = snap.s;
+  // a hidden item stays a mystery until its keeper likes the pig enough
+  if (hiddenLocked(s, it)) {
+    return `<div class="card goods mystery"><div class="goods-ic">❓</div><b>隐藏商品</b>
+      <div class="effs">${chip(`${NPC_BY_ID[it.npc].name} ${heartsNeeded(it)}♥`, '#f06595')}</div>
+      <button class="btn" disabled>♥ ${heartsNeeded(it)}</button></div>`;
+  }
   const owned = s.inventory[it.id] || 0;
   const once = ONCE_CATS.includes(it.cat) && owned;
-  const price = priceOf(s, it);
-  const why = buyBlock(s, it);
-  const npcLock = it.npc && hearts(s, it.npc) < NPC_MAX_HEARTS;
-  let btn = `<button class="btn" data-action="buy" data-id="${it.id}" ${why ? 'disabled' : ''}>🪙 ${price}${price < it.price ? ` <s>${it.price}</s>` : ''}</button>`;
+  const price = priceOf(s, it, placeId);
+  const why = buyBlock(s, it, placeId);
+  const npcLock = false;
+  let btn = `<button class="btn" data-action="buy" data-id="${placeId ? `${placeId}:` : ''}${it.id}" ${why ? 'disabled' : ''}>🪙 ${price}${price < it.price ? ` <s>${it.price}</s>` : ''}</button>`;
   if (once) btn = '<button class="btn done" disabled>已拥有</button>';
   else if (npcLock) btn = `<button class="btn" disabled>♥ ${NPC_MAX_HEARTS}</button>`;
   else if (why && why !== '金币不够…去打工赚钱吧') btn = `<button class="btn" disabled title="${esc(why)}">${it.needsTier ? `🏡 ${HOUSE_NAMES[it.needsTier]}` : it.cat === 'decor' ? '摆满了' : '—'}</button>`;
@@ -79,10 +85,16 @@ function goodsCard(snap, it) {
     ${btn}</div>`;
 }
 
-const goodsGrid = (snap, items) => `<div class="grid">${items.map((it) => goodsCard(snap, it)).join('')}</div>`;
+const goodsGrid = (snap, items, placeId) => `<div class="grid">${items.map((it) => goodsCard(snap, it, placeId)).join('')}</div>`;
 
 // Items a shop sells: its category, with the neighbour's special item last
-const shopItems = (cat) => [...ITEMS.filter((it) => it.cat === cat && !it.npc), ...ITEMS.filter((it) => it.cat === cat && it.npc)];
+// What a place sells, with its neighbour's special item last
+const shopItems = (placeId) => {
+  // hidden goods without their own shop list show up in their keeper's shop
+  const keeper = keeperOf(placeId);
+  const here = ITEMS.filter((it) => shopsOf(it).includes(placeId) || (keeper && it.npc === keeper.id && !it.shops));
+  return [...here.filter((it) => !it.npc), ...here.filter((it) => it.npc)];
+};
 
 function npcCard(snap, n) {
   const s = snap.s;
@@ -102,8 +114,18 @@ function npcCard(snap, n) {
   const perkOn = h >= NPC_PERK_HEARTS;
   return `<div class="card npc-card"><div class="npc-av" data-action="greet" data-id="${n.id}">${animalSvg(n.species)}</div>
     <div class="npc-main"><b>${n.name}</b><div class="hearts">${heartsRow}</div>
-      <small class="perk ${perkOn ? 'on' : ''}">${perkOn ? '✓' : `${NPC_PERK_HEARTS}♥`} ${n.perk.text}</small></div>
+      ${npcPerkLine(s, n, h, perkOn)}</div>
     <div class="npc-acts">${wishBtn}${hi}</div></div>`;
+}
+
+// The line under a neighbour's hearts: their perk, their shop's discount and what's next, or just "neighbour"
+function npcPerkLine(s, n, h, perkOn) {
+  if (n.perk) return `<small class="perk ${perkOn ? 'on' : ''}">${perkOn ? '✓' : `${NPC_PERK_HEARTS}♥`} ${n.perk.text}</small>`;
+  if (n.spot != null) return '<small class="perk">邻居</small>';
+  const now = shopDiscount(s, n.place);
+  const next = [...SHOP_DISCOUNTS].reverse().find(([need]) => h < need);
+  const off = (k) => `${Math.round(k * 100) / 10} 折`;
+  return `<small class="perk ${now < 1 ? 'on' : ''}">${now < 1 ? `✓ 店里 ${off(now)}` : '还没有折扣'}${next ? ` · ${next[0]}♥ ${off(next[1])}，解锁隐藏商品` : ''}</small>`;
 }
 
 function jobRows(snap, jobs, showPlace = false) {
@@ -118,7 +140,7 @@ function jobRows(snap, jobs, showPlace = false) {
     const pay = payOf(s, job);
     return `<div class="card job ${ok ? '' : 'locked'}">
       <div class="job-ic">${job.icon}</div>
-      <div class="job-main"><b>${job.name}</b>${showPlace ? `<span class="job-where" data-action="fly" data-id="${place.id}">${place.icon} ${place.name}</span>` : ''}
+      <div class="job-main"><b>${job.name}</b>${showPlace ? `<span class="job-where" data-action="goto" data-id="${place.id}" title="在地图上看看">${place.icon} ${place.name}</span>` : ''}
         <div class="reqs">${reqChips(reqs)}</div>
         <div class="effs">${chip(`⏱ ${job.minutes} 分`, '#868e96')}${effChips(p)}</div></div>
       <div class="job-side"><span class="pay">🪙 ${pay}</span>
@@ -152,7 +174,7 @@ const SheetUI = {
 
 const SHEETS = {
   shop(snap, p) {
-    return goodsGrid(snap, shopItems(p.cat));
+    return goodsGrid(snap, shopItems(p.id), p.id) + section('💼 工作', jobRows(snap, jobsAt(p.id)));
   },
 
   furniture(snap) {
@@ -160,15 +182,74 @@ const SHEETS = {
     const pills = tabs.map(([id, name]) => `<button class="pill ${SheetUI.furnTab === id ? 'on' : ''}" data-action="furnTab" data-id="${id}">${name}</button>`).join('');
     let items;
     if (SheetUI.furnTab === 'house') items = ITEMS.filter((it) => it.group === 'house');
-    else if (SheetUI.furnTab === 'decor') items = shopItems('decor');
-    else items = shopItems('furniture').filter((it) => it.group !== 'house');
+    else if (SheetUI.furnTab === 'decor') items = shopItems('furniture').filter((it) => it.cat === 'decor');
+    else items = shopItems('furniture').filter((it) => it.cat === 'furniture' && it.group !== 'house');
     const s = snap.s;
     const slots = SheetUI.furnTab === 'decor' ? `<div class="note">🪴 ${ownedDecor(s).length} / ${decorSlots(s)}</div>` : '';
-    return `<div class="pills">${pills}</div>${slots}${goodsGrid(snap, items)}`;
+    return `<div class="pills">${pills}</div>${slots}${goodsGrid(snap, items, 'furniture')}`;
   },
 
   clinic(snap, p) {
-    return `${tiles([helpTile(snap, 'clinic')])}${section('💊 药房', goodsGrid(snap, shopItems('medicine')))}${section('💼 工作', jobRows(snap, jobsAt(p.id)))}`;
+    return `${tiles([helpTile(snap, 'clinic')])}${section('💊 药房', goodsGrid(snap, shopItems('clinic'), 'clinic'))}${section('💼 工作', jobRows(snap, jobsAt(p.id)))}`;
+  },
+
+  // the salon: try a fur colour or a hairstyle; the little pigs show how each would look
+  salon(snap) {
+    const s = snap.s;
+    const look = s.look || { color: 'pink', hair: '' };
+    const card = (kind, o) => {
+      const now = (look[kind] || '') === o.id;
+      const prev = kind === 'color' ? { ...look, color: o.id } : { ...look, hair: o.id };
+      return `<div class="card goods ${now ? 'current' : ''}"><div class="look-prev" data-color="${prev.color}" data-hair="${prev.hair || ''}"></div><b>${o.name}</b>
+        <button class="btn ${now ? 'done' : ''}" data-action="restyle" data-id="${kind}:${o.id}" ${now || s.money < o.price ? 'disabled' : ''}>${now ? '现在' : o.price ? `🪙 ${o.price}` : '免费'}</button></div>`;
+    };
+    return section('🎨 毛色', `<div class="grid">${LOOK_COLORS.map((o) => card('color', o)).join('')}</div>`)
+      + section('💇 发型', `<div class="grid">${LOOK_HAIR.map((o) => card('hair', o)).join('')}</div>`);
+  },
+
+  // the wardrobe at home: put things on or take them off
+  wardrobe(snap) {
+    const s = snap.s;
+    const wear = ITEMS.filter((it) => it.cat === 'wear' && s.inventory[it.id]);
+    if (!wear.length) return '<div class="empty"><div class="empty-ic">👗</div><b>还没有衣服</b><small>服装店有卖</small></div>';
+    return `<div class="grid">${wear.map((it) => {
+      const on = s.wear[it.slot] === it.id;
+      return `<div class="card goods"><div class="goods-ic">${it.icon}</div><b>${it.name}</b>
+        <button class="btn ${on ? 'done' : ''}" data-action="use" data-id="${it.id}">${on ? '摘下' : '戴上'}</button></div>`;
+    }).join('')}</div>`;
+  },
+
+  // the study at home: diplomas earned and what the furniture does
+  study(snap) {
+    const s = snap.s;
+    const degs = degrees(s);
+    const furn = ITEMS.filter((it) => it.cat === 'furniture' && s.inventory[it.id]);
+    const better = (it) => ITEMS.some((x) => x.group === it.group && x.price > it.price && s.inventory[x.id]);
+    return `${section('🎓 学历', degs.length ? `<div class="reqs left">${degs.map((d) => `<span class="req ok">${d}</span>`).join('')}</div>` : '<small class="muted">还没有毕业证</small>')}
+      ${section('🛋️ 家具', furn.length ? `<div class="furn-list">${furn.map((it) => `<span class="furn ${better(it) ? 'idle' : ''}" title="${esc(it.name)}">${it.icon}<small>${bonusChips(it.bonus)}</small></span>`).join('')}</div>` : '<small class="muted">家具城有卖</small>')}`;
+  },
+
+  // The vegetable patch: plant seeds in empty plots, harvest what's ripe
+  garden(snap) {
+    const s = snap.s;
+    const seeds = ITEMS.filter((it) => it.cat === 'seed' && s.inventory[it.id]);
+    const ripe = s.farm.filter((p) => p && plotProgress(p) >= 1).length;
+    const plots = s.farm.map((p, i) => {
+      if (!p) {
+        const btns = seeds.length
+          ? seeds.map((it) => `<button class="seed-btn" data-action="plant" data-id="${i}:${it.id}" title="${esc(it.name)}">${it.icon}<small>×${s.inventory[it.id]}</small></button>`).join('')
+          : '<small class="muted">去农牧市场买种子</small>';
+        return `<div class="plot empty"><div class="plot-soil"></div><div class="plot-seeds">${btns}</div></div>`;
+      }
+      const seed = ITEM_BY_ID[p.seed];
+      const k = plotProgress(p);
+      const left = Math.ceil((1 - k) * seed.grow);
+      const look = k >= 1 ? seed.icon : k < 0.4 ? '🌱' : '🌿';
+      return `<div class="plot ${k >= 1 ? 'ripe' : ''}"><div class="plot-soil"><span class="plot-crop">${look}</span></div>
+        <b>${ITEM_BY_ID[seed.crop].name}</b>${k >= 1 ? '<small>熟啦！</small>' : `<div class="pbar"><i style="width:${k * 100}%"></i></div><small>还要 ${fmtGrow(left)}</small>`}</div>`;
+    }).join('');
+    return `<div class="garden-top"><button class="btn" data-action="harvest" ${ripe ? '' : 'disabled'}>🧺 收获${ripe ? ` (${ripe})` : ''}</button></div>
+      <div class="plots">${plots}</div>`;
   },
 
   canteen(snap) {
@@ -196,7 +277,7 @@ const SHEETS = {
     const list = furn.length
       ? `<div class="furn-list">${furn.map((it) => `<span class="furn ${better(it) ? 'idle' : ''}" title="${esc(it.name)}">${it.icon}<small>${bonusChips(it.bonus)}</small></span>`).join('')}</div>`
       : '';
-    return `<div class="home-top"><b>${HOUSE_NAMES[tier]}</b><button class="btn ghost" data-action="fly" data-id="furniture">🛋️ 家具城</button></div>
+    return `<div class="home-top"><b>${HOUSE_NAMES[tier]}</b></div>
       <div id="dollhouse"></div>${tiles(acts)}${section('👗 衣柜', wardrobe)}${section('🛋️ 家具', list)}`;
   },
 
@@ -315,8 +396,7 @@ const SHEETS = {
 
     const anim = U.treeDir;
     U.treeDir = '';
-    const owl = p.id === 'primary' ? npcCard(snap, NPC_BY_ID.owl) : '';
-    return `${owl}<div class="stepper">${stepper}</div>${majorBar}
+    return `<div class="stepper">${stepper}</div>${majorBar}
       <div class="card focus ${anim}"><div class="focus-in" style="width:${xRight + W.side}px;height:${H}px">
         <svg width="${xRight + W.side}" height="${H}">${lines}</svg>
         ${before.length ? '' : `<div class="fside-empty" style="left:0;width:${W.side}px">起点</div>`}
@@ -353,11 +433,13 @@ const SHEETS = {
           <button class="btn" data-action="rename">保存</button></div></div>
       ${degs.length ? `<div class="card form"><h3>🎓 学历</h3>
         <div class="reqs left">${degs.map((d) => `<span class="req ok">${d}</span>`).join('')}</div></div>` : ''}
-      ${section('⛲ 捐建', goodsGrid(snap, shopItems('city')))}
+      ${section('⛲ 捐建', goodsGrid(snap, shopItems('cityhall')))}
       ${section('💼 工作', jobRows(snap, jobsAt(p.id)))}`;
   },
 
   jobs(snap, p) {
+    // the neighbours' cottages: say hello to whoever lives there
+    if (p.id === 'neighbors') return NPCS.filter((n) => n.place === 'neighbors').map((n) => npcCard(snap, n)).join('') + jobRows(snap, jobsAt(p.id));
     const rows = jobRows(snap, jobsAt(p.id));
     return rows || '<div class="empty"><div class="empty-ic">🌿</div></div>';
   },
@@ -409,11 +491,31 @@ function gamesSheet(snap, games) {
 }
 
 
+// Colours for places that aren't plain buildings
+const KIND_COLORS = { forest: ['#d3f9d8', '#69db7c'], spring: ['#fff4e6', '#d9a066'], site: ['#fff3bf', '#fab005'], pavilion: ['#d3f9d8', '#2f9e44'],
+  stage: ['#e5dbff', '#7048e8'], plaza: ['#f8f0e3', '#e8a87c'], field: ['#d3f9d8', '#40c057'], lake: ['#d0ebff', '#4dabf7'],
+  home: ['#ffe3ec', '#f06595'], houses: ['#fff0f6', '#f783ac'], garden: ['#ebfbee', '#8c6239'] };
+
+// The top of a place's screen: its colours, name and a line about it, and whoever works there
+function bannerHtml(snap, p) {
+  const [c1, c2] = p.look ? [p.look.body, p.look.roofColor] : KIND_COLORS[p.kind] || ['#fff0f6', '#f783ac'];
+  const npc = NPCS.find((n) => n.place === p.id && n.spot == null);
+  return `<div class="sh-banner" style="--b1:${c1};--b2:${c2}">
+    <div class="sb-ic">${p.icon}</div>
+    <div class="sb-title"><b>${p.name}</b><small>${PLACE_TAGLINES[p.id] || ''}</small></div>
+    ${npc ? npcCard(snap, npc) : ''}
+    <button class="sh-x" data-action="closeSheet">✕</button></div>`;
+}
+
 // Header and body for whatever sheet is open: a place id or 'settings'
 function sheetHtml(snap, id) {
-  if (id === 'settings') return { head: '⚙️ 设置', body: SHEETS.settings(snap) };
+  if (id === 'wardrobe' || id === 'study') {
+    const title = id === 'wardrobe' ? '👗 衣柜' : '📚 书房';
+    return { head: `<div class="sh-head"><b>${title}</b><button class="sh-x" data-action="closeSheet">✕</button></div>`, body: SHEETS[id](snap) };
+  }
+  if (id === 'settings') {
+    return { head: '<div class="sh-head"><b>⚙️ 设置</b><button class="sh-x" data-action="closeSheet">✕</button></div>', body: SHEETS.settings(snap) };
+  }
   const p = PLACE_BY_ID[id];
-  const npc = NPCS.find((n) => n.place === id && p.sheet !== 'school');
-  const body = (npc ? npcCard(snap, npc) : '') + SHEETS[p.sheet](snap, p);
-  return { head: `${p.icon} ${p.name}`, body };
+  return { head: bannerHtml(snap, p), body: SHEETS[p.sheet](snap, p) };
 }

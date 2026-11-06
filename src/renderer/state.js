@@ -24,6 +24,10 @@ function defaultState() {
     playDay: null,
     // neighbours: { [id]: { h: hearts, hi: day of the last hello, wish: day the last wish was granted } }
     npc: {},
+    // the vegetable patch: one entry per plot, null or { seed, at: when it was planted }
+    farm: Array(GARDEN_PLOTS).fill(null),
+    // the salon's look: fur colour and hairstyle
+    look: { color: 'pink', hair: '' },
     activity: null,
     follow: false,
     mini: false,
@@ -473,15 +477,64 @@ const Game = {
     return { ok: true, msg: lines[Math.floor(Math.random() * lines.length)], fx: '😋' };
   },
 
+  // id: the item, or "shop:item" when bought in a shop (its keeper's discount applies)
   buy(id) {
-    const it = ITEM_BY_ID[id];
-    const why = buyBlock(this.s, it);
+    const [placeId, itemId] = String(id).includes(':') ? String(id).split(':') : [null, id];
+    const it = ITEM_BY_ID[itemId];
+    const why = buyBlock(this.s, it, placeId);
     if (why) return fail(why);
-    this.apply({ money: -priceOf(this.s, it) });
+    this.apply({ money: -priceOf(this.s, it, placeId) });
+    id = itemId;
     this.s.inventory[id] = (this.s.inventory[id] || 0) + 1;
     if (it.cat === 'city') return { ok: true, msg: `捐建了${it.name}，猪猪城更漂亮啦！`, fx: '🎉' };
     if (['furniture', 'decor'].includes(it.cat)) return { ok: true, msg: `${it.name}送到家啦`, fx: '🏠' };
     return { ok: true, msg: `买了${it.name}，放进背包啦` };
+  },
+
+  // ---------- the salon ----------
+
+  // id: "color:<id>" or "hair:<id>"
+  restyle(id) {
+    const [kind, val] = String(id).split(':');
+    const list = kind === 'color' ? LOOK_COLORS : LOOK_HAIR;
+    const opt = list.find((o) => o.id === (val || ''));
+    if (!opt) return fail('没有这种造型');
+    if (this.s.look[kind] === opt.id) return fail('现在就是这个样子啦');
+    if (this.s.money < opt.price) return fail('金币不够…去打工赚钱吧');
+    this.apply({ money: -opt.price });
+    this.s.look = { ...this.s.look, [kind]: opt.id };
+    return { ok: true, msg: kind === 'color' ? `换成${opt.name}啦，好看吗？` : `新发型：${opt.name}！`, fx: '✨' };
+  },
+
+  // ---------- the vegetable patch ----------
+
+  plant(plot, seedId) {
+    const s = this.s;
+    const seed = ITEM_BY_ID[seedId];
+    if (!seed || seed.cat !== 'seed') return fail('这不是种子');
+    if (s.farm[plot]) return fail('这块地已经种上了');
+    if (!s.inventory[seedId]) return fail(`没有${seed.name}了，去农牧市场买吧`);
+    if (--s.inventory[seedId] <= 0) delete s.inventory[seedId];
+    s.farm[plot] = { seed: seedId, at: Date.now() };
+    return { ok: true, msg: `种下了${seed.name}，${fmtGrow(seed.grow)}后就能收啦`, fx: '🌱' };
+  },
+
+  // Harvest every ripe plot
+  harvest() {
+    const s = this.s;
+    const got = {};
+    s.farm.forEach((p, i) => {
+      if (!p || plotProgress(p) < 1) return;
+      const seed = ITEM_BY_ID[p.seed];
+      s.inventory[seed.crop] = (s.inventory[seed.crop] || 0) + seed.yield;
+      got[seed.crop] = (got[seed.crop] || 0) + seed.yield;
+      s.farm[i] = null;
+    });
+    const list = Object.entries(got);
+    if (!list.length) return fail('还没有熟的菜');
+    this.apply({ mood: 3 });
+    this.addExp(2 * list.length);
+    return { ok: true, msg: `收获了${list.map(([id, n]) => `${ITEM_BY_ID[id].name}×${n}`).join('、')}！`, fx: list.map(([id]) => ITEM_BY_ID[id].icon).join('') };
   },
 
   // ---------- neighbours ----------
@@ -495,7 +548,7 @@ const Game = {
     const before = rec.h;
     rec.h = Math.min(NPC_MAX_HEARTS, rec.h + n);
     const name = NPC_BY_ID[id].name;
-    if (before < NPC_PERK_HEARTS && rec.h >= NPC_PERK_HEARTS) return `${name}和你成了好朋友：${NPC_BY_ID[id].perk.text}！`;
+    if (before < NPC_PERK_HEARTS && rec.h >= NPC_PERK_HEARTS) return NPC_BY_ID[id].perk ? `${name}和你成了好朋友：${NPC_BY_ID[id].perk.text}！` : `${name}和你成了好朋友！`;
     if (before < NPC_MAX_HEARTS && rec.h >= NPC_MAX_HEARTS) return `${name}最喜欢你了，店里有专属好东西！`;
     return '';
   },

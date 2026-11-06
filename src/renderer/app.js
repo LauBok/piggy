@@ -151,6 +151,17 @@ const App = {
       case 'buy':
         res = Game.buy(id);
         break;
+      case 'plant': {
+        const [plot, seed] = String(id).split(':');
+        res = Game.plant(Number(plot), seed);
+        break;
+      }
+      case 'restyle':
+        res = Game.restyle(id);
+        break;
+      case 'harvest':
+        res = Game.harvest();
+        break;
       case 'greet':
         res = Game.greet(id);
         break;

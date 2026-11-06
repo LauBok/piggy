@@ -87,20 +87,26 @@ function renderSheet() {
   const el = $('sheet');
   if (!sheet) {
     el.classList.remove('on');
-    City.lock(mapOpen);
+    City.lock(mapOpen || Interior.open);
     return;
   }
   const { head, body } = sheetHtml(snap, sheet);
   const scroll = el.querySelector('.sh-body')?.scrollTop || 0;
   const same = el.dataset.id === sheet;
   el.dataset.id = sheet;
-  el.innerHTML = `<div class="sh-head"><b>${head}</b><button class="sh-x" data-action="closeSheet">✕</button></div><div class="sh-body">${body}</div>`;
+  el.innerHTML = `${head}<div class="sh-body">${body}</div>`;
   if (same) el.querySelector('.sh-body').scrollTop = scroll;
   el.classList.add('on');
   City.lock(true);
   if (SheetUI.activeGame && $('gameArea')) {
     const id = SheetUI.activeGame;
     MiniGames[id].start($('gameArea'), (result) => window.home.act('minigame', `${id}:${result}`));
+  }
+  // the salon's preview pigs
+  for (const el of document.querySelectorAll('.look-prev')) {
+    const pig = new PigSprite(el, true);
+    pig.update(snap.s, false, 'cheerful');
+    renderLook(pig.root, { color: el.dataset.color, hair: el.dataset.hair });
   }
   const dh = $('dollhouse');
   if (dh) {
@@ -137,6 +143,7 @@ function update() {
   if (!snap) return;
   Hud.update();
   City.update(snap);
+  Interior.update(snap);
   const key = structKey();
   if (key !== lastKey) {
     lastKey = key;
@@ -149,6 +156,7 @@ function openSheet(id) {
   const p = PLACE_BY_ID[id];
   if (p?.minLevel && snap.s.level < p.minLevel) {
     toast({ msg: `${p.name} Lv.${p.minLevel} 开放`, ok: false });
+    City.inside = null;
     return;
   }
   if (id !== sheet) {
@@ -188,7 +196,7 @@ function openTab(tab) {
   const to = TAB_TO_PLACE[tab];
   if (tab === 'school') {
     const lv = snap.s.level;
-    return openSheet(lv >= 18 ? 'college' : lv >= 12 ? 'middle' : 'primary');
+    return LOCAL.goto(lv >= 18 ? 'college' : lv >= 12 ? 'middle' : 'primary');
   }
   if (to === 'bag') {
     closeAll();
@@ -196,7 +204,8 @@ function openTab(tab) {
     lastKey = '';
     return update();
   }
-  if (to) return openSheet(to);
+  if (to === 'settings') return openSheet(to);
+  if (to) return LOCAL.goto(to);
   closeAll();
   City.findPig();
 }
@@ -213,7 +222,7 @@ function closeMap() {
   if (!mapOpen) return;
   mapOpen = false;
   City.closeMap();
-  City.lock(!!sheet);
+  City.lock(!!sheet || Interior.open);
 }
 
 let toastTimer;
@@ -237,7 +246,11 @@ function toast({ msg, ok }) {
 // UI-only actions handled here; everything else goes to the pet window
 const LOCAL = {
   open: (id) => openSheet(id),
-  fly: (id) => openSheet(id),
+  // somewhere else in town: close up and look at it on the map (the pig has to walk there)
+  goto: (id) => {
+    closeAll();
+    City.flyToPlace(id);
+  },
   map: () => (mapOpen ? closeMap() : openMap()),
   closeMap,
   closeSheet: closeAll,
@@ -248,7 +261,7 @@ const LOCAL = {
     lastKey = '';
     update();
   },
-  stat: (key) => openSheet(STAT_PLACE[key]),
+  stat: (key) => LOCAL.goto(STAT_PLACE[key]),
   findPig: () => {
     closeAll();
     City.findPig();
@@ -326,6 +339,10 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (action === 'reset') SheetUI.resetArmed = false;
+  // eating, playing with a toy or washing: the pig acts it out where it is
+  if (action === 'use' && ITEM_BY_ID[id] && ['food', 'toy', 'hygiene', 'medicine'].includes(ITEM_BY_ID[id].cat)) {
+    (Interior.open ? Interior : City).react(ITEM_BY_ID[id]);
+  }
   window.home.act(action, id);
 });
 
@@ -336,21 +353,51 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     if (sheet || drawerOpen || mapOpen) closeAll();
+    else if (Interior.open) Interior.leave();
     else window.home.close();
     return;
   }
   if (e.key.toLowerCase() === 'm' && !sheet) return LOCAL.map();
-  if (City.key(e, true)) e.preventDefault();
+  const handled = Interior.open ? !sheet && !mapOpen && Interior.key(e, true) : City.key(e, true);
+  if (handled) e.preventDefault();
 });
-document.addEventListener('keyup', (e) => City.key(e, false));
-window.addEventListener('blur', () => City.keys.clear());
+document.addEventListener('keyup', (e) => {
+  City.key(e, false);
+  Interior.key(e, false);
+});
+window.addEventListener('blur', () => {
+  City.keys.clear();
+  Interior.keys.clear();
+});
+
+// Going home: inside the house you walk about the rooms yourself
+function enterHome() {
+  closeAll();
+  City.lock(true);
+  document.body.classList.add('indoors');
+  Interior.enter(snap);
+}
 
 Hud.init();
 City.init({
-  onEnter: openSheet,
+  onEnter: (id) => (id === 'home' ? enterHome() : openSheet(id)),
   onNpc,
   onBlocked: (msg) => toast({ msg, ok: false }),
   onMap: () => LOCAL.map(),
+});
+Interior.init({
+  onLeave: () => {
+    document.body.classList.remove('indoors');
+    closeAll();
+    City.lock(false);
+  },
+  onBlocked: (msg) => toast({ msg, ok: false }),
+  // using furniture: open the wardrobe or the study, the bag at the kitchen, or just do it
+  onUse: (act, id) => {
+    if (act === 'open') return openSheet(id);
+    if (act === 'bag') return LOCAL.bag();
+    window.home.act(act, id);
+  },
 });
 window.home.onState((s) => {
   snap = s;
@@ -367,4 +414,4 @@ window.home.ready();
 refreshUpdateInfo();
 
 // for test scripts: open any sheet, or show any scene without doing it for real
-window.__city = { open: openSheet, openTab, City };
+window.__city = { open: openSheet, openTab, City, Interior, enterHome };

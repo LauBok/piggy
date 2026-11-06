@@ -288,6 +288,7 @@ body.paused * {
   position: absolute;
   left: 0;
   top: 0;
+  transform-origin: 0 0;
   will-change: transform;
 }
 
@@ -1329,12 +1330,12 @@ body.paused * {
 
 .dollhouse {
   position: relative;
-  width: min(100%, 620px);
+  width: min(100%, 680px);
   margin: 0 auto 14px;
   border-radius: 18px;
   background: linear-gradient(#e7f5ff, #f4fce3);
   overflow: hidden;
-  aspect-ratio: 720 / 300;
+  aspect-ratio: 720 / 500;
 }
 
 .dollhouse > svg {
@@ -1596,12 +1597,25 @@ body.paused * {
   font-size: 17px;
 }
 
-#mapView svg {
+.mv-box {
   flex: 1;
-  width: 100%;
   min-height: 0;
-  padding: 0 12px 12px;
-  box-sizing: border-box;
+  margin: 0 12px 12px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #d3ebb6;
+  cursor: grab;
+  touch-action: none;
+}
+
+.mv-box.dragging {
+  cursor: grabbing;
+}
+
+.mv-box svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .mp {
@@ -1724,4 +1738,520 @@ body.paused * {
 button,
 input {
   font-family: inherit;
+}
+
+/* passers-by stop to talk when right-clicked */
+.walker .a-sprite,
+.walker .farm-animal {
+  pointer-events: auto;
+  cursor: context-menu;
+}
+
+.walker.talking .a-move,
+.walker.talking .a-face,
+.walker.talking .hop svg {
+  animation-play-state: paused;
+}
+
+.walker .npc-say {
+  bottom: 44px;
+}
+
+.walker.farm .npc-say {
+  bottom: 34px;
+}
+
+/* diplomas framed on the study wall */
+.dh-diploma {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(var(--k, 1));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 46px;
+  padding: 3px 2px 2px;
+  border-radius: 3px;
+  background: #fffdf4;
+  box-shadow: 0 0 0 3px #c08a5b, 0 3px 4px rgba(90, 60, 40, 0.3);
+  line-height: 1;
+}
+
+.dh-diploma i {
+  font-style: normal;
+  font-size: 13px;
+}
+
+.dh-diploma span {
+  margin-top: 2px;
+  font-size: 8.5px;
+  color: #7a4f2a;
+  white-space: nowrap;
+  max-width: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dh-diploma.more {
+  width: auto;
+  padding: 3px 5px;
+  font-size: 11px;
+  color: #7a4f2a;
+}
+
+.dh-item.on-wall {
+  transform: translate(-50%, -50%);
+}
+
+#cityBase text.boardtext {
+  font: 15px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+  fill: #5c3d1e;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.ripple.slow {
+  animation-duration: 5s;
+}
+
+#cityBase text.adtext {
+  font: 13px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* ---------- a place's banner: its colours, name, a line about it, and who works there ---------- */
+.sh-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 92px;
+  margin: 10px 10px 4px;
+  padding: 12px 64px 12px 18px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 92% -20%, rgba(255, 255, 255, 0.55) 0 22%, transparent 23%),
+    radial-gradient(circle at 8% 130%, rgba(255, 255, 255, 0.35) 0 18%, transparent 19%),
+    linear-gradient(120deg, color-mix(in srgb, var(--b1) 85%, white), color-mix(in srgb, var(--b2) 55%, white));
+  box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--b2) 35%, transparent);
+  overflow: hidden;
+}
+
+/* scalloped awning edge along the top */
+.sh-banner::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 10px;
+  background: radial-gradient(circle at 10px 0, color-mix(in srgb, var(--b2) 70%, white) 9px, transparent 10px) 0 0 / 20px 10px repeat-x;
+}
+
+.sb-ic {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 12px rgba(90, 50, 60, 0.15);
+  font-size: 36px;
+}
+
+.sb-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sb-title b {
+  font: 26px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+  color: #4a2c38;
+  letter-spacing: 1px;
+}
+
+.sb-title small {
+  color: color-mix(in srgb, var(--b2) 50%, #4a2c38);
+  font-size: 13px;
+}
+
+.sh-banner .sh-x {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.sh-banner .npc-card {
+  margin: 0 0 0 auto;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.82);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.sh-banner .npc-av {
+  width: 52px;
+}
+
+.sh-head {
+  margin: 4px 10px 0;
+}
+
+/* ---------- the vegetable patch ---------- */
+.garden-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.plots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.plot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #ecdcc8;
+}
+
+.plot.ripe {
+  border-color: #ffd43b;
+  box-shadow: 0 0 0 3px #fff3bf;
+}
+
+.plot-soil {
+  width: 100%;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: repeating-linear-gradient(0deg, #b88a5c 0 9px, #a87b4f 9px 13px);
+}
+
+.plot-crop {
+  font-size: 34px;
+  filter: drop-shadow(0 2px 1px rgba(60, 40, 20, 0.3));
+}
+
+.plot.ripe .plot-crop {
+  animation: bob 1.2s ease-in-out infinite;
+}
+
+.plot .pbar {
+  width: 100%;
+  margin: 2px 0 0;
+}
+
+.plot .pbar i {
+  background: linear-gradient(90deg, #8ce99a, #40c057);
+}
+
+.plot small,
+.muted {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.plot-seeds {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  align-items: center;
+}
+
+.seed-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 44px;
+  padding: 4px 0;
+  border: 1px solid #d8f5a2;
+  border-radius: 12px;
+  background: #f4fce3;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.seed-btn small {
+  font-size: 10px;
+}
+
+.seed-btn:hover {
+  background: #e9fac8;
+}
+
+.goods.mystery {
+  background: repeating-linear-gradient(135deg, #fff 0 12px, #fff5f9 12px 24px);
+}
+
+.goods.mystery .goods-ic {
+  background: #f3f0ff;
+}
+
+/* ---------- inside the pig's home ---------- */
+#interior {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 52px;
+  bottom: 0;
+  z-index: 3;
+  display: none;
+  overflow: hidden;
+  background: #3b2a20;
+}
+
+#interior.on {
+  display: block;
+}
+
+body.indoors #minimap {
+  display: none;
+}
+
+#iworld {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+#ibase {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.ifurn {
+  position: absolute;
+  overflow: visible;
+  cursor: pointer;
+  filter: drop-shadow(0 2px 1px rgba(60, 30, 20, 0.15));
+}
+
+.ifurn.flat {
+  filter: none;
+}
+
+#ipig {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+#iprompt {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3000;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: rgba(74, 44, 56, 0.9);
+  color: #fff;
+  font: 14px 'PigTitle', 'PigRound', sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+#iprompt.on {
+  opacity: 1;
+}
+
+.i-room {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  padding: 4px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  font: 16px 'PigTitle', 'PigRound', sans-serif;
+  color: #4a2c38;
+}
+
+.i-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+#ibase text.i-label {
+  font: 16px 'PigTitle', 'PigRound', sans-serif;
+  fill: #fff;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: #5c3d1e;
+  stroke-width: 4px;
+}
+
+#ibase text.i-dip {
+  font: 10px 'PigRound', sans-serif;
+  fill: #7a4f2a;
+  text-anchor: middle;
+}
+
+/* bigger characters in town: things that sit over their heads move up with them */
+.pig-menu {
+  bottom: 92px;
+}
+
+.npc-bubble {
+  bottom: 76px;
+}
+
+.npc .npc-say {
+  bottom: 80px;
+}
+
+.walker .npc-say {
+  bottom: 60px;
+}
+
+.a-hold {
+  left: 22px;
+  top: -46px;
+  font-size: 22px;
+}
+
+#pigActor.on-route .pig-sprite {
+  bottom: 24px;
+}
+
+.a-veh {
+  width: 84px;
+}
+
+/* in a cut-away room the pig is drawn at the old size so it fits */
+#pigActor.in-room .pig-sprite {
+  width: calc(160px * 0.38) !important;
+}
+
+/* salon previews */
+.look-prev {
+  width: 84px;
+  height: 74px;
+  margin: 0 auto 6px;
+  border-radius: 20px;
+  background: radial-gradient(circle at 50% 40%, #fff, #ffe9f0);
+  overflow: hidden;
+}
+
+.look-prev svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.goods.current {
+  border-color: #f783ac;
+  box-shadow: 0 0 0 3px #ffdeeb;
+}
+
+.pole-stripes path {
+  animation: pole 1.2s linear infinite;
+}
+
+@keyframes pole {
+  to { transform: translateY(11px); }
+}
+
+/* ---------- the pig using an item: food to the mouth, a toy, soap ---------- */
+.use-prop {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  font-size: 24px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.use-eating {
+  animation: use-eat 1.6s ease-in-out forwards;
+}
+
+@keyframes use-eat {
+  0% { transform: translate(24px, -30px) translate(-50%, -50%) scale(1); }
+  28% { transform: translate(0, -38px) translate(-50%, -50%) scale(1); }
+  45% { transform: translate(0, -38px) translate(-50%, -50%) scale(0.75); }
+  65% { transform: translate(0, -38px) translate(-50%, -50%) scale(0.5); }
+  85% { transform: translate(0, -38px) translate(-50%, -50%) scale(0.25); opacity: 1; }
+  100% { transform: translate(0, -38px) translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+.use-jump {
+  animation: use-toy 1.6s ease-in-out forwards;
+}
+
+@keyframes use-toy {
+  0% { transform: translate(26px, -36px) translate(-50%, -50%) rotate(-15deg); }
+  25% { transform: translate(30px, -70px) translate(-50%, -50%) rotate(20deg); }
+  50% { transform: translate(-26px, -60px) translate(-50%, -50%) rotate(-20deg); }
+  75% { transform: translate(20px, -74px) translate(-50%, -50%) rotate(15deg); opacity: 1; }
+  100% { transform: translate(24px, -40px) translate(-50%, -50%) rotate(0); opacity: 0; }
+}
+
+.use-washing {
+  animation: use-wash 1.6s ease-in-out forwards;
+}
+
+@keyframes use-wash {
+  0% { transform: translate(-22px, -40px) translate(-50%, -50%); }
+  25% { transform: translate(20px, -52px) translate(-50%, -50%); }
+  50% { transform: translate(-18px, -26px) translate(-50%, -50%); }
+  75% { transform: translate(16px, -36px) translate(-50%, -50%); opacity: 1; }
+  100% { transform: translate(0, -44px) translate(-50%, -50%); opacity: 0; }
+}
+
+.washing .pig {
+  animation: scrub 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes scrub {
+  from { transform: rotate(-4deg); }
+  to { transform: rotate(4deg); }
+}
+
+.use-fx {
+  position: absolute;
+  left: 0;
+  top: -90px;
+  z-index: 5;
+  font-size: 22px;
+  pointer-events: none;
+  animation: float-up 1.2s ease-out forwards;
+}
+
+#ibase text.i-dip {
+  font: 9.5px 'PigTitle', 'PigRound', sans-serif;
+  fill: #5c3d1e;
+  text-anchor: middle;
+}
+
+#ibase text.i-dip.small {
+  font-size: 8px;
+  fill: #b07a45;
 }
