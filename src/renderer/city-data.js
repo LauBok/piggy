@@ -655,13 +655,12 @@ function npcPlace(where) {
 
 // One line under each place's name on its screen
 const PLACE_TAGLINES = {
-  truffle: '树下的泥土里藏着香喷喷的松露', spring: '泡一泡，烦恼全跑光', site: '新城区正在盖楼',
-  primary: '一起读书写字吧', middle: '初中和高中都在这里', college: '学士、硕士、博士', museum: '星星、火箭和恐龙骨头',
-  tower: '城里所有的活儿都在这儿接', office: '敲键盘的声音从不停', cityhall: '猪猪城的大小事都归这儿管', bank: '存进来，每天都有利息',
-  supermarket: '吃的用的，一站买齐', plaza: '喷泉边总有人在唱歌', artpalace: '音乐会和画展', canteen: '免费的热饭，管饱',
-  clinic: '绵绵医生在等你', chess: '龟爷爷总在等人下棋', stage: '今晚有演出', lake: '鸭子们在游泳', field: '来踢一场！',
-  home: '最舒服的地方', kinder: '小朋友们在做游戏', farm: '刚从地里摘的，新鲜！', garden: '自家种的最好吃',
-  neighbors: '邻居们的小房子', bakery: '每天清晨新鲜出炉', bubble: '香香的泡泡', toy: '新玩具到货啦', clothes: '今天穿什么好呢',
-  furniture: '把家布置得漂漂亮亮', salon: '剪个新发型吧', beauty: '换一身新毛色', store: '缺什么都可以来看看', restaurant: '热腾腾的饭菜', artschool: '学琴、学画画', courier: '包裹送到家门口',
-  bookstore: '一本好书，能看一整个下午', cinema: '灯一关，故事就开始了', cafe: '靠窗的位子最舒服', apt: '楼里住着四户人家', barn: '菜园收的菜、湖里钓的鱼，这里都收',
+  truffle: '在树下拱松露', spring: '泡温泉恢复体力', site: '新城区建设中', primary: '小学课程', middle: '初中和高中课程',
+  college: '学士、硕士、博士课程', museum: '天文、航天与恐龙化石', tower: '全城的工作', office: '办公室工作', cityhall: '猪猪城市政',
+  bank: '存款每日计息', supermarket: '食物与日用品', plaza: '城市中心广场', artpalace: '音乐会与画展', canteen: '免费餐食',
+  clinic: '看病与健康', chess: '下棋', stage: '演出', lake: '钓鱼与划船', field: '足球场', home: '小猪的家', kinder: '幼儿园',
+  farm: '新鲜蔬果', garden: '自家菜园', neighbors: '邻居们的家', bakery: '面包与点心', bubble: '洗护用品', toy: '玩具',
+  clothes: '服装与配饰', furniture: '家具与装饰', salon: '发型', beauty: '毛色', store: '日用杂货', restaurant: '餐食',
+  artschool: '音乐与美术课程', courier: '快递配送', bookstore: '图书', cinema: '每日放映', cafe: '咖啡与茶点', apt: '四户人家',
+  barn: '收购蔬菜与鱼',
 };

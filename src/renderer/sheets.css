@@ -1581,7 +1581,7 @@
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -4px 0 rgba(0, 0, 0, 0.15), var(--sh-card);
 }
 
-#sheet .sq {
+#sheet .garden .sq {
   position: relative;
   display: grid;
   place-items: center;
@@ -1616,16 +1616,16 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-#sheet .sq .plant {
+#sheet .garden .sq .plant {
   line-height: 1;
   filter: drop-shadow(0 2px 1px rgba(40, 20, 10, 0.35));
 }
 
-#sheet .sq.is-sprout .plant {
+#sheet .garden .sq.is-sprout .plant {
   font-size: 28px;
 }
 
-#sheet .sq.is-leafy .plant {
+#sheet .garden .sq.is-leafy .plant {
   font-size: 44px;
 }
 
@@ -1639,7 +1639,7 @@
   box-shadow: -16px 5px 0 #f1d39a, 15px 3px 0 #f1d39a;
 }
 
-#sheet .sq.grow small {
+#sheet .garden .sq.grow small {
   position: absolute;
   top: 6px;
   right: 8px;
@@ -1647,7 +1647,7 @@
   font-size: var(--fs-cap);
 }
 
-#sheet .sq .bar {
+#sheet .garden .sq .bar {
   position: absolute;
   left: 10px;
   right: 10px;
@@ -1656,16 +1656,16 @@
   background: rgba(255, 255, 255, 0.18);
 }
 
-#sheet .sq .bar i {
+#sheet .garden .sq .bar i {
   background: #8ce99a;
 }
 
-#sheet .sq.ripe {
+#sheet .garden .sq.ripe {
   cursor: pointer;
   box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.3), inset 0 0 0 3px rgba(255, 224, 102, 0.9), 0 0 14px rgba(255, 212, 59, 0.55);
 }
 
-#sheet .sq.ripe .crop {
+#sheet .garden .sq.ripe .crop {
   font-size: 54px;
   line-height: 1;
   filter: drop-shadow(0 3px 2px rgba(40, 20, 10, 0.35));

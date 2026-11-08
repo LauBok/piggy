@@ -827,12 +827,12 @@ const NPCS = [
   { id: 'dog', icon: '🐶', name: '柴柴', species: 'dog', place: 'tower', home: 'apt', loves: ['burger', 'ball'], likes: ['milk', 'dumpling'], birthday: '8-26', game: 'penalty', fav: 'field', perk: { key: 'pay', v: 1.05, text: '打工工资 +5%' } },
   { id: 'fox', icon: '🦊', name: '狐狸阿姨', species: 'fox', place: 'bakery', home: 'bakery', loves: ['strawberry', 'egg'], likes: ['milk', 'apple'], dislike: 'bread', birthday: '3-12', game: 'rps', fav: 'plaza' },
   { id: 'raccoon', icon: '🦝', name: '浣浣', species: 'raccoon', place: 'bubble', home: 'apt', loves: ['strawberry', 'apple'], likes: ['donut'], birthday: '6-1', game: 'ttt', fav: 'lake' },
-  { id: 'squirrel', icon: '🐿️', name: '栗栗', species: 'squirrel', place: 'toy', home: 'tree', loves: ['corn', 'kite'], likes: ['donut', 'apple'], birthday: '11-3', game: 'ttt', fav: 'meadow', perk: { key: 'toyRecover', v: 2, text: '玩具不容易玩腻' } },
+  { id: 'squirrel', icon: '🐿️', name: '栗栗', species: 'squirrel', place: 'toy', home: 'tree', loves: ['corn', 'kite'], likes: ['donut', 'apple'], birthday: '11-3', game: 'ttt', fav: 'meadow', perk: { key: 'toyRecover', v: 2, text: '玩具恢复速度 ×2' } },
   { id: 'cat', icon: '🐱', name: '咪咪', species: 'cat', place: 'clothes', home: 'apt', loves: ['milk', 'cake'], likes: ['croissant', 'crucian'], dislike: 'carrot', birthday: '2-22', game: 'rps', fav: 'plaza' },
   { id: 'bear', icon: '🐻', name: '熊师傅', species: 'bear', place: 'furniture', home: 'woodshop', loves: ['honey', 'watermelon'], likes: ['pumpkin', 'dumpling'], birthday: '1-20', game: 'penalty', fav: 'site' },
-  { id: 'sheep', icon: '🐑', name: '绵绵医生', species: 'sheep', place: 'clinic', home: 'apt', loves: ['apple', 'corn'], likes: ['milk', 'pumpkin'], dislike: 'burger', birthday: '5-8', game: 'ttt', fav: 'lake', perk: { key: 'clinicCd', v: 0.5, text: '看病少等一半' } },
+  { id: 'sheep', icon: '🐑', name: '绵绵医生', species: 'sheep', place: 'clinic', home: 'apt', loves: ['apple', 'corn'], likes: ['milk', 'pumpkin'], dislike: 'burger', birthday: '5-8', game: 'ttt', fav: 'lake', perk: { key: 'clinicCd', v: 0.5, text: '看病冷却 −50%' } },
   { id: 'owl', icon: '🦉', name: '咕咕校长', species: 'owl', place: 'primary', home: 'middle', loves: ['puzzle', 'croissant'], likes: ['egg', 'milk'], birthday: '9-1', game: 'chess', fav: 'museum', perk: { key: 'study', v: 1.05, text: '上课经验 +5%' } },
-  { id: 'turtle', icon: '🐢', name: '龟爷爷', species: 'turtle', place: 'chess', home: 'shell', loves: ['strawberry', 'watermelon'], likes: ['pumpkin', 'apple'], birthday: '12-12', game: 'chess', fav: 'lake', perk: { key: 'playCap', v: 10, text: '每天玩游戏多拿 10 经验' } },
+  { id: 'turtle', icon: '🐢', name: '龟爷爷', species: 'turtle', place: 'chess', home: 'shell', loves: ['strawberry', 'watermelon'], likes: ['pumpkin', 'apple'], birthday: '12-12', game: 'chess', fav: 'lake', perk: { key: 'playCap', v: 10, text: '每日游戏经验上限 +10' } },
   { id: 'duck', icon: '🦆', name: '嘎嘎大厨', species: 'duck', place: 'canteen', home: 'boat', loves: ['corn', 'pumpkin'], likes: ['carrot', 'rice'], dislike: 'egg', birthday: '7-15', game: 'rps', fav: 'lake', perk: { key: 'canteen', v: 10, text: '食堂饱食 +10' } },
 ];
 // the farm market's keeper

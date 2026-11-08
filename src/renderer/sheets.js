@@ -100,7 +100,7 @@ function helpHero(snap, id) {
   if (id === 'meal') fx.hunger += npcPerk(s, 'canteen', 0);
   let why = busyWhy(snap);
   if (!why && h.maxHealth && s.health >= h.maxHealth) why = '很健康';
-  if (!why && id === 'meal' && s.hunger >= 95) why = '吃饱了';
+  if (!why && id === 'meal' && s.hunger >= 95) why = '已吃饱';
   if (!why && id === 'soak' && s.energy >= 95) why = '精神很好';
   if (!why && h.fee && s.money < h.fee) why = '金币不够';
   if (!why && wait > 0) why = `${Math.ceil(wait)} 分钟后`;
@@ -125,7 +125,7 @@ const hhmm = (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 function fishHero(snap) {
   const s = snap.s;
   let why = busyWhy(snap);
-  if (!why && s.energy < -FISH_COST.energy) why = '太累了';
+  if (!why && s.energy < -FISH_COST.energy) why = '体力不足';
   const wait = minutesLeft(s.fishReady);
   if (!why && wait > 0) why = `${Math.ceil(wait)} 分钟后`;
   const meta = `${changes(s, FISH_COST)}${chip(`🎣 ${FISH_CASTS} 竿`)}${chip('免费', 'ok')}`;
@@ -239,7 +239,7 @@ function goodsCard(snap, it, placeId) {
   let btn = `<button class="btn primary" data-action="buy" data-id="${placeId ? `${placeId}:` : ''}${it.id}" ${poor ? `disabled title="还差 ${fmt(price - s.money)}"` : ''}>🪙 ${fmt(price)}${price < it.price ? ` <s>${fmt(it.price)}</s>` : ''}</button>`;
   if (once) btn = '<button class="btn owned" disabled>已拥有</button>';
   else if (why) {
-    const label = it.needsTier ? HOUSE_NAMES[it.needsTier] : it.cat === 'decor' ? '摆满了' : it.tier ? '已有更好的' : '—';
+    const label = it.needsTier ? HOUSE_NAMES[it.needsTier] : it.cat === 'decor' ? '已摆满' : it.tier ? '已有更好的' : '—';
     btn = `<button class="btn" disabled title="${esc(why)}">${label}</button>`;
   }
   const fx = `${gives(it.effects)}${bonusChips(it.bonus)}`;
@@ -333,10 +333,10 @@ function moodTag(s) {
 
 // Why the pig would be refused even though the job is unlocked ('' if fine)
 function weakWhy(s, job) {
-  if (s.health < MIN_HEALTH_TO_ACT) return '生病了';
+  if (s.health < MIN_HEALTH_TO_ACT) return '生病中';
   const p = projected(job.drain, job.minutes);
-  if (s.hunger + p.hunger < 5) return '太饿了';
-  if (s.energy + p.energy < 5) return '太累了';
+  if (s.hunger + p.hunger < 5) return '饱食不足';
+  if (s.energy + p.energy < 5) return '体力不足';
   return '';
 }
 
@@ -465,7 +465,7 @@ const SHEETS = {
     return `<div class="card vault">
         <div class="vault-l"><div class="vault-pig">🐷</div>
           <div class="vault-m"><small>存款</small><b class="hero-n">🪙 ${fmt(Math.floor(b.balance))}</b>
-            <div class="next">${daily >= 1 ? `利息 <b class="money">+${fmt(daily)}/天</b>${daily >= BANK_DAILY_CAP ? ` <span class="chip" title="每天利息最多 ${fmt(BANK_DAILY_CAP)}">到顶了</span>` : ''}` : `利率 ${Math.round(BANK_RATE * 100)}%/天`}</div></div></div>
+            <div class="next">${daily >= 1 ? `利息 <b class="money">+${fmt(daily)}/天</b>${daily >= BANK_DAILY_CAP ? ` <span class="chip" title="每天利息最多 ${fmt(BANK_DAILY_CAP)}">已达上限</span>` : ''}` : `利率 ${Math.round(BANK_RATE * 100)}%/天`}</div></div></div>
         <div class="vault-r">
           <div class="amt"><span>存入</span>${keys('deposit', s.money)}</div>
           <div class="amt"><span>取出</span>${keys('withdraw', b.balance)}</div>
@@ -675,7 +675,7 @@ const SHEETS = {
     const after = COURSES.filter((c) => c.prereq.includes(sel.id));
     const opens = after.map((c) => `<button class="lk" data-action="focus" data-id="${c.id}" data-dir="fwd">${c.icon} ${c.fullName}</button>`);
     let btn;
-    if (st === 'done') btn = '<button class="btn owned" disabled>学完了</button>';
+    if (st === 'done') btn = '<button class="btn owned" disabled>已学完</button>';
     else if (st === 'studying') btn = '<button class="btn" disabled>学习中</button>';
     else if (st !== 'ready') btn = `<button class="btn" disabled>${reqs[0].ok ? '上课' : reqs[0].text}</button>`;
     else btn = `<button class="btn primary" data-action="study" data-id="${sel.id}"${preview(projected(STUDY_DRAIN, sel.minutes))} ${freeToAct(snap) ? '' : `disabled title="${esc(busyWhy(snap))}"`}>上课</button>`;
@@ -799,7 +799,7 @@ function furnList(s, skipHouse) {
   const furn = ITEMS.filter((it) => it.cat === 'furniture' && s.inventory[it.id] && !(skipHouse && it.group === 'house'));
   if (!furn.length) return '';
   const better = (it) => ITEMS.some((x) => x.group === it.group && x.price > it.price && s.inventory[x.id]);
-  return `<div class="furn-list">${furn.map((it) => `<div class="furn ${better(it) ? 'idle' : ''}" ${better(it) ? 'title="有更好的了"' : ''}>
+  return `<div class="furn-list">${furn.map((it) => `<div class="furn ${better(it) ? 'idle' : ''}" ${better(it) ? 'title="已有更好的"' : ''}>
     <span class="row-ic">${it.icon}</span><div class="row-m"><b>${it.name}</b><div class="chips">${bonusChips(it.bonus)}</div></div></div>`).join('')}</div>`;
 }
 

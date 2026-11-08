@@ -1615,10 +1615,12 @@ const City = {
         this.cb.onMap();
         return this.goVisit(home.dataset.mhome);
       }
+      // a building: walk over to its door (just look at it if the pig can't walk now)
       const t = e.target.closest('[data-mplace]');
       if (!t) return;
       this.cb.onMap();
-      this.flyToPlace(t.dataset.mplace);
+      if (this.canWalk(true)) this.walkTo(PLACE_BY_ID[t.dataset.mplace].entry);
+      else this.flyToPlace(t.dataset.mplace);
     };
     el.querySelector('.mv-ctl').onclick = (e) => {
       const z = e.target.closest('[data-z]')?.dataset.z;

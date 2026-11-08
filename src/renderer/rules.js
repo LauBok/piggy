@@ -341,7 +341,7 @@ function outingWhy(s, o, busy) {
   if (busy) return busy;
   if (o.hobby) return minutesLeft(s.hobbyReady[o.hobby]) > 0 ? '刚玩过' : '';
   const h = FREE_HELP_BY_ID[o.help];
-  if (o.help === 'meal' && s.hunger >= 95) return '吃不下了';
+  if (o.help === 'meal' && s.hunger >= 95) return '已吃饱';
   if (o.help === 'soak' && s.energy >= 95) return '精神很好';
   if (h.fee && s.money < h.fee * 2) return '金币不够';
   if (minutesLeft(s.helpReady[o.help]) > 0) return '刚去过';
@@ -450,12 +450,12 @@ const HOUSE_NAMES = ['小猪窝', '温馨公寓', '花园别墅', '猪猪城堡'
 
 // Why an item can't be bought right now, or null
 function buyBlock(s, it, placeId) {
-  if (ONCE_CATS.includes(it.cat) && s.inventory[it.id]) return `已经有${it.name}啦`;
-  if (hiddenLocked(s, it)) return `和${NPC_BY_ID[it.npc].name}再熟一点才卖给你`;
-  if (it.tier && homeTier(s) >= it.tier) return '已经住上更好的房子啦';
-  if (it.needsTier && homeTier(s) < it.needsTier) return `要住进${HOUSE_NAMES[it.needsTier]}才放得下`;
-  if (it.cat === 'decor' && ownedDecor(s).length >= decorSlots(s)) return '家里摆满啦，换个大房子吧';
-  if (s.money < priceOf(s, it, placeId)) return '金币不够…去打工赚钱吧';
+  if (ONCE_CATS.includes(it.cat) && s.inventory[it.id]) return `已拥有${it.name}`;
+  if (hiddenLocked(s, it)) return `需要和${NPC_BY_ID[it.npc].name}更熟悉`;
+  if (it.tier && homeTier(s) >= it.tier) return '已有更好的房子';
+  if (it.needsTier && homeTier(s) < it.needsTier) return `需要${HOUSE_NAMES[it.needsTier]}`;
+  if (it.cat === 'decor' && ownedDecor(s).length >= decorSlots(s)) return '装饰位已满';
+  if (s.money < priceOf(s, it, placeId)) return '金币不够';
   return null;
 }
 

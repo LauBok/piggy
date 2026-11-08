@@ -149,7 +149,7 @@ const Status = {
            <span class="st-time" id="stTime"></span><button class="st-btn" data-action="wake">☀️ 叫醒</button>`
         : `<span class="st-ic" data-action="findPig">${activityIcon(a)}</span>
            <span class="st-main" data-action="findPig"><b>${esc(snap.label.replace(/^在/, ''))}</b><i class="st-bar"><i id="stBar"></i></i></span>
-           <span class="st-time" id="stTime"></span><button class="st-btn" data-action="cancel">不做了</button>`;
+           <span class="st-time" id="stTime"></span><button class="st-btn" data-action="cancel">停止</button>`;
       el.classList.add('on');
     }
     // a sleep with no set end has no bar or countdown
