@@ -197,6 +197,7 @@ const City = {
       .sort((a, b) => a.p.y + a.p.h - (b.p.y + b.p.h));
     // the season (snow lies on the ground in winter) and a festival's decorations
     TOWN_SEASON = seasonOf();
+    for (const s of SEASON_IDS) this.world.classList.toggle(`season-${s}`, s === TOWN_SEASON);
     this.fest = festivalOn()?.id || '';
     const snow = TOWN_SEASON === 'winter' ? `<rect width="${WORLD.w}" height="${WORLD.h}" fill="#fff" opacity=".42"/>` : '';
     svg.innerHTML = `${groundSvg()}${farmSvg()}${snow}${all.map((o) => o.svg(o.p)).join('')}<g id="donations"></g>${scenerySvg()}${marketSvg()}${festiveSvg(this.fest)}${signsSvg()}`;
@@ -374,7 +375,7 @@ const City = {
       const k = n.small ? NPC_SCALE * 0.72 : NPC_SCALE;
       return `<div class="actor npc gone ${n.small ? 'small' : ''}" data-npc="${n.id}">
         <div class="npc-bubble" data-wish="${n.id}"></div><div class="npc-say" data-say="${n.id}"></div>
-        <div class="a-face"><div class="a-sprite" style="--k:${k}">${animalSvg(n.species)}</div><i class="npc-hat" style="bottom:${Math.round(118 * k)}px">${PARTY_HAT}</i></div>
+        <div class="a-face"><div class="a-sprite" style="--k:${k}">${animalSvg(n.species, 'normal', seasonWear(n.species))}</div><i class="npc-hat" style="bottom:${Math.round(118 * k)}px">${PARTY_HAT}</i></div>
         <div class="a-hold"></div></div>`;
     }).join('');
     this.npcEl = Object.fromEntries(NPCS.map((n) => [n.id, this.world.querySelector(`[data-npc="${n.id}"]`)]));
@@ -565,6 +566,24 @@ const City = {
 
   // ---------- talking to someone ----------
 
+  // Someone walking whose body is close to where the screen was pressed (a moving one is easy to
+  // just miss): their id, or null
+  npcNear(cx, cy) {
+    const r = this.vp.getBoundingClientRect();
+    const x = (cx - r.left) / ZOOM + this.cam.x;
+    const y = (cy - r.top) / ZOOM + this.cam.y;
+    let best = null;
+    let bd = Infinity;
+    for (const [id, st] of Object.entries(this.npcAt)) {
+      if (!st.shown || !st.moving) continue;
+      const h = NPC_BY_ID[id].small ? 46 : 62;
+      const dx = Math.abs(x - st.x);
+      if (dx > 30 || y < st.y - h - 6 || y > st.y + 8) continue;
+      if (dx < bd) [best, bd] = [id, dx];
+    }
+    return best;
+  },
+
   // Click on a neighbour: they stop, the pig walks up beside them, they turn round and say hello
   meetNpc(id) {
     const st = this.npcAt[id];
@@ -649,7 +668,7 @@ const City = {
       return true;
     }
     if (this.talk?.id === t.id && !t.together) {
-      Object.assign(this.talk, { line: t.line, ask: t.ask || null, mode: t.ask ? 'ask' : 'line' });
+      Object.assign(this.talk, { line: t.line, ask: t.ask || null, mode: t.ask ? 'ask' : t.rps ? 'hands' : 'line' });
       this.renderTalk();
       return true;
     }
@@ -686,6 +705,8 @@ const City = {
     const tk = btn.dataset.tk;
     if (tk === 'chat') this.cb.act('chat', t.id);
     else if (tk === 'gift' || tk === 'together' || tk === 'go') t.mode = tk;
+    else if (tk === 'rps') Object.assign(t, { mode: 'hands', line: RPS_CALL });
+    else if (tk === 'hand') this.cb.act('rps', `${t.id}:${btn.dataset.hand}`);
     // back one step: from the places to go, to the things to do together
     else if (tk === 'back') t.mode = t.mode === 'go' ? 'together' : 'line';
     else if (tk === 'give') {
@@ -864,10 +885,14 @@ const City = {
 
   bindInput() {
     let press = null;
+    let pressNpc = null;
     let dragged = false;
     this.vp.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
+      // someone walking may be out from under the pointer by the time it's let go: who it went down on
+      const on = e.target.closest('[data-npc]');
       press = { x: e.clientX, y: e.clientY, cx: this.cam.x, cy: this.cam.y };
+      pressNpc = e.target.closest('.talk, [data-tk], #pigMenu') ? null : on ? on.dataset.npc : this.npcNear(e.clientX, e.clientY);
       dragged = false;
     });
     window.addEventListener('pointermove', (e) => {
@@ -900,8 +925,9 @@ const City = {
       if (tk) return this.talkAction(tk);
       if (e.target.closest('.talk')) return;
       this.togglePigMenu(false);
-      const npc = e.target.closest('[data-npc]');
-      if (npc) return this.meetNpc(npc.dataset.npc);
+      const npc = e.target.closest('[data-npc]')?.dataset.npc || pressNpc;
+      pressNpc = null;
+      if (npc) return this.meetNpc(npc);
       const w = e.target.closest('[data-walker]');
       if (w) return this.chat(w);
       this.endTalk();
@@ -1708,6 +1734,8 @@ function talkHtml(t, snap, { together = true, tea = false } = {}) {
     acts = back + b('walk', '🚶', '一起走走')
       + (h >= TOGETHER_HEARTS.play ? b('play', '🎲', '一起玩', !!gameBlock(snap)) : '')
       + (go ? b('go', '📍', '一起去') : '');
+  } else if (t.mode === 'hands') {
+    acts = back + RPS_THROWS.map((x) => `<button class="tk-b" data-tk="hand" data-hand="${x.id}" title="${x.name}">${x.icon}</button>`).join('');
   } else if (t.mode === 'go') {
     // somewhere to go together: only what's on now; greyed (and why, on hover) if the pig can't
     const busy = snap.busy ? '在忙' : snap.sleeping ? '在睡觉' : '';
@@ -1718,6 +1746,7 @@ function talkHtml(t, snap, { together = true, tea = false } = {}) {
     }).join('');
   } else {
     acts = b('chat', '💬', '聊天')
+      + b('rps', '✊', '切磋')
       + (!giftedToday(s, t.id) && giftable(s, t.id).length ? b('gift', '🎁', '送礼') : '')
       + (tea ? b('tea', '☕', '坐下喝点') : '')
       + (together && h >= TOGETHER_HEARTS.walk ? b('together', '🤝', '一起') : '')

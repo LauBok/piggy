@@ -255,10 +255,6 @@
   opacity: 0.75;
 }
 
-#sheet .ib.hi {
-  background: var(--accent-soft);
-}
-
 #sheet .ib.wish.have {
   background: var(--coin-soft);
   box-shadow: 0 0 0 2px var(--coin-hue);
@@ -1918,11 +1914,10 @@
   height: 4px;
 }
 
-/* in the bag: it can be given right here */
+/* in the bag: ready to give them when the pig meets them */
 #sheet .npc-wish.have {
   background: var(--coin-soft);
   box-shadow: 0 0 0 2px var(--coin-hue), 0 0 8px rgba(250, 176, 5, 0.45);
-  cursor: pointer;
   animation: bob 1.4s ease-in-out infinite;
 }
 
@@ -1930,6 +1925,26 @@
 #sheet .npc-wish.have::after {
   background: var(--coin-soft);
   box-shadow: 0 0 0 1.5px var(--coin-hue);
+}
+
+/* today's hello and present: lit once done, grey until then */
+#sheet .npc-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--line);
+  font-size: 14px;
+  line-height: 1;
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+#sheet .npc-mark.on {
+  background: var(--accent-soft);
+  filter: none;
+  opacity: 1;
 }
 
 /* where they are: a map pin */
@@ -2236,4 +2251,119 @@
 #sheet .photo figcaption small {
   flex-shrink: 0;
   color: var(--ink-3);
+}
+/* ---------- the calendar ---------- */
+
+#sheet .cal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+
+#sheet .cal-top > b {
+  font: 700 18px var(--f-title);
+  color: var(--ink);
+}
+
+#sheet .cal-head,
+#sheet .cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+#sheet .cal-head span {
+  padding: 4px 0;
+  color: var(--muted);
+  font-size: var(--fs-meta);
+  text-align: center;
+}
+
+#sheet .cal-day {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 82px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+#sheet .cal-day > b {
+  color: var(--ink-2);
+  font: 700 13px var(--f-body);
+  font-variant-numeric: tabular-nums;
+}
+
+#sheet .cal-day.past {
+  background: var(--sunken);
+  box-shadow: none;
+}
+
+#sheet .cal-day.past > b,
+#sheet .cal-day.past .cal-ev {
+  opacity: 0.55;
+}
+
+#sheet .cal-day.has-fest {
+  background: var(--coin-soft);
+}
+
+#sheet .cal-day.today {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+#sheet .cal-day.today > b {
+  align-self: flex-start;
+  min-width: 22px;
+  padding: 1px 6px;
+  box-sizing: border-box;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+}
+
+#sheet .cal-ev {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1;
+}
+
+#sheet .cal-ev i {
+  overflow: hidden;
+  font: 12px var(--f-body);
+  font-style: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#sheet .cal-ev.fest i {
+  color: var(--coin);
+  font-weight: 700;
+}
+
+#sheet .cal-av {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+#sheet .cal-av svg {
+  width: 26px;
+  height: auto;
+  margin-top: 4px;
 }

@@ -1680,3 +1680,19 @@ body.indoors #minimap {
   fill: #b07a45;
 }
 
+
+/* the neighbours' clothes for the season (seasonWear), and no seasonal hat over a birthday one */
+.npc .ss {
+  display: none;
+}
+
+.season-spring .npc .ss-spring,
+.season-summer .npc .ss-summer,
+.season-autumn .npc .ss-autumn,
+.season-winter .npc .ss-winter {
+  display: inline;
+}
+
+.npc.bday .ss-hat {
+  display: none;
+}

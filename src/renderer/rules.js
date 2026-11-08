@@ -135,7 +135,8 @@ function toyBoredom(s, id) {
 
 // ---------- neighbours ----------
 
-const dayKey = () => new Date().toDateString();
+// today, as the town counts days (its clock, not the real date): what daily limits reset on
+const dayKey = () => new Date(townNow()).toDateString();
 
 // ---------- the town's clock ----------
 // Each window points TOWN_SAVE at the save it reads (the pet window its own, the home window the
@@ -197,9 +198,7 @@ const wishDone = (s, id) => s.npc?.[id]?.wish === dayKey();
 const giftedToday = (s, id) => s.npc?.[id]?.gift === dayKey() || wishDone(s, id);
 const togetherToday = (s, id) => s.npc?.[id]?.tog === dayKey();
 
-function isBirthday(id, d = new Date()) {
-  return NPC_BY_ID[id].birthday === `${d.getMonth() + 1}-${d.getDate()}`;
-}
+const isBirthday = (id, t = townNow()) => NPC_BY_ID[id].birthday === calOf(t).key;
 const npcDailyCap = (id) => (isBirthday(id) ? NPC_BIRTHDAY_DAILY : NPC_DAILY);
 
 // How a neighbour takes a present: wish, love, like, dislike or plain
@@ -307,35 +306,29 @@ function storyDue(s, id, now = townNow()) {
 
 // ---------- festivals, the theme park, the seasons ----------
 
-// A festival's day in a year, as 'month-day', or null if it isn't known for that year
-function festivalDate(f, year) {
-  if (f.date) return f.date;
-  if (f.after) {
-    const [id, days] = f.after;
-    const base = festivalDate(FESTIVAL_BY_ID[id], year);
-    if (!base) return null;
-    const [m, dd] = base.split('-').map(Number);
-    const d = new Date(year, m - 1, dd + days);
-    return `${d.getMonth() + 1}-${d.getDate()}`;
-  }
-  return f.dates[year] || null;
+// Where a town moment falls on the town's calendar: n (days since spring 1 of year 1), year,
+// season ('spring'…), day (1–28), key ('autumn-7', as festivals and birthdays are written)
+function calOf(t = townNow()) {
+  const d = new Date(t);
+  const n = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - CAL_EPOCH) / DAY_MS);
+  const y = SEASON_DAYS * 4;
+  const inYear = ((n % y) + y) % y;
+  const season = SEASON_IDS[Math.floor(inYear / SEASON_DAYS)];
+  const day = (inYear % SEASON_DAYS) + 1;
+  return { n, year: Math.floor(n / y) + 1, season, day, key: `${season}-${day}` };
 }
-// The festival on a (real) day, or null
-function festivalOn(d = new Date()) {
-  const md = `${d.getMonth() + 1}-${d.getDate()}`;
-  return FESTIVALS.find((f) => festivalDate(f, d.getFullYear()) === md) || null;
-}
+// The festival on a town day, or null
+const festivalOn = (t = townNow()) => FESTIVALS.find((f) => f.date === calOf(t).key) || null;
 // A festival coming up in the next few days (not today): { f, days }, or null
-function festivalSoon(d = new Date()) {
+function festivalSoon(t = townNow()) {
   for (let i = 1; i <= FESTIVAL_INVITE_DAYS; i++) {
-    const f = festivalOn(new Date(d.getFullYear(), d.getMonth(), d.getDate() + i));
+    const f = festivalOn(t + i * DAY_MS);
     if (f) return { f, days: i };
   }
   return null;
 }
-// spring, summer, autumn or winter, by the real month
-const SEASONS = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'];
-const seasonOf = (d = new Date()) => SEASONS[d.getMonth()];
+// spring, summer, autumn or winter, by the town's calendar
+const seasonOf = (t = townNow()) => calOf(t).season;
 
 const minuteOf = (d) => d.getHours() * 60 + d.getMinutes();
 const parkOpen = (d = townDate()) => minuteOf(d) >= PARK_HOURS[0] && minuteOf(d) < PARK_HOURS[1];
@@ -379,7 +372,7 @@ const outingTalk = (id, kind) => (kind === 'eat' ? NPC_TALK[id].eat : NPC_OUTING
 // ---------- the cinema and the barn ----------
 
 // Today's film
-const filmToday = (d = new Date()) => FILMS[Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / DAY_MS) % FILMS.length];
+const filmToday = (d = townDate()) => FILMS[Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / DAY_MS) % FILMS.length];
 // What the barn will buy: whatever the vegetable patch grows, and what it pays for one
 // (and fish, at what they're worth)
 const barnGoods = () => ITEMS.filter((it) => it.cat === 'fish' || ITEMS.some((seed) => seed.crop === it.id));

@@ -32,9 +32,10 @@ const Hud = {
       </div>`;
     this.pig = new PigSprite($('hudAvatar'), true);
     // the town's clock sits over the minimap, out of the crowded top bar
-    const clock = document.createElement('div');
+    const clock = document.createElement('button');
     clock.id = 'townClock';
-    clock.title = '猪猪城的时间';
+    clock.dataset.action = 'calendar';
+    clock.title = '日历';
     clock.innerHTML = '<span id="hudClockIc"></span><b id="hudClock"></b>';
     document.querySelector('.window').appendChild(clock);
     // often enough that a night in bed (a town minute each second) ticks by evenly
@@ -46,7 +47,8 @@ const Hud = {
     if (!snap) return;
     const d = townDate();
     const h = d.getHours();
-    const text = `周${'日一二三四五六'[d.getDay()]} ${h}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const c = calOf(d.getTime());
+    const text = `${SEASON_NAMES[c.season]}${c.day}日 周${'日一二三四五六'[d.getDay()]} ${h}:${String(d.getMinutes()).padStart(2, '0')}`;
     const icon = h >= 6 && h < 17 ? '☀️' : h >= 17 && h < 19 ? '🌇' : '🌙';
     if ($('hudClock').textContent !== text) $('hudClock').textContent = text;
     if ($('hudClockIc').textContent !== icon) $('hudClockIc').textContent = icon;
@@ -172,7 +174,7 @@ function structKey() {
   return JSON.stringify([
     sheet, SheetUI.bagCat, basket, s.inventory, Math.floor(s.money), s.level, s.courses, s.activity && [s.activity.type, s.activity.id],
     snap.sleeping, s.follow, s.mini, s.name, s.wear, s.npc, s.helpReady, s.hobbyReady, s.playDay, s.health >= MIN_HEALTH_TO_ACT, s.album.length, s.fishReady,
-    Math.floor(Date.now() / 60000), U.furnTab, U.treeSel, U.schoolStage, U.schoolMajor, U.workFilter, U.armed, U.upd,
+    Math.floor(Date.now() / 60000), U.furnTab, U.calSeason, U.treeSel, U.schoolStage, U.schoolMajor, U.workFilter, U.armed, U.upd,
     sheet === 'tower' ? [Math.round(s.hunger), Math.round(s.energy)] : 0, gameBlock(snap),
   ]);
 }
@@ -567,6 +569,12 @@ const LOCAL = {
   },
   album: () => openSheet('album'),
   furnTab: (id) => { SheetUI.furnTab = id; update(); },
+  calSeason: (id) => { SheetUI.calSeason = id; update(); },
+  calendar: () => {
+    if (sheet === 'calendar') return closeAll();
+    SheetUI.calSeason = null;
+    openSheet('calendar');
+  },
   checkUpdate: async () => {
     SheetUI.upd = { ...SheetUI.upd, busy: true };
     update();

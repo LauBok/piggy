@@ -202,10 +202,6 @@
   animation: chew 0.22s ease-in-out infinite alternate;
 }
 
-.wear-face .glasses {
-  display: none;
-}
-
 @keyframes chew {
   from { transform: scaleY(0.3); }
   to { transform: scaleY(1); }

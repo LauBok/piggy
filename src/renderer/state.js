@@ -201,9 +201,9 @@ const Game = {
     }
   },
 
-  // Play exp left today (resets at local midnight)
+  // Play exp left today (resets at the town's midnight)
   playExpToday() {
-    const today = new Date().toDateString();
+    const today = dayKey();
     if (this.s.playDay?.date !== today) this.s.playDay = { date: today, got: 0 };
     return this.s.playDay;
   },
@@ -702,6 +702,16 @@ const Game = {
     return Math.max(0, ((this.s.toyReady[id] || 0) - Date.now()) / 60000);
   },
 
+  // On a festival's day, city hall gives out that festival's outfit (once; it's kept for good)
+  claimFestival() {
+    const fest = festivalOn();
+    const it = fest && ITEMS.find((x) => x.festival === fest.id);
+    if (!it) return fail('今天没有节日');
+    if (this.s.inventory[it.id]) return fail(`已领取${it.name}`);
+    this.s.inventory[it.id] = 1;
+    return { ok: true, msg: `领到${it.name}`, fx: it.icon };
+  },
+
   // Eat food, use a hygiene item, take medicine or play with a toy
   use(id) {
     const it = ITEM_BY_ID[id];
@@ -976,7 +986,7 @@ const Game = {
     const rec = this.npcRec(id);
     const now = this.pigNow();
     const seen = rec.seen;
-    const yesterday = new Date(Date.now() - DAY_MS).toDateString();
+    const yesterday = new Date(townNow() - DAY_MS).toDateString();
     let news = null;
     if (now.lv >= MAX_LEVEL && seen.lv < MAX_LEVEL) news = 'max';
     else if (now.dg > seen.dg) news = 'grad';
@@ -1063,11 +1073,6 @@ const Game = {
     return this.talked({ id, line: this.helloLine(id) }, gain);
   },
 
-  // Saying hi from afar (the friends page): no stories, those need meeting in person
-  greet(id) {
-    return this.meet(id, false);
-  },
-
   // 💬: the first chat of the day counts a little; the fourth winds up, after that just hellos
   chat(id) {
     const rec = this.npcRec(id);
@@ -1080,6 +1085,26 @@ const Game = {
     if (n === 4) return this.talked({ id, line: T.bye }, gain);
     if (n > 4) return this.talked({ id, line: this.helloLine(id) }, gain);
     return this.talked({ id, ...this.chatLine(id) }, gain);
+  },
+
+  // Rock-paper-scissors ("id:rock"): any time, as often as the pig likes; the first round of the
+  // day counts a little towards the friendship, win or lose
+  rps(arg) {
+    const [id, pick] = String(arg).split(':');
+    const mine = RPS_THROW_BY_ID[pick];
+    if (!mine || !NPC_BY_ID[id]) return fail('');
+    const theirs = RPS_THROWS[Math.floor(Math.random() * RPS_THROWS.length)];
+    const rec = this.npcRec(id);
+    rec.seen ||= this.pigNow();
+    let gain;
+    if (rec.rps !== dayKey()) {
+      rec.rps = dayKey();
+      gain = this.befriend(id, NPC_POINTS.rps);
+    }
+    const line = theirs === mine ? `我也出${theirs.icon}，平手！再来！`
+      : mine.beats === theirs.id ? `我出的${theirs.icon}……你赢啦！` : `我出${theirs.icon}，我赢啦！`;
+    const face = theirs === mine ? '' : mine.beats === theirs.id ? '😣' : '😆';
+    return this.talked({ id, line, face, rps: true }, gain);
   },
 
   // An answer to their question ("id:key:0" or 1): they remember it
@@ -1124,14 +1149,6 @@ const Game = {
     if (typeof line === 'object') line = line[itemId] || line._;
     const face = { wish: '💗💗', love: '😍', like: '😊', plain: '🙂', dislike: '😅' }[tier];
     return this.talked({ id, line, face }, gain);
-  },
-
-  // Give a neighbour what they wished for today (from their card, without picking it out)
-  give(id) {
-    const npc = NPC_BY_ID[id];
-    const wish = npcWish(id);
-    if (!wish || wishDone(this.s, id)) return fail(`${npc.name}今天什么都不缺`);
-    return this.gift(`${id}:${wish}`);
   },
 
   // Doing something together ("id:walk", "id:play", or an outing: "id:movie"…); the first time each

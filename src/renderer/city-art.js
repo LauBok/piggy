@@ -30,9 +30,17 @@ const emo = (x, y, size, ch, extra = '') => {
 
 // ---------- scenery ----------
 
-// The town's season while it's drawn (seasonOf, by the real date): the trees' colours and the
-// snow on the ground follow it
+// The town's season while it's drawn (seasonOf, the town's calendar): the trees' and the grass's
+// colours, the flowers, the water (frozen in winter, lotus in summer), what stands about outside
 let TOWN_SEASON = seasonOf();
+// the ground by season: base, hills, farm land, park, the lawn's two stripes, grass tufts, river bank
+const GRASS = {
+  spring: { base: '#d8f0b8', hills: '#cbe8a8', farm: '#ddf2c2', park: '#c6eba4', lawn: ['#d2eeac', '#c9e8a1'], tuft: '#a3d97f', bank: '#a8d38c' },
+  summer: { base: '#cbe6a8', hills: '#bcdc98', farm: '#cfe8b0', park: '#b6de94', lawn: ['#c3e49c', '#b9dd90'], tuft: '#93c66f', bank: '#98c47c' },
+  autumn: { base: '#e2dcae', hills: '#d8cf9a', farm: '#e6dfb6', park: '#d6cf98', lawn: ['#dfd8a6', '#d6ce98'], tuft: '#c4ae6a', bank: '#c9b57d' },
+  winter: { base: '#e3ebe4', hills: '#dbe5dc', farm: '#e6ede6', park: '#d8e3d8', lawn: ['#e0e9e0', '#d8e2d8'], tuft: '#c3d1c4', bank: '#cdd8cf' },
+};
+const grass = () => GRASS[TOWN_SEASON];
 const TREE_COLORS = {
   spring: [['#8ce99a', '#69db7c'], ['#fcc2d7', '#faa2c1'], ['#96f2d7', '#63e6be'], ['#ffc9c9', '#ffa8a8']],
   summer: [['#8ce99a', '#69db7c'], ['#a9e34b', '#94d82d'], ['#96f2d7', '#63e6be'], ['#ffc9c9', '#ffa8a8']],
@@ -109,18 +117,20 @@ const GROUND_DEFS = `<defs>
     <path d="M0 20 H40 M20 0 V20 M0 0 V0 M10 20 V40 M30 20 V40" stroke="#d9cfc3" stroke-width="2"/></pattern>
   <pattern id="pBrick" width="36" height="18" patternUnits="userSpaceOnUse"><rect width="36" height="18" fill="#f3dccb"/>
     <path d="M0 9 H36 M0 18 H36 M12 0 V9 M30 9 V18" stroke="#e2c4ad" stroke-width="2"/></pattern>
-  <pattern id="pLawn" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="#cdeaa9"/><rect width="30" height="60" fill="#c4e49e"/></pattern>
+  <pattern id="pLawn" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="LAWN0"/><rect width="30" height="60" fill="LAWN1"/></pattern>
   <pattern id="pSoil" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#b88a5c"/><rect y="14" width="24" height="5" fill="#a87b4f"/></pattern>
 </defs>`;
 
-const REGION_FILL = { hills: '#c6e3a6', farm: '#d6eebb', lawn: 'url(#pLawn)', stone: 'url(#pPave)', park: '#c1e6a3', brick: 'url(#pBrick)' };
+const REGION_FILL = () => ({ hills: grass().hills, farm: grass().farm, lawn: 'url(#pLawn)', stone: 'url(#pPave)', park: grass().park, brick: 'url(#pBrick)' });
 
 function groundSvg() {
   const rnd = seeded(5);
-  let svg = `${GROUND_DEFS}<rect width="${WORLD.w}" height="${WORLD.h}" fill="#d3ebb6"/>`;
+  const G = grass();
+  const fills = REGION_FILL();
+  let svg = `${GROUND_DEFS.replace('LAWN0', G.lawn[0]).replace('LAWN1', G.lawn[1])}<rect width="${WORLD.w}" height="${WORLD.h}" fill="${G.base}"/>`;
   for (const d of DISTRICTS) {
     const [x1, y1, x2, y2] = d.rect;
-    svg += `<rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" rx="${d.ground === 'hills' ? 0 : 50}" fill="${REGION_FILL[d.ground]}"/>`;
+    svg += `<rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" rx="${d.ground === 'hills' ? 0 : 50}" fill="${fills[d.ground]}"/>`;
   }
   // grass tufts on the green regions
   for (let i = 0; i < 900; i++) {
@@ -128,7 +138,7 @@ function groundSvg() {
     const y = rnd() * WORLD.h;
     const d = DISTRICTS.find((r) => x > r.rect[0] && x < r.rect[2] && y > r.rect[1] && y < r.rect[3]);
     if (d && ['stone', 'brick'].includes(d.ground)) continue;
-    svg += `<path d="M${x} ${y} l-3 -7 M${x + 2} ${y} l1 -9 M${x + 4} ${y} l4 -6" stroke="#a9d18a" stroke-width="1.6" stroke-linecap="round"/>`;
+    svg += `<path d="M${x} ${y} l-3 -7 M${x + 2} ${y} l1 -9 M${x + 4} ${y} l4 -6" stroke="${G.tuft}" stroke-width="1.6" stroke-linecap="round"/>`;
   }
   // mountains behind the hills
   svg += `<path d="M2660 420 L2860 120 L3060 420 Z" fill="#c5d9ef"/><path d="M2825 172 L2860 120 L2895 172 L2878 162 L2860 178 L2842 162 Z" fill="#fff"/>
@@ -154,16 +164,23 @@ function groundSvg() {
   return svg;
 }
 
-// The river: sandy banks, a wet edge, deeper water in the middle, with reeds, stones and lily pads
+// The river: sandy banks, a wet edge, deeper water in the middle, with reeds, stones and lily pads.
+// Frozen over in winter (no pads then, the reeds gone brown); more pads and lotus in summer.
 function riverSvg() {
   const d = ptsD(RIVER);
   const rnd = seeded(17);
-  let svg = `<path d="${d}" stroke="#e6d7ae" stroke-width="${RIVER_W * 2 + 30}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="${d}" stroke="#a8c98f" stroke-width="${RIVER_W * 2 + 10}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
-    <path d="${d}" stroke="#6db6e2" stroke-width="${RIVER_W * 2}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="${d}" stroke="#5aa6d6" stroke-width="${RIVER_W * 0.9}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
-    <path class="ripple" d="${d}" stroke="#d6f0ff" stroke-width="2" fill="none" stroke-dasharray="6 54" opacity=".8" transform="translate(-12 0)"/>
-    <path class="ripple slow" d="${d}" stroke="#d6f0ff" stroke-width="2" fill="none" stroke-dasharray="10 70" opacity=".6" transform="translate(13 0)"/>`;
+  const ice = TOWN_SEASON === 'winter';
+  const line = (c, w, o = 1) => `<path d="${d}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="${o}"/>`;
+  let svg = line('#e6d7ae', RIVER_W * 2 + 30) + line(grass().bank, RIVER_W * 2 + 10, 0.7);
+  svg += ice
+    ? line('#cfe6f5', RIVER_W * 2) + line('#e3f1fa', RIVER_W * 0.9, 0.9)
+      + `<path d="${d}" stroke="#fff" stroke-width="3" fill="none" stroke-dasharray="40 90" opacity=".85" transform="translate(-10 0)"/>
+        <path d="${d}" stroke="#fff" stroke-width="2" fill="none" stroke-dasharray="18 120" opacity=".7" transform="translate(12 0)"/>`
+    : line('#6db6e2', RIVER_W * 2) + line('#5aa6d6', RIVER_W * 0.9, 0.55)
+      + `<path class="ripple" d="${d}" stroke="#d6f0ff" stroke-width="2" fill="none" stroke-dasharray="6 54" opacity=".8" transform="translate(-12 0)"/>
+        <path class="ripple slow" d="${d}" stroke="#d6f0ff" stroke-width="2" fill="none" stroke-dasharray="10 70" opacity=".6" transform="translate(13 0)"/>`;
+  const reed = { autumn: '#b08d3c', winter: '#a0896b' }[TOWN_SEASON] || '#5c940d';
+  const pads = { summer: 0.85, winter: 0 }[TOWN_SEASON] ?? 0.72;
   // things along the banks and on the water, away from the bridges
   const nearBridge = (y) => BRIDGES.some((b) => Math.abs(y - b.y) < 60);
   for (let i = 8; i < RIVER.length - 4; i += 7) {
@@ -173,14 +190,15 @@ function riverSvg() {
     const bx = x + side * (RIVER_W + 8 + rnd() * 6);
     const r = rnd();
     if (r < 0.3) {
-      svg += [0, 1, 2, 3].map((k) => `<path d="M${bx + k * 4 - 6} ${y + 6} q${side * 2} -14 ${side * 4 - 2} -22" stroke="#5c940d" stroke-width="2.4" fill="none" stroke-linecap="round"/>`).join('')
+      svg += [0, 1, 2, 3].map((k) => `<path d="M${bx + k * 4 - 6} ${y + 6} q${side * 2} -14 ${side * 4 - 2} -22" stroke="${reed}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`).join('')
         + `<ellipse cx="${bx + 4 * side}" cy="${y - 16}" rx="2.5" ry="6" fill="#8c6239"/>`;
     } else if (r < 0.5) {
       svg += `<ellipse cx="${bx}" cy="${y}" rx="10" ry="7" fill="#ced4da" stroke="#adb5bd"/><ellipse cx="${bx + side * 12}" cy="${y + 6}" rx="6" ry="4.5" fill="#dee2e6" stroke="#adb5bd"/>`;
-    } else if (r < 0.72) {
+    } else if (r < pads) {
       const lx = x + (rnd() - 0.5) * RIVER_W;
+      const bloom = rnd() < (TOWN_SEASON === 'summer' ? 0.7 : 0.4);
       svg += `<path d="M${lx} ${y} m-9 0 a9 6 0 1 0 18 0 a9 6 0 1 0 -18 0 M${lx} ${y} l7 -3" fill="#82c91e" stroke="#5c940d" stroke-width="1.2"/>`
-        + (rnd() < 0.4 ? `<circle cx="${lx - 2}" cy="${y - 2}" r="2.6" fill="#ffc9de"/>` : '');
+        + (bloom ? (TOWN_SEASON === 'summer' ? lotus(lx - 2, y - 3, 0.8) : `<circle cx="${lx - 2}" cy="${y - 2}" r="2.6" fill="#ffc9de"/>`) : '');
     }
   }
   // wooden bridges carrying the roads straight across, on stone footings
@@ -206,7 +224,7 @@ function cliffSvg() {
     if (x2 <= x1) return '';
     let s = `<rect x="${x1}" y="${y}" width="${x2 - x1}" height="${h}" fill="#b5916d"/>
       <rect x="${x1}" y="${y + h - 8}" width="${x2 - x1}" height="8" fill="#9c7a58"/>
-      <rect x="${x1}" y="${y - 6}" width="${x2 - x1}" height="10" rx="5" fill="#a9d18a"/>`;
+      <rect x="${x1}" y="${y - 6}" width="${x2 - x1}" height="10" rx="5" fill="${grass().tuft}"/>`;
     for (let k = x1 + 20; k < x2 - 10; k += 46) s += `<path d="M${k} ${y + 10} l14 0 M${k + 22} ${y + 22} l16 0" stroke="#9c7a58" stroke-width="3" stroke-linecap="round"/>`;
     return s;
   };
@@ -219,6 +237,11 @@ function cliffSvg() {
   svg += face(x, WORLD.w);
   // the waterfall where the river comes down the cliff
   const wx = riverXAt(y + h + 4);
+  if (TOWN_SEASON === 'winter') {
+    return svg + `<rect x="${wx - RIVER_W}" y="${y - 30}" width="${RIVER_W * 2}" height="${h + 34}" fill="#dbeefb"/>
+      ${[0, 1, 2, 3, 4].map((i) => `<path d="M${wx - 30 + i * 15} ${y - 26} V${y + h - 6 - (i % 2) * 10} l-4 -10" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".9"/>`).join('')}
+      <ellipse cx="${wx}" cy="${y + h + 6}" rx="${RIVER_W + 8}" ry="9" fill="#fff" opacity=".8"/>`;
+  }
   svg += `<rect x="${wx - RIVER_W}" y="${y - 30}" width="${RIVER_W * 2}" height="${h + 34}" fill="#a5d8ff"/>
     <g class="falls">${[0, 1, 2, 3].map((i) => `<path d="M${wx - 24 + i * 16} ${y - 26} V${y + h}" stroke="#fff" stroke-width="3" stroke-dasharray="8 10" opacity=".85"/>`).join('')}</g>
     <ellipse cx="${wx}" cy="${y + h + 6}" rx="${RIVER_W + 8}" ry="9" fill="#fff" opacity=".7"/>`;
@@ -379,8 +402,14 @@ function scenerySvg() {
   }
   trees.sort((a, b) => a[1] - b[1]);
   let svg = trees.map(([x, y, k, kind]) => treeSvg(x, y, k, kind)).join('');
-  const colors = ['#ff8fab', '#ffd43b', '#b197fc', '#74c0fc', '#fff'];
-  for (let tries = 0, n = 0; tries < 8000 && n < 520; tries++) {
+  const F = {
+    spring: [760, ['#ff8fab', '#ffc9de', '#fff', '#b197fc', '#ffd43b']],
+    summer: [520, ['#ff8fab', '#ffd43b', '#b197fc', '#74c0fc', '#fff']],
+    autumn: [220, ['#ffa94d', '#ffd43b', '#e8590c', '#fff']],
+    winter: [0, []],
+  }[TOWN_SEASON];
+  const colors = F[1];
+  for (let tries = 0, n = 0; tries < 9000 && n < F[0]; tries++) {
     const x = 30 + rnd() * (WORLD.w - 60);
     const y = 60 + rnd() * (WORLD.h - 80);
     const d = DISTRICTS.find((r) => x > r.rect[0] && x < r.rect[2] && y > r.rect[1] && y < r.rect[3]);
@@ -408,6 +437,7 @@ function scenerySvg() {
   for (const [x, y] of [[700, 1360], [1210, 1420], [1830, 820], [2600, 1150], [3000, 1450], [2350, 2440], [900, 2030], [1350, 760]]) {
     if (freeForScenery(x, y, 0)) svg += bench(x, y);
   }
+  svg += seasonProps();
   for (const r of ROADS.filter((q) => q.stone)) {
     const [[x1, y1], [x2, y2]] = r.pts;
     if (y1 !== y2) continue;
@@ -416,6 +446,86 @@ function scenerySvg() {
   return svg;
 }
 
+
+// A lotus flower, for the lake and the river in summer
+const lotus = (x, y, k = 1) => `<g transform="translate(${x} ${y}) scale(${k})">
+  <path d="M0 2 C-9 0 -10 -7 -7 -9 C-4 -5 -2 -3 0 -2 C2 -3 4 -5 7 -9 C10 -7 9 0 0 2 Z" fill="#ff8fab" stroke="#e64980" stroke-width=".8"/>
+  <path d="M0 0 C-4 -4 -3 -11 0 -13 C3 -11 4 -4 0 0 Z" fill="#ffc9de" stroke="#e64980" stroke-width=".8"/></g>`;
+
+// What the season puts out on the grass, here and there: tulips in spring, sunflowers in summer,
+// pumpkins and piles of leaves in autumn, snowmen in winter
+const SEASON_PROP = {
+  spring: (x, y) => [[-10, '#ff6b9d'], [0, '#ffd43b'], [10, '#ff8787']].map(([dx, c], i) => `<path d="M${x + dx} ${y} v-16" stroke="#5c940d" stroke-width="2"/>
+      <path d="M${x + dx} ${y - 6} q-6 -2 -7 -9 q6 1 7 7" fill="#82c91e"/>
+      <path d="M${x + dx - 5} ${y - 22 - i % 2 * 2} q0 8 5 9 q5 -1 5 -9 l-2.5 3 l-2.5 -4 l-2.5 4 Z" fill="${c}"/>`).join(''),
+  summer: (x, y) => [[-8, 0], [8, 6]].map(([dx, dy]) => `<path d="M${x + dx} ${y + dy} v-40" stroke="#5c940d" stroke-width="3"/>
+      <path d="M${x + dx} ${y + dy - 16} q-10 -2 -12 -10 q9 0 12 6 M${x + dx} ${y + dy - 24} q10 -2 12 -10 q-9 0 -12 6" fill="#69b34c"/>
+      ${[...Array(10)].map((_, i) => { const a = (i / 10) * Math.PI * 2; return `<ellipse cx="${x + dx + Math.cos(a) * 9}" cy="${y + dy - 44 + Math.sin(a) * 9}" rx="5" ry="2.6" transform="rotate(${(a * 180) / Math.PI} ${x + dx + Math.cos(a) * 9} ${y + dy - 44 + Math.sin(a) * 9})" fill="#ffd43b" stroke="#f59f00" stroke-width=".6"/>`; }).join('')}
+      <circle cx="${x + dx}" cy="${y + dy - 44}" r="6.5" fill="#8c5a2b"/>`).join(''),
+  autumn: (x, y, i) => i % 2
+    ? `<path d="M${x - 26} ${y} Q${x - 18} ${y - 18} ${x} ${y - 20} Q${x + 18} ${y - 18} ${x + 26} ${y} Z" fill="#d9480f" opacity=".9"/>
+      ${[[-16, -3, '#ffa94d', -30], [-6, -12, '#ffd43b', 20], [6, -14, '#ff922b', -10], [16, -5, '#f76707', 35], [0, -4, '#fcc419', 70], [-10, -16, '#e8590c', -60], [12, -9, '#ffd43b', 50], [-20, 2, '#ff922b', 10], [22, 1, '#fab005', -40]]
+    .map(([dx, dy, c, r]) => `<path d="M0 -6 Q5 -2 0 6 Q-5 -2 0 -6 Z M0 6 v3" fill="${c}" stroke="${darker(c, 0.3)}" stroke-width=".8" transform="translate(${x + dx} ${y + dy}) rotate(${r})"/>`).join('')}`
+    : `<ellipse cx="${x}" cy="${y - 8}" rx="13" ry="10" fill="#ff922b" stroke="#d9480f" stroke-width="1.4"/><path d="M${x - 5} ${y - 17} q-2 9 0 17 M${x + 5} ${y - 17} q2 9 0 17" stroke="#d9480f" stroke-width="1.2" fill="none"/>
+      <path d="M${x} ${y - 18} q1 -6 5 -7" stroke="#5c940d" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <ellipse cx="${x + 18}" cy="${y - 5}" rx="8" ry="6" fill="#ffa94d" stroke="#d9480f" stroke-width="1.2"/><path d="M${x + 18} ${y - 11} v-3" stroke="#5c940d" stroke-width="2" stroke-linecap="round"/>`,
+  winter: (x, y) => `<ellipse cx="${x}" cy="${y}" rx="17" ry="5" fill="rgba(120,140,160,.18)"/>
+      <circle cx="${x}" cy="${y - 13}" r="14" fill="#fff" stroke="#ced4da" stroke-width="1.4"/><circle cx="${x}" cy="${y - 34}" r="10" fill="#fff" stroke="#ced4da" stroke-width="1.4"/>
+      <circle cx="${x - 3.5}" cy="${y - 36}" r="1.5" fill="#343a40"/><circle cx="${x + 3.5}" cy="${y - 36}" r="1.5" fill="#343a40"/>
+      <path d="M${x} ${y - 33} l7 2 l-7 1 Z" fill="#ff922b"/><path d="M${x - 9} ${y - 27} q9 5 18 0" stroke="#e03131" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M${x - 13} ${y - 18} l-11 -8 M${x + 13} ${y - 18} l11 -8" stroke="#8c6239" stroke-width="2" stroke-linecap="round"/>
+      <rect x="${x - 7}" y="${y - 50}" width="14" height="8" rx="2" fill="#343a40"/><rect x="${x - 10}" y="${y - 43}" width="20" height="3" rx="1.5" fill="#343a40"/>`,
+};
+function seasonProps() {
+  const rnd = seeded(43);
+  const draw = SEASON_PROP[TOWN_SEASON];
+  let svg = '';
+  for (let tries = 0, n = 0; tries < 4000 && n < 34; tries++) {
+    const x = 200 + rnd() * (WORLD.w - 400);
+    const y = 520 + rnd() * (WORLD.h - 620);
+    const d = DISTRICTS.find((r) => x > r.rect[0] && x < r.rect[2] && y > r.rect[1] && y < r.rect[3]);
+    if (!d || !['park', 'lawn', 'farm', 'hills'].includes(d.ground)) continue;
+    if (!freeForScenery(x, y, 30)) continue;
+    svg += draw(x, y, n);
+    n++;
+  }
+  return svg;
+}
+
+// What the neighbours put on for the season: a ring of flowers in spring, a straw hat in summer,
+// a knitted scarf in autumn, a scarf and a woolly hat in winter. Not over a cap, apron string or
+// scarf they always wear, nor over long ears.
+const SEASON_HAT = {
+  spring: `<path d="M50 34 Q80 16 110 34" stroke="#8ce99a" stroke-width="4" fill="none" stroke-linecap="round"/>
+    ${[[54, 32, '#ff8fab'], [66, 25, '#fff'], [80, 22, '#ffd43b'], [94, 25, '#fff'], [106, 32, '#ff8fab']].map(([x, y, c]) => `<g>${[0, 1, 2, 3, 4].map((i) => { const a = (i / 5) * Math.PI * 2; return `<circle cx="${x + Math.cos(a) * 3.6}" cy="${y + Math.sin(a) * 3.6}" r="3" fill="${c}" stroke="#f3a5bd" stroke-width=".6"/>`; }).join('')}<circle cx="${x}" cy="${y}" r="2.2" fill="#fab005"/></g>`).join('')}`,
+  summer: `<ellipse cx="80" cy="28" rx="50" ry="10" fill="#f4d58d" stroke="#c9a04a" stroke-width="1.6"/>
+    <path d="M56 28 Q57 4 80 2 Q103 4 104 28 Z" fill="#f4d58d" stroke="#c9a04a" stroke-width="1.6"/>
+    <path d="M57 20 Q80 14 103 20 L104 26 Q80 20 56 26 Z" fill="#ff6b6b"/>
+    <path d="M62 10 Q80 4 98 10 M40 28 Q80 36 120 28" stroke="#e3bd6a" stroke-width="1.2" fill="none"/>`,
+  winter: `<path d="M54 32 Q55 4 80 2 Q105 4 106 32 Z" fill="#ff6b6b" stroke="#e03131" stroke-width="1.4"/>
+    <path d="M64 30 V10 M72 30 V5 M80 30 V3 M88 30 V5 M96 30 V10" stroke="#fa5252" stroke-width="2" opacity=".8"/>
+    <rect x="51" y="25" width="58" height="11" rx="5.5" fill="#fff" stroke="#dee2e6" stroke-width="1.2"/>
+    <circle cx="80" cy="0" r="7.5" fill="#fff" stroke="#dee2e6" stroke-width="1.2"/>`,
+};
+const SEASON_SCARF = {
+  autumn: ['#f0a43a', '#c27c1e', '#fff3bf'],
+  winter: ['#e03131', '#a61e1e', '#fff'],
+};
+function seasonWear(species) {
+  const sp = SPECIES[species];
+  let svg = '';
+  const hatOk = !['nurse', 'chef', 'bow', 'pencil'].includes(sp.acc) && sp.ears !== 'long';
+  // a ring of flowers sits between long ears; a hat doesn't
+  for (const [season, hat] of Object.entries(SEASON_HAT)) if (hatOk || (season === 'spring' && sp.ears === 'long')) svg += `<g class="ss ss-hat ss-${season}">${hat}</g>`;
+  if (!['bell', 'scarf'].includes(sp.acc)) {
+    for (const [season, [c, edge, stripe]] of Object.entries(SEASON_SCARF)) {
+      svg += `<g class="ss ss-${season}"><path d="M48 100 Q80 116 112 100 L112 111 Q80 127 48 111 Z" fill="${c}" stroke="${edge}" stroke-width="1.3"/>
+        <path d="M58 105 v9 M70 108 v9 M82 109 v9 M94 108 v9 M104 104 v8" stroke="${stripe}" stroke-width="2.6" opacity=".85"/>
+        <path d="M96 110 l5 24 l9 -2 l-3 -22 Z" fill="${c}" stroke="${edge}" stroke-width="1.3"/><path d="M101 134 l1 5 M105 133 l1 5 M109 132 l1 5" stroke="${edge}" stroke-width="1.6" stroke-linecap="round"/></g>`;
+    }
+  }
+  return svg;
+}
 
 // ---------- buildings ----------
 // Seen from the front and a little above: the roof shows as a slope going back, the wall below,
@@ -722,10 +832,30 @@ const PLACE_ART = {
   lake(p) {
     const cx = p.x + p.w / 2;
     const cy = p.y + p.h / 2 + 6;
-    return `<ellipse cx="${cx}" cy="${cy}" rx="${p.w / 2}" ry="${p.h / 2 - 6}" fill="#a5d8ff" stroke="#d0ebff" stroke-width="5"/>
+    const rx = p.w / 2;
+    const ry = p.h / 2 - 6;
+    // winter: frozen white-blue, a few cracks and skate marks, the ducks stood on the ice
+    if (TOWN_SEASON === 'winter') {
+      return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#dcedf8" stroke="#fff" stroke-width="6"/>
+        <ellipse cx="${cx - 30}" cy="${cy - 20}" rx="${rx * 0.55}" ry="${ry * 0.4}" fill="#eaf5fc"/>
+        <path d="M${cx - 120} ${cy + 30} q40 -30 90 -10 t90 -6 M${cx - 60} ${cy - 50} q60 20 130 -4" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".9"/>
+        <path d="M${cx + 60} ${cy + 40} l18 -12 l10 6 l16 -14 M${cx - 150} ${cy - 10} l14 8 l12 -6" stroke="#b9d9ee" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        ${emo(cx - 30, cy + 4, 18, '🦆')}${emo(cx + 34, cy - 16, 14, '🦆')}
+        ${[0, 1, 2].map((i) => `<path d="M${p.x + 10 + i * 6} ${cy + 26} q-2 -16 2 -26" stroke="#a0896b" stroke-width="2.5" fill="none"/>`).join('')}`;
+    }
+    // summer: lotus leaves and flowers round the edge
+    const rnd = seeded(31);
+    const lotusRing = TOWN_SEASON !== 'summer' ? '' : [...Array(9)].map((_, i) => {
+      const a = (i / 9) * Math.PI * 2 + 0.3;
+      const x = cx + Math.cos(a) * rx * (0.72 + rnd() * 0.12);
+      const y = cy + Math.sin(a) * ry * (0.7 + rnd() * 0.12);
+      return `<ellipse cx="${x}" cy="${y}" rx="15" ry="9" fill="#69b34c" stroke="#4d8f36" stroke-width="1.2"/><path d="M${x} ${y} l12 -4" stroke="#4d8f36" stroke-width="1.2"/>`
+        + (i % 2 ? lotus(x - 3, y - 6, 1.1) : '');
+    }).join('');
+    return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#a5d8ff" stroke="#d0ebff" stroke-width="5"/>${lotusRing}
       <path d="M${cx - 50} ${cy - 10} q10 -5 20 0 M${cx + 10} ${cy + 20} q10 -5 20 0" stroke="#fff" stroke-width="2" fill="none" opacity=".8"/>
       <g class="paddle">${emo(cx - 30, cy + 4, 18, '🦆')}</g><g class="paddle" style="animation-delay:-2s">${emo(cx + 34, cy - 16, 14, '🦆')}</g>
-      ${[0, 1, 2].map((i) => `<path d="M${p.x + 10 + i * 6} ${cy + 26} q-2 -16 2 -26" stroke="#69db7c" stroke-width="2.5" fill="none"/>`).join('')}`;
+      ${[0, 1, 2].map((i) => `<path d="M${p.x + 10 + i * 6} ${cy + 26} q-2 -16 2 -26" stroke="${TOWN_SEASON === 'autumn' ? '#b08d3c' : '#69db7c'}" stroke-width="2.5" fill="none"/>`).join('')}`;
   },
   // the vegetable patch by the pig's home: six plots; what grows in them is drawn by gardenCrops()
   garden(p) {
@@ -1280,7 +1410,7 @@ const SPECIES = {
 };
 
 // eyes: how they look (normal, happy, closed, surprised, love; see eyeSvg)
-function animalSvg(species, eyes = 'normal') {
+function animalSvg(species, eyes = 'normal', over = '') {
   const sp = SPECIES[species];
   const line = sp.line || darker(sp.body, 0.25);
   const head = sp.head || sp.body;
@@ -1418,7 +1548,7 @@ function animalSvg(species, eyes = 'normal') {
       break;
   }
   return `<svg viewBox="-4 -26 168 178" width="168" height="178"><ellipse cx="80" cy="146" rx="34" ry="5" fill="rgba(90,60,40,.16)"/>
-    <g class="breathe">${back}${wool}${body}${limbs}${ears}${tuft}<ellipse cx="80" cy="66" rx="48" ry="42" fill="${head}" ${O}/>${face}${acc}</g></svg>`;
+    <g class="breathe">${back}${wool}${body}${limbs}${ears}${tuft}<ellipse cx="80" cy="66" rx="48" ry="42" fill="${head}" ${O}/>${face}${acc}${over}</g></svg>`;
 }
 
 // ---------- room interiors (cut-away bubbles, 220×140) ----------

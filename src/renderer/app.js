@@ -183,23 +183,23 @@ const App = {
       case 'harvest':
         res = Game.harvest();
         break;
-      case 'greet':
-        res = Game.greet(id);
-        break;
       case 'meet':
         res = Game.meet(id);
         break;
       case 'chat':
         res = Game.chat(id);
         break;
+      case 'rps':
+        res = Game.rps(id);
+        break;
+      case 'claimFestival':
+        res = Game.claimFestival();
+        break;
       case 'answer':
         res = Game.answer(id);
         break;
       case 'remember':
         res = Game.remember(id);
-        break;
-      case 'give':
-        res = Game.give(id);
         break;
       case 'gift':
         res = Game.gift(id);

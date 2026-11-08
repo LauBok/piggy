@@ -92,6 +92,29 @@ const accKeyFor = (s) => (s.activity && ACCESSORIES[s.activity.type] ? s.activit
 // ---------- outfits bought in the shop ----------
 
 const WEAR_SVG = {
+  fu: `<g><rect x="43" y="21" width="18" height="18" rx="2" transform="rotate(45 52 30)" fill="#e03131" stroke="#fcc419" stroke-width="1.6"/>
+      <text x="52" y="34.2" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#ffd43b">福</text></g>`,
+  lanternclip: `<g transform="translate(108 22)">
+      <path d="M0 -14 L0 -9" stroke="#e8590c" stroke-width="1.6"/>
+      <rect x="-5" y="-10" width="10" height="3" rx="1" fill="#fcc419"/>
+      <ellipse cx="0" cy="0" rx="9.5" ry="8" fill="#f03e3e"/>
+      <path d="M-4 -7 Q-6.5 0 -4 7 M4 -7 Q6.5 0 4 7" stroke="#c92a2a" stroke-width="1.2" fill="none"/>
+      <rect x="-5" y="7" width="10" height="3" rx="1" fill="#fcc419"/>
+      <path d="M-2 10 L-2.5 18 M0 10 L0 19 M2 10 L2.5 18" stroke="#fab005" stroke-width="1.2" stroke-linecap="round"/></g>`,
+  horns: `<g fill="#69db7c" stroke="#2f9e44" stroke-width="1.4" stroke-linejoin="round">
+      <path d="M62 27 C58 16 54 10 50 6 C58 7 66 14 69 25 Z"/><path d="M98 27 C102 16 106 10 110 6 C102 7 94 14 91 25 Z"/>
+      <path d="M58 16 L52 14 M102 16 L108 14" stroke-linecap="round"/></g>`,
+  bunny: `<g stroke="#e9ecef" stroke-width="1.4">
+      <ellipse cx="68" cy="13" rx="6.5" ry="12" transform="rotate(-10 68 24)" fill="#fff"/>
+      <ellipse cx="92" cy="13" rx="6.5" ry="12" transform="rotate(10 92 24)" fill="#fff"/>
+      <ellipse cx="68" cy="14" rx="3" ry="8" transform="rotate(-10 68 24)" fill="#ffc9d9" stroke="none"/>
+      <ellipse cx="92" cy="14" rx="3" ry="8" transform="rotate(10 92 24)" fill="#ffc9d9" stroke="none"/>
+      <path d="M58 26 Q80 18 102 26" fill="none" stroke="#ffadc5" stroke-width="3" stroke-linecap="round"/></g>`,
+  santa: `<g>
+      <path d="M56 25 C60 10 80 1 100 5 C110 7 116 12 117 19 C110 14 103 13 98 15 L104 25 Z" fill="#e03131"/>
+      <path d="M66 13 C74 7 86 4 97 6" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+      <rect x="51" y="20" width="58" height="10" rx="5" fill="#fff" stroke="#dee2e6" stroke-width="1.2"/>
+      <circle cx="117" cy="20" r="5.5" fill="#fff" stroke="#dee2e6" stroke-width="1.2"/></g>`,
   bow: `<g transform="translate(107 24) rotate(18)">
       <path d="M0 0 L-16 -10 Q-21 0 -16 10 Z" fill="#ff6b9d"/><path d="M0 0 L16 -10 Q21 0 16 10 Z" fill="#ff6b9d"/>
       <path d="M-12 -5 L-5 -1 M12 -5 L5 -1" stroke="#fff" stroke-width="1.6" opacity=".6" stroke-linecap="round"/>
@@ -157,8 +180,7 @@ function renderLook(root, look) {
   if (g) g.innerHTML = hair ? HAIR_SVG[hair] : '';
 }
 
-// Draws what the pig wears. Head items stay off while a school cap, hard hat or ice bag is on;
-// sunglasses replace the youth form's glasses.
+// Draws what the pig wears. Head items stay off while a school cap, hard hat or ice bag is on.
 function renderWear(root, wear, accKey) {
   const g = root.querySelector('#wear');
   const headId = wear?.head && !accKey ? wear.head : null;
@@ -191,6 +213,9 @@ const OUTFIT = {
     <circle cx="80" cy="108.5" r="5" fill="none" stroke="#ffd43b" stroke-width="3"/></g>`,
 };
 
+// the round glasses are bought and worn like the rest (see the wear items in data.js)
+WEAR_SVG.glasses = OUTFIT.glasses;
+
 const CART_BACK = `<path d="M24 102 C16 58 40 28 80 26 C70 40 66 70 68 102 Z" fill="url(#gCanopy)" stroke="#9775fa" stroke-width="1.5"/>
   <path d="M33 100 C27 66 44 42 70 34" fill="none" stroke="#fff" stroke-width="3" opacity=".55"/>
   <path d="M24 102 Q30 96 36 102 Q42 96 48 102 Q54 96 60 102 Q64 97 68 102" fill="none" stroke="#9775fa" stroke-width="1.5"/>`;
@@ -215,7 +240,7 @@ const FORM_LOOK = {
   toddler: { k: 0.8, under: OUTFIT.bib },
   child: { k: 0.88, over: OUTFIT.scarf },
   teen: { k: 0.94, under: OUTFIT.collar, over: OUTFIT.tie },
-  youth: { k: 1, under: OUTFIT.collar, face: OUTFIT.glasses },
+  youth: { k: 1, under: OUTFIT.collar },
   adult: { k: 1.04, over: OUTFIT.bowtie },
 };
 

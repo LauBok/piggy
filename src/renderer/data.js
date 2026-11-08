@@ -100,17 +100,25 @@ const OUTINGS = [
 const OUTING_BY_ID = Object.fromEntries(OUTINGS.map((o) => [o.id, o]));
 const GARDEN_HELP_MIN = 30;
 
-// Festivals, by the real calendar (like birthdays). The lunar ones fall on another day each year,
-// so their dates are listed; 元宵 is fourteen days after 春节. food: what neighbours give that day
-// (once they know the pig a little, FESTIVAL_GIFT_HEARTS). In the days before (FESTIVAL_INVITE_DAYS)
-// they ask him along; on the day the town is decorated and there's something to go and see.
-const LUNAR_NEW_YEAR = { 2026: '2-17', 2027: '2-6', 2028: '1-26', 2029: '2-13', 2030: '2-3', 2031: '1-23', 2032: '2-11' };
+// The town's own calendar: four seasons of SEASON_DAYS days each, a year of 112 days, kept by the
+// town's clock (not the real date). Every season starts on a Monday. CAL_EPOCH: the town day that
+// was spring 1 of year 1.
+const SEASON_IDS = ['spring', 'summer', 'autumn', 'winter'];
+const SEASON_NAMES = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
+const SEASON_ICONS = { spring: '🌸', summer: '🌻', autumn: '🍁', winter: '⛄' };
+const SEASON_DAYS = 28;
+const CAL_EPOCH = Date.UTC(2026, 8, 7);
+
+// Festivals, on the town's calendar like birthdays ('season-day'). food: what neighbours give that
+// day (once they know the pig a little, FESTIVAL_GIFT_HEARTS). In the days before
+// (FESTIVAL_INVITE_DAYS) they ask him along; on the day the town is decorated and there's
+// something to go and see.
 const FESTIVALS = [
-  { id: 'newyear', name: '春节', icon: '🧧', food: 'dumpling', place: 'plaza', dates: LUNAR_NEW_YEAR },
-  { id: 'lantern', name: '元宵节', icon: '🏮', food: 'tangyuan', place: 'plaza', after: ['newyear', 14] },
-  { id: 'dragon', name: '端午节', icon: '🐉', food: 'zongzi', place: 'lake', dates: { 2026: '6-19', 2027: '6-9', 2028: '5-28', 2029: '6-16', 2030: '6-5', 2031: '6-24', 2032: '6-12' } },
-  { id: 'moon', name: '中秋节', icon: '🥮', food: 'mooncake', place: 'lake', dates: { 2026: '9-25', 2027: '9-15', 2028: '10-3', 2029: '9-22', 2030: '9-12', 2031: '10-1', 2032: '9-19' } },
-  { id: 'xmas', name: '圣诞节', icon: '🎄', food: 'gingerbread', place: 'plaza', date: '12-25' },
+  { id: 'newyear', name: '春节', icon: '🧧', food: 'dumpling', place: 'plaza', date: 'spring-1' },
+  { id: 'lantern', name: '元宵节', icon: '🏮', food: 'tangyuan', place: 'plaza', date: 'spring-15' },
+  { id: 'dragon', name: '端午节', icon: '🐉', food: 'zongzi', place: 'lake', date: 'summer-5' },
+  { id: 'moon', name: '中秋节', icon: '🥮', food: 'mooncake', place: 'lake', date: 'autumn-15' },
+  { id: 'xmas', name: '圣诞节', icon: '🎄', food: 'gingerbread', place: 'plaza', date: 'winter-25' },
 ];
 const FESTIVAL_BY_ID = Object.fromEntries(FESTIVALS.map((f) => [f.id, f]));
 const FESTIVAL_INVITE_DAYS = 3;
@@ -655,9 +663,16 @@ const ITEMS = [
   // worn on the head or the face; bought once (see WEAR_SVG in pet.js for the drawings)
   { id: 'bow', cat: 'wear', slot: 'head', name: '粉色蝴蝶结', icon: '🎀', price: 80, effects: {} },
   { id: 'flower', cat: 'wear', slot: 'head', name: '小花发夹', icon: '🌸', price: 120, effects: {} },
+  { id: 'glasses', cat: 'wear', slot: 'face', name: '圆框眼镜', icon: '👓', price: 120, effects: {} },
   { id: 'shades', cat: 'wear', slot: 'face', name: '酷酷墨镜', icon: '🕶️', price: 200, effects: {} },
   { id: 'tophat', cat: 'wear', slot: 'head', name: '绅士礼帽', icon: '🎩', price: 350, effects: {} },
   { id: 'crown', cat: 'wear', slot: 'head', name: '小皇冠', icon: '👑', price: 600, effects: {} },
+  // festival outfits: not sold, given out at city hall on the festival's day (one each, kept for good)
+  { id: 'fu', cat: 'wear', slot: 'head', festival: 'newyear', shops: [], name: '福字发夹', icon: '🧧', price: 0, effects: {} },
+  { id: 'lanternclip', cat: 'wear', slot: 'head', festival: 'lantern', shops: [], name: '灯笼发夹', icon: '🏮', price: 0, effects: {} },
+  { id: 'horns', cat: 'wear', slot: 'head', festival: 'dragon', shops: [], name: '小龙角', icon: '🐉', price: 0, effects: {} },
+  { id: 'bunny', cat: 'wear', slot: 'head', festival: 'moon', shops: [], name: '玉兔耳朵', icon: '🐰', price: 0, effects: {} },
+  { id: 'santa', cat: 'wear', slot: 'head', festival: 'xmas', shops: [], name: '圣诞帽', icon: '🎅', price: 0, effects: {} },
 
   // seeds for the vegetable patch at home: grow: real minutes until ripe, yield: how many come up
   { id: 'seed_carrot', cat: 'seed', shops: ['farm'], crop: 'carrot', name: '胡萝卜种子', icon: '🥕', price: 14, grow: 90, yield: 3, effects: {} },
@@ -822,8 +837,13 @@ const heartCost = (n) => 40 + 20 * n;
 // points for: the first hello and the first chat of the day, a present (one a day: today's wish,
 // a favourite, something liked, anything else, the one thing they don't like), doing something
 // together (once a day), and a favourite on their birthday
-const NPC_POINTS = { hello: 10, chat: 5, wish: 40, love: 30, like: 15, plain: 5, dislike: 0, together: 15, birthdayLove: 45 };
+const NPC_POINTS = { hello: 10, chat: 5, rps: 5, wish: 40, love: 30, like: 15, plain: 5, dislike: 0, together: 15, birthdayLove: 45 };
 const NPC_DAILY = 40;
+// rock-paper-scissors with anyone: each hand, and what it beats
+const RPS_THROWS = [{ id: 'rock', icon: '✊', name: '石头', beats: 'scissors' }, { id: 'scissors', icon: '✌️', name: '剪刀', beats: 'paper' }, { id: 'paper', icon: '✋', name: '布', beats: 'rock' }];
+// what they say before the hands go out
+const RPS_CALL = '石头剪刀布——';
+const RPS_THROW_BY_ID = Object.fromEntries(RPS_THROWS.map((h) => [h.id, h]));
 const NPC_BIRTHDAY_DAILY = 60;
 const NPC_WISHES_PER_DAY = 3;
 // A shop keeper's discount on their own goods, by hearts: [hearts, price multiplier]
@@ -839,28 +859,28 @@ const TOGETHER_HEARTS = { walk: 2, play: 4, go: 4 };
 const MEAL_HOURS = [[11 * 60 + 30, 13 * 60 + 30], [17 * 60, 19 * 60]];
 
 // icon: their emoji (a game piece when playing them); place: their shop (or 'neighbors'); home: where they live (see NPC_DAYS); loves / likes /
-// dislike: items, for presents; birthday: 'month-day'; game: the mini game they play together;
+// dislike: items, for presents; birthday: 'season-day' (the town's calendar); game: the mini game they play together;
 // fav: the place they love to stop at on a walk
 const NPCS = [
-  { id: 'dog', icon: '🐶', name: '柴柴', species: 'dog', place: 'tower', home: 'apt', loves: ['burger', 'ball'], likes: ['milk', 'dumpling'], birthday: '8-26', game: 'penalty', fav: 'field', perk: { key: 'pay', v: 1.05, text: '打工工资 +5%' } },
-  { id: 'fox', icon: '🦊', name: '狐狸阿姨', species: 'fox', place: 'bakery', home: 'bakery', loves: ['strawberry', 'egg'], likes: ['milk', 'apple'], dislike: 'bread', birthday: '3-12', game: 'rps', fav: 'plaza' },
-  { id: 'raccoon', icon: '🦝', name: '浣浣', species: 'raccoon', place: 'bubble', home: 'apt', loves: ['strawberry', 'apple'], likes: ['donut'], birthday: '6-1', game: 'ttt', fav: 'lake' },
-  { id: 'squirrel', icon: '🐿️', name: '栗栗', species: 'squirrel', place: 'toy', home: 'tree', loves: ['corn', 'kite'], likes: ['donut', 'apple'], birthday: '11-3', game: 'ttt', fav: 'meadow', perk: { key: 'toyRecover', v: 2, text: '玩具恢复速度 ×2' } },
-  { id: 'cat', icon: '🐱', name: '咪咪', species: 'cat', place: 'clothes', home: 'apt', loves: ['milk', 'cake'], likes: ['croissant', 'crucian'], dislike: 'carrot', birthday: '2-22', game: 'rps', fav: 'plaza' },
-  { id: 'bear', icon: '🐻', name: '熊师傅', species: 'bear', place: 'furniture', home: 'woodshop', loves: ['honey', 'watermelon'], likes: ['pumpkin', 'dumpling'], birthday: '1-20', game: 'penalty', fav: 'site' },
-  { id: 'sheep', icon: '🐑', name: '绵绵医生', species: 'sheep', place: 'clinic', home: 'apt', loves: ['apple', 'corn'], likes: ['milk', 'pumpkin'], dislike: 'burger', birthday: '5-8', game: 'ttt', fav: 'lake', perk: { key: 'clinicCd', v: 0.5, text: '看病冷却 −50%' } },
-  { id: 'owl', icon: '🦉', name: '咕咕校长', species: 'owl', place: 'primary', home: 'middle', loves: ['puzzle', 'croissant'], likes: ['egg', 'milk'], birthday: '9-1', game: 'chess', fav: 'museum', perk: { key: 'study', v: 1.05, text: '上课经验 +5%' } },
-  { id: 'turtle', icon: '🐢', name: '龟爷爷', species: 'turtle', place: 'chess', home: 'shell', loves: ['strawberry', 'watermelon'], likes: ['pumpkin', 'apple'], birthday: '12-12', game: 'chess', fav: 'lake', perk: { key: 'playCap', v: 10, text: '每日游戏经验上限 +10' } },
-  { id: 'duck', icon: '🦆', name: '嘎嘎大厨', species: 'duck', place: 'canteen', home: 'boat', loves: ['corn', 'pumpkin'], likes: ['carrot', 'rice'], dislike: 'egg', birthday: '7-15', game: 'rps', fav: 'lake', perk: { key: 'canteen', v: 10, text: '食堂饱食 +10' } },
+  { id: 'dog', icon: '🐶', name: '柴柴', species: 'dog', place: 'tower', home: 'apt', loves: ['burger', 'ball'], likes: ['milk', 'dumpling'], birthday: 'summer-26', game: 'penalty', fav: 'field', perk: { key: 'pay', v: 1.05, text: '打工工资 +5%' } },
+  { id: 'fox', icon: '🦊', name: '狐狸阿姨', species: 'fox', place: 'bakery', home: 'bakery', loves: ['strawberry', 'egg'], likes: ['milk', 'apple'], dislike: 'bread', birthday: 'spring-4', game: 'rps', fav: 'plaza' },
+  { id: 'raccoon', icon: '🦝', name: '浣浣', species: 'raccoon', place: 'bubble', home: 'apt', loves: ['strawberry', 'apple'], likes: ['donut'], birthday: 'summer-1', game: 'ttt', fav: 'lake' },
+  { id: 'squirrel', icon: '🐿️', name: '栗栗', species: 'squirrel', place: 'toy', home: 'tree', loves: ['corn', 'kite'], likes: ['donut', 'apple'], birthday: 'autumn-19', game: 'ttt', fav: 'meadow', perk: { key: 'toyRecover', v: 2, text: '玩具恢复速度 ×2' } },
+  { id: 'cat', icon: '🐱', name: '咪咪', species: 'cat', place: 'clothes', home: 'apt', loves: ['milk', 'cake'], likes: ['croissant', 'crucian'], dislike: 'carrot', birthday: 'winter-21', game: 'rps', fav: 'plaza' },
+  { id: 'bear', icon: '🐻', name: '熊师傅', species: 'bear', place: 'furniture', home: 'woodshop', loves: ['honey', 'watermelon'], likes: ['pumpkin', 'dumpling'], birthday: 'winter-15', game: 'penalty', fav: 'site' },
+  { id: 'sheep', icon: '🐑', name: '绵绵医生', species: 'sheep', place: 'clinic', home: 'apt', loves: ['apple', 'corn'], likes: ['milk', 'pumpkin'], dislike: 'burger', birthday: 'spring-21', game: 'ttt', fav: 'lake', perk: { key: 'clinicCd', v: 0.5, text: '看病冷却 −50%' } },
+  { id: 'owl', icon: '🦉', name: '咕咕校长', species: 'owl', place: 'primary', home: 'middle', loves: ['puzzle', 'croissant'], likes: ['egg', 'milk'], birthday: 'autumn-1', game: 'chess', fav: 'museum', perk: { key: 'study', v: 1.05, text: '上课经验 +5%' } },
+  { id: 'turtle', icon: '🐢', name: '龟爷爷', species: 'turtle', place: 'chess', home: 'shell', loves: ['strawberry', 'watermelon'], likes: ['pumpkin', 'apple'], birthday: 'winter-4', game: 'chess', fav: 'lake', perk: { key: 'playCap', v: 10, text: '每日游戏经验上限 +10' } },
+  { id: 'duck', icon: '🦆', name: '嘎嘎大厨', species: 'duck', place: 'canteen', home: 'boat', loves: ['corn', 'pumpkin'], likes: ['carrot', 'rice'], dislike: 'egg', birthday: 'summer-14', game: 'rps', fav: 'lake', perk: { key: 'canteen', v: 10, text: '食堂饱食 +10' } },
 ];
 // the farm market's keeper
-NPCS.push({ id: 'cow', icon: '🐮', name: '牛大叔', species: 'cow', place: 'farm', home: 'ranch', loves: ['donut', 'watermelon'], likes: ['bread', 'croissant'], birthday: '6-28', game: 'rps', fav: 'garden' });
+NPCS.push({ id: 'cow', icon: '🐮', name: '牛大叔', species: 'cow', place: 'farm', home: 'ranch', loves: ['donut', 'watermelon'], likes: ['bread', 'croissant'], birthday: 'summer-9', game: 'rps', fav: 'garden' });
 
 // the neighbours in the cottages next door (spot: which cottage); just friends, no perk
 NPCS.push(
-  { id: 'rabbit', icon: '🐰', name: '小兔', species: 'bunny', place: 'neighbors', spot: 0, home: 'cottage0', small: true, loves: ['carrot', 'carrotcake', 'strawberry'], likes: ['ball', 'donut', 'bear'], birthday: '4-5', game: 'rps', fav: 'toy' },
-  { id: 'panda', icon: '🐼', name: '熊猫爷爷', species: 'panda', place: 'neighbors', spot: 1, home: 'cottage1', loves: ['bamboo', 'dumpling'], likes: ['apple', 'rice'], birthday: '9-9', game: 'banqi', fav: 'lake' },
-  { id: 'hedgehog', icon: '🦔', name: '刺猬妹妹', species: 'hedgehog', place: 'neighbors', spot: 2, home: 'cottage2', loves: ['apple', 'strawberry'], likes: ['pumpkin', 'cake'], birthday: '10-18', game: 'ttt', fav: 'meadow' },
+  { id: 'rabbit', icon: '🐰', name: '小兔', species: 'bunny', place: 'neighbors', spot: 0, home: 'cottage0', small: true, loves: ['carrot', 'carrotcake', 'strawberry'], likes: ['ball', 'donut', 'bear'], birthday: 'spring-11', game: 'rps', fav: 'toy' },
+  { id: 'panda', icon: '🐼', name: '熊猫爷爷', species: 'panda', place: 'neighbors', spot: 1, home: 'cottage1', loves: ['bamboo', 'dumpling'], likes: ['apple', 'rice'], birthday: 'autumn-9', game: 'banqi', fav: 'lake' },
+  { id: 'hedgehog', icon: '🦔', name: '刺猬妹妹', species: 'hedgehog', place: 'neighbors', spot: 2, home: 'cottage2', loves: ['apple', 'strawberry'], likes: ['pumpkin', 'cake'], birthday: 'autumn-22', game: 'ttt', fav: 'meadow' },
 );
 const NPC_BY_ID = Object.fromEntries(NPCS.map((n) => [n.id, n]));
 

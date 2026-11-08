@@ -1895,6 +1895,8 @@ const Interior = {
     const tk = btn.dataset.tk;
     if (tk === 'chat') this.cb.act('chat', t.id);
     else if (tk === 'gift') t.mode = 'gift';
+    else if (tk === 'rps') Object.assign(t, { mode: 'hands', line: RPS_CALL });
+    else if (tk === 'hand') this.cb.act('rps', `${t.id}:${btn.dataset.hand}`);
     else if (tk === 'back') t.mode = 'line';
     else if (tk === 'give') {
       t.mode = 'line';
@@ -1934,7 +1936,7 @@ const Interior = {
     if (t.face) this.personFx(p, t.face);
     if (t.gain && t.face !== '💗💗') this.personFx(p, '💗', t.face ? 500 : 0);
     if (this.talk?.id === t.id) {
-      Object.assign(this.talk, { line: t.line, ask: t.ask || null, mode: t.ask ? 'ask' : 'line' });
+      Object.assign(this.talk, { line: t.line, ask: t.ask || null, mode: t.ask ? 'ask' : t.rps ? 'hands' : 'line' });
       this.renderTalk();
     } else if (t.line) this.say(t.id, t.line);
     return true;

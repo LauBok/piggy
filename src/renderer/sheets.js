@@ -263,6 +263,43 @@ function goodsCard(snap, it, placeId) {
 
 const goodsGrid = (snap, items, placeId) => `<div class="grid">${items.map((it) => goodsCard(snap, it, placeId)).join('')}</div>`;
 
+// ---------- the calendar ----------
+
+// One season of the town's calendar: four weeks from a Monday, today marked, and on each day its
+// festival and whose birthday it is. The seasons along the top.
+function calendarPage(snap) {
+  const now = calOf();
+  const season = SheetUI.calSeason || now.season;
+  const si = SEASON_IDS.indexOf(season);
+  const nowSi = SEASON_IDS.indexOf(now.season);
+  const tabs = seg(SEASON_IDS.map((id) => [id, `${SEASON_ICONS[id]} ${SEASON_NAMES[id]}`]), season, 'calSeason');
+  const cells = [];
+  for (let day = 1; day <= SEASON_DAYS; day++) {
+    const key = `${season}-${day}`;
+    const fest = FESTIVALS.find((f) => f.date === key);
+    const bdays = NPCS.filter((n) => n.birthday === key);
+    const today = si === nowSi && day === now.day;
+    const past = si < nowSi || (si === nowSi && day < now.day);
+    const ev = (fest ? `<span class="cal-ev fest">${fest.icon}<i>${fest.name}</i></span>` : '')
+      + bdays.map((n) => `<span class="cal-ev bday"><span class="cal-av">${animalSvg(n.species)}</span><i>${n.name}</i></span>`).join('');
+    cells.push(`<div class="cal-day ${today ? 'today' : ''} ${past ? 'past' : ''} ${fest ? 'has-fest' : ''}"><b>${day}</b>${ev}</div>`);
+  }
+  const head = '一二三四五六日'.split('').map((d) => `<span>周${d}</span>`).join('');
+  return `<div class="cal">
+    <div class="cal-top"><b>第 ${now.year} 年 ${SEASON_NAMES[season]}季</b>${tabs}</div>
+    <div class="cal-head">${head}</div>
+    <div class="cal-grid">${cells.join('')}</div></div>`;
+}
+
+// City hall on a festival's day: that festival's outfit, to pick up
+function festWearHero(s) {
+  const fest = festivalOn();
+  const it = fest && ITEMS.find((x) => x.festival === fest.id);
+  if (!it) return '';
+  const got = !!s.inventory[it.id];
+  return sec('节日装扮', hero({ icon: it.icon, name: it.name, meta: chip(`${fest.icon} ${fest.name}`), ok: !got, why: got ? '已领取' : '', action: 'claimFestival', id: it.id, btn: '领取' }));
+}
+
 // What a place sells, with its neighbour's special item last
 const shopItems = (placeId) => {
   // hidden goods without their own shop list show up in their keeper's shop
@@ -294,8 +331,8 @@ function whereBtn(n) {
   return `<button class="npc-pin" data-action="findNpc" data-id="${n.id}" title="${esc(pl.name)}"><span>${icon}</span></button>`;
 }
 
-// A neighbour: avatar, name, hearts as a bar, and buttons for the wish, where they are and
-// hello. `keeper` is the compact pill in a shop's banner (greyed, with where they are, while
+// A neighbour: avatar, name, hearts as a bar, what they wish for and where they are (hellos and
+// presents are done in person, in town). `keeper` is the compact pill in a shop's banner (greyed, with where they are, while
 // they're out; the shop sells all the same); otherwise a row on the friends page.
 function npcCard(snap, n, keeper = false) {
   const s = snap.s;
@@ -305,11 +342,13 @@ function npcCard(snap, n, keeper = false) {
   let wishBtn = '';
   if (wish && !wishDone(s, n.id)) {
     const it = ITEM_BY_ID[wish];
-    wishBtn = s.inventory[wish] > 0 && !giftedToday(s, n.id)
-      ? `<button class="npc-wish have" data-action="give" data-id="${n.id}" title="${esc(it.name)}">${it.icon}</button>`
-      : `<span class="npc-wish" title="${esc(it.name)}">${it.icon}</span>`;
+    const have = s.inventory[wish] > 0 && !giftedToday(s, n.id);
+    wishBtn = `<span class="npc-wish ${have ? 'have' : ''}" title="${esc(it.name)}">${it.icon}</span>`;
   }
-  const hi = greetedToday(s, n.id) || keeper ? '' : `<button class="ib hi" data-action="greet" data-id="${n.id}" title="打招呼">👋</button>`;
+  // on the friends page: whether today's hello and present are done (they're done in person)
+  const mark = (on, icon, text) => `<span class="npc-mark ${on ? 'on' : ''}" title="${text}">${icon}</span>`;
+  const today = keeper ? '' : mark(greetedToday(s, n.id), '👋', greetedToday(s, n.id) ? '今天已打招呼' : '今天未打招呼')
+    + mark(giftedToday(s, n.id), '🎁', giftedToday(s, n.id) ? '今天已送礼' : '今天未送礼');
   const perk = npcPerk2(s, n, h);
   const bar = `<span class="hbar" title="${h} / ${NPC_MAX_HEARTS} ♥"><i style="--p:${((h + frac) / NPC_MAX_HEARTS) * 100}%;--m:${(NPC_PERK_HEARTS / NPC_MAX_HEARTS) * 100}%"></i><em>♥ ${h}</em></span>`;
   // on the friends page: a cake on their birthday, and what's been given so far and how it went down
@@ -320,7 +359,7 @@ function npcCard(snap, n, keeper = false) {
   return `<div class="npc-card ${keeper ? 'keeper' : 'card npc-row'} ${keeper && !here ? 'out' : ''}">
     <div class="npc-av" ${av} title="${esc(n.name)}">${animalSvg(n.species)}</div>
     <div class="npc-main"><span class="nm"><b>${n.name}</b>${bday}${bar}</span>${perk ? `<small class="perk ${perk.on ? 'on' : ''}">${perk.text}</small>` : ''}${favs ? `<span class="npc-favs">${favs}</span>` : ''}</div>
-    <div class="npc-acts">${wishBtn}${here ? '' : whereBtn(n)}${hi}</div></div>`;
+    <div class="npc-acts">${wishBtn}${today}${here ? '' : whereBtn(n)}</div></div>`;
 }
 
 // Others inside a place right now (shopping, eating, at a film or a café table): their faces on
@@ -424,6 +463,7 @@ function bizList(snap) {
 
 const SheetUI = {
   furnTab: 'furniture',
+  calSeason: null, // the season the calendar shows (null: this one)
   treeSel: null,
   schoolStage: null,
   schoolMajor: MAJORS[0].id,
@@ -743,6 +783,7 @@ const SHEETS = {
     return `<div class="card namecard">
         <span class="lbl">名字</span><input id="nameInput" maxlength="8" value="${esc(s.name)}" />
         <button class="btn primary" data-action="rename">保存</button></div>
+      ${festWearHero(s)}
       ${degs.length ? sec('学历', `<div class="chips">${degs.map((d) => chip(`🎓 ${d}`, 'ok')).join('')}</div>`, { count: degs.length }) : ''}
       ${sec('捐建', goodsGrid(snap, items), { count: items.length })}
       ${placeJobs(snap, p)}`;
@@ -876,6 +917,7 @@ function sheetHtml(snap, id) {
   if (id === 'friends') return { head: plainBanner('💞', '朋友'), body: SHEETS.friends(snap) };
   if (id === 'album') return { head: plainBanner('📷', '相册'), body: SHEETS.album(snap) };
   if (id === 'bag') return { head: plainBanner('🎒', '背包'), body: bagPage(snap) };
+  if (id === 'calendar') return { head: plainBanner('📅', '日历'), body: calendarPage(snap) };
   if (id === 'duel') return { head: duelBanner(), body: '<div class="card game-area" id="gameArea"></div>' };
   const p = PLACE_BY_ID[id];
   return { head: bannerHtml(snap, p), body: SHEETS[p.sheet](snap, p) };

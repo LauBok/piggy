@@ -269,9 +269,14 @@
   background: var(--surface);
   color: var(--ink-2);
   box-shadow: var(--sh-lift), 0 0 0 1px var(--line);
+  border: none;
   white-space: nowrap;
   font-size: 13px;
-  pointer-events: none;
+  cursor: pointer;
+}
+
+#townClock:hover {
+  color: var(--ink);
 }
 
 #townClock b {
