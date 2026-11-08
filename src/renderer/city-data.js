@@ -536,6 +536,8 @@ function sceneOf(snap) {
       return { place: STAGE_PLACE[COURSE_BY_ID[a.id].stage], scene: { tpl: 'room', room: 'class' } };
     case 'work':
       return { place: JOB_SCENES[a.id].place, scene: JOB_SCENES[a.id] };
+    case 'kinder':
+      return { place: 'kinder', scene: { tpl: 'room', room: 'kinder' } };
     case 'help':
       if (a.id === 'soak') return { place: 'spring', scene: SOAK_SCENE };
       if (a.id === 'movie') return { place: 'cinema', scene: { tpl: 'room', room: 'cinema' } };

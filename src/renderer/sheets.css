@@ -822,6 +822,146 @@
   font-size: var(--fs-meta);
 }
 
+/* ---------- the bag: its groups down the left, what's in the open one on the right ---------- */
+
+#sheet .bag-page {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s4);
+}
+
+#sheet .bag-nav {
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 148px;
+  padding: 6px;
+  box-sizing: border-box;
+  border-radius: var(--r-card);
+  background: var(--sunken);
+}
+
+#sheet .bag-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-2);
+  font: 14px var(--f-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+#sheet .bag-tab span {
+  font-size: 18px;
+}
+
+#sheet .bag-tab em {
+  margin-left: auto;
+  color: var(--muted);
+  font-style: normal;
+  font-size: var(--fs-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+#sheet .bag-tab:hover {
+  color: var(--ink);
+}
+
+#sheet .bag-tab.on {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(140, 60, 90, 0.12);
+}
+
+/* 跑腿 is a different thing from the groups above it */
+#sheet .bag-tab[data-id='delivery'] {
+  margin-top: 6px;
+  position: relative;
+}
+
+#sheet .bag-tab[data-id='delivery']::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 10px;
+  right: 10px;
+  border-top: 1px solid var(--line-2);
+}
+
+#sheet .bag-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+#sheet .bag-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 10px var(--s4) 10px 10px;
+}
+
+#sheet .bag-ic {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--sunken);
+  font-size: 28px;
+}
+
+#sheet .bag-m {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#sheet .bag-m > b {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 15px;
+}
+
+#sheet .bag-m em {
+  color: var(--ink-2);
+  font-style: normal;
+  font-size: var(--fs-meta);
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+#sheet .bag-act {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+#sheet .bag-act .btn {
+  height: 34px;
+  min-width: 84px;
+}
+
+#sheet .bag-row.off .bag-ic {
+  filter: grayscale(0.7);
+  opacity: 0.55;
+}
+
 /* ---------- the bank ---------- */
 
 #sheet .vault {
@@ -1855,9 +1995,38 @@
 
 #sheet .npc-favs {
   display: flex;
-  gap: 2px;
-  font-size: 13px;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 14px;
   line-height: 1;
+}
+
+/* a present given before: the thing, and their face when they got it */
+#sheet .npc-fav {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 22px;
+  padding: 0 5px 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--sunken);
+}
+
+#sheet .npc-fav i {
+  font-size: 11px;
+  font-style: normal;
+}
+
+#sheet .npc-fav.love {
+  background: #ffe3ee;
+}
+
+#sheet .npc-fav.like {
+  background: #e6f7e9;
+}
+
+#sheet .npc-fav.dislike {
+  opacity: 0.7;
 }
 
 #sheet .npc-row .npc-acts {

@@ -37,6 +37,7 @@ function activityIcon(a) {
   if (a.type === 'work') return JOB_BY_ID[a.id].icon;
   if (a.type === 'help') return FREE_HELP_BY_ID[a.id].icon;
   if (a.type === 'hobby') return HOBBY_BY_ID[a.id].icon;
+  if (a.type === 'kinder') return KINDER_BY_ID[a.id].icon;
   if (a.type === 'sleep') return '😴';
   return '🛁';
 }
@@ -219,6 +220,14 @@ function hobbyHero(snap, h) {
   return hero({ action: 'hobby', id: h.id, icon: h.icon, name: h.name, meta: `${changes(snap.s, fx)}${chip(`⏱️ ${h.minutes} 分`)}`, ok: !why, why, btn: h.name, fx });
 }
 
+// Kindergarten classes, while he's too little for primary school
+function kinderClasses(snap) {
+  if (snap.s.level >= STAGE_BY_ID.primary.minLevel) return '';
+  const why = busyWhy(snap);
+  const list = KINDER_CLASSES.map((k) => ({ action: 'kinder', id: k.id, icon: k.icon, name: k.name, ok: !why, why, sub: why || `⏱️ ${KINDER_MIN} 分`, fx: { mood: KINDER_MOOD } }));
+  return sec('上学', tiles(list));
+}
+
 // ---------- goods ----------
 
 function goodsCard(snap, it, placeId) {
@@ -301,9 +310,10 @@ function npcCard(snap, n, keeper = false) {
   const hi = greetedToday(s, n.id) || keeper ? '' : `<button class="ib hi" data-action="greet" data-id="${n.id}" title="打招呼">👋</button>`;
   const perk = npcPerk2(s, n, h);
   const bar = `<span class="hbar" title="${h} / ${NPC_MAX_HEARTS} ♥"><i style="--p:${((h + frac) / NPC_MAX_HEARTS) * 100}%;--m:${(NPC_PERK_HEARTS / NPC_MAX_HEARTS) * 100}%"></i><em>♥ ${h}</em></span>`;
-  // on the friends page: a cake on their birthday, and the favourites found so far
+  // on the friends page: a cake on their birthday, and what's been given so far and how it went down
   const bday = !keeper && isBirthday(n.id) ? '<span class="npc-bday" title="生日">🎂</span>' : '';
-  const favs = keeper ? '' : (s.npc[n.id]?.fav || []).map((id) => `<span class="npc-fav" title="${esc(ITEM_BY_ID[id].name)}">${ITEM_BY_ID[id].icon}</span>`).join('');
+  const TASTE = { love: ['😍', '最爱'], like: ['😊', '喜欢'], plain: ['🙂', '一般'], dislike: ['😣', '讨厌'] };
+  const favs = keeper ? '' : giftsGiven(s, n.id).map((g) => `<span class="npc-fav ${g.taste}" title="${esc(`${ITEM_BY_ID[g.id].name} ${TASTE[g.taste][1]}`)}">${ITEM_BY_ID[g.id].icon}<i>${TASTE[g.taste][0]}</i></span>`).join('');
   const av = here ? `data-action="callOut" data-id="${n.id}"` : `data-action="findNpc" data-id="${n.id}"`;
   return `<div class="npc-card ${keeper ? 'keeper' : 'card npc-row'} ${keeper && !here ? 'out' : ''}">
     <div class="npc-av" ${av} title="${esc(n.name)}">${animalSvg(n.species)}</div>
@@ -740,7 +750,7 @@ const SHEETS = {
   jobs(snap, p) {
     if (SheetUI.activeGame) return '<div class="card game-area" id="gameArea"></div>';
     const fest = festivalOn();
-    const extra = (fest?.place === p.id ? helpHero(snap, fest.id) : '') + (p.id === 'lake' ? fishHero(snap) : '');
+    const extra = (fest?.place === p.id ? helpHero(snap, fest.id) : '') + (p.id === 'lake' ? fishHero(snap) : '') + (p.id === 'kinder' ? kinderClasses(snap) : '');
     return extra + placeJobs(snap, p, false) || '<div class="sheet-empty"><div class="empty-ic">🌿</div></div>';
   },
 
@@ -863,6 +873,7 @@ function sheetHtml(snap, id) {
   if (id === 'settings') return { head: plainBanner('⚙️', '设置'), body: SHEETS.settings(snap) };
   if (id === 'friends') return { head: plainBanner('💞', '朋友'), body: SHEETS.friends(snap) };
   if (id === 'album') return { head: plainBanner('📷', '相册'), body: SHEETS.album(snap) };
+  if (id === 'bag') return { head: plainBanner('🎒', '背包'), body: bagPage(snap) };
   if (id === 'duel') return { head: duelBanner(), body: '<div class="card game-area" id="gameArea"></div>' };
   const p = PLACE_BY_ID[id];
   return { head: bannerHtml(snap, p), body: SHEETS[p.sheet](snap, p) };

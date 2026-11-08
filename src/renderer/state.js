@@ -106,8 +106,10 @@ const Game = {
     TOWN_SAVE = this.s;
     const minutes = (Date.now() - this.s.lastTick) / 60000;
     if (minutes > 0) this.tick(Math.min(minutes, 12 * 60), true);
-    // anything beyond the 12 hours caught up on goes by in town at real time too
-    this.s.clock.t += Math.max(0, Date.now() - this.s.clock.at);
+    // anything beyond the 12 hours caught up on goes by in town at real time too (unless he was
+    // asleep waiting for you, when the town stood still)
+    const a = this.s.activity;
+    if (!(a?.type === 'sleep' && a.auto)) this.s.clock.t += Math.max(0, Date.now() - this.s.clock.at);
     this.s.clock.at = Date.now();
     await this.loadPigs();
   },
@@ -233,6 +235,7 @@ const Game = {
   activityEffect(a) {
     if (!a || a.type === 'bath') return { drain: {}, exp: 0 };
     if (a.type === 'study') return { drain: STUDY_DRAIN, exp: EXP_PER_MIN.study };
+    if (a.type === 'kinder') return { drain: KINDER_DRAIN, exp: EXP_PER_MIN.study };
     if (a.type === 'work') return { drain: JOB_BY_ID[a.id].drain, exp: this.s.level < 6 ? 0 : EXP_PER_MIN.work };
     return { drain: {}, exp: 0 };
   },
@@ -250,32 +253,44 @@ const Game = {
       const s = this.s;
       const a = s.activity;
       const active = a && a.end && t <= a.end ? a : null;
+      // asleep because you're away: the town stands still, and so does he
+      const c = (s.clock ||= { t, at: t });
+      if (a?.type === 'sleep' && a.auto) {
+        c.at = Math.max(c.at, t);
+        continue;
+      }
       const sleeping = this.sleeping || (offline && !active);
       const r = offline && active ? 0.5 : 1;
-      // the town's clock: fast while he's free and the app is open, real time otherwise
-      const c = (s.clock ||= { t, at: t });
-      c.t += Math.max(0, t - c.at) * (offline || s.activity ? 1 : TOWN_SPEED);
-      c.at = t;
+      // the town's clock: fast while he's free and the app is open, faster still asleep in bed,
+      // real time while he's busy or the app is closed
+      const rate = offline ? 1 : townRate(s);
+      if (t > c.at) {
+        c.t += (t - c.at) * rate;
+        c.at = t;
+      }
+      // asleep in bed the night goes by fast, and he rests (and gets hungry) as fast
+      const w = sleeping && !offline ? SLEEP_SPEED / TOWN_SPEED : 1;
       const eff = this.activityEffect(active);
       const rates = drainRates(sleeping ? SLEEP_DRAIN : eff.drain);
       // asleep, an empty tummy or a dirty coat hurts less and spoils the mood much less
       const hurt = sleeping ? 0.5 : 1;
       const sulk = sleeping ? 0.2 : 1;
+      const mw = m * w;
       const d = {
-        hunger: rates.hunger * m,
-        clean: rates.clean * m,
-        mood: rates.mood * m * homeBonus(s, 'moodDrain'),
-        energy: sleeping ? SLEEP_ENERGY_PER_MIN * homeBonus(s, 'sleep') * m : rates.energy * m,
+        hunger: rates.hunger * mw,
+        clean: rates.clean * mw,
+        mood: rates.mood * mw * homeBonus(s, 'moodDrain'),
+        energy: sleeping ? SLEEP_ENERGY_PER_MIN * homeBonus(s, 'sleep') * mw : rates.energy * m,
         health: 0,
       };
-      if (s.hunger < 20) d.health -= 0.3 * m * hurt;
-      if (s.clean < 20) d.health -= 0.2 * m * hurt;
-      if (s.energy < 10) d.health -= 0.1 * m * hurt;
-      if (s.hunger > 40 && s.clean > 40 && s.mood > 30) d.health += 0.1 * m;
-      if (sleeping && s.hunger > 20) d.health += 0.2 * m;
-      if (s.hunger < 30) d.mood -= 0.15 * m * sulk;
-      if (s.clean < 30) d.mood -= 0.1 * m * sulk;
-      if (s.health < 40) d.mood -= 0.15 * m * sulk;
+      if (s.hunger < 20) d.health -= 0.3 * mw * hurt;
+      if (s.clean < 20) d.health -= 0.2 * mw * hurt;
+      if (s.energy < 10) d.health -= 0.1 * mw * hurt;
+      if (s.hunger > 40 && s.clean > 40 && s.mood > 30) d.health += 0.1 * mw;
+      if (sleeping && s.hunger > 20) d.health += 0.2 * mw;
+      if (s.hunger < 30) d.mood -= 0.15 * mw * sulk;
+      if (s.clean < 30) d.mood -= 0.1 * mw * sulk;
+      if (s.health < 40) d.mood -= 0.15 * mw * sulk;
       const before = { hunger: s.hunger, clean: s.clean, mood: s.mood, health: s.health };
       this.apply(d);
       if (sleeping) for (const k of Object.keys(before)) s[k] = Math.max(s[k], Math.min(SLEEP_FLOOR, before[k]));
@@ -370,6 +385,7 @@ const Game = {
     if (a.type === 'bath') return '在洗澡';
     if (a.type === 'help') return FREE_HELP_BY_ID[a.id].label;
     if (a.type === 'hobby') return `在${HOBBY_BY_ID[a.id].name}`;
+    if (a.type === 'kinder') return `在幼儿园${KINDER_BY_ID[a.id].name}`;
     return '在睡觉';
   },
 
@@ -390,6 +406,17 @@ const Game = {
     return null;
   },
 
+  // A class at kindergarten, while he's too little for school
+  startKinder(id) {
+    const k = KINDER_BY_ID[id];
+    if (!k) return fail('');
+    if (this.s.level >= STAGE_BY_ID.primary.minLevel) return fail('已经是小学生啦');
+    const why = this.blocked() || this.tooWeak(KINDER_DRAIN, KINDER_MIN);
+    if (why) return fail(why);
+    this.begin('kinder', id, KINDER_MIN);
+    return { ok: true, msg: `去幼儿园${k.name}~`, fx: k.icon };
+  },
+
   // Refuse if the pet is sick, or would run out of food or energy before finishing
   tooWeak(drain, minutes) {
     const s = this.s;
@@ -400,9 +427,17 @@ const Game = {
     return null;
   },
 
+  // Start or stop something, with the town's clock first set to now: each goes at its own speed
+  setActivity(a) {
+    const c = this.s.clock;
+    c.t = townNow();
+    c.at = Date.now();
+    this.s.activity = a;
+  },
+
   begin(type, id, minutes) {
     const now = Date.now();
-    this.s.activity = { type, id, start: now, end: now + minutes * 60000 };
+    this.setActivity({ type, id, start: now, end: now + minutes * 60000 });
   },
 
   startStudy(id) {
@@ -447,13 +482,15 @@ const Game = {
     const a = this.s.activity;
     if (!a) return null;
     if (a.type === 'sleep') {
-      // asleep because you're away: keep sleeping until you come back
-      if (this.s.energy < 100 || a.auto) return null;
-      this.s.activity = null;
-      return { ok: true, msg: '睡饱啦，精神满满！', fx: '☀️' };
+      // asleep because you're away: keep sleeping until you come back. A night lasts until the
+      // morning, a nap until he's rested
+      if (a.auto) return null;
+      if (a.until ? townNow() < a.until : this.s.energy < 100) return null;
+      this.setActivity(null);
+      return { ok: true, msg: wakeLine(townDate().getHours()), fx: '☀️' };
     }
     if (Date.now() < a.end) return null;
-    this.s.activity = null;
+    this.setActivity(null);
 
     if (a.type === 'study') {
       const c = COURSE_BY_ID[a.id];
@@ -493,6 +530,11 @@ const Game = {
       }[a.id];
       return { ok: true, msg: done, fx: h.icon };
     }
+    if (a.type === 'kinder') {
+      const k = KINDER_BY_ID[a.id];
+      this.apply({ mood: KINDER_MOOD });
+      return { ok: true, msg: '放学啦！', fx: k.icon };
+    }
     if (a.type === 'hobby') {
       const h = HOBBY_BY_ID[a.id];
       this.apply(hobbyEffects(this.s, h) || {});
@@ -506,7 +548,7 @@ const Game = {
 
   cancel() {
     if (!this.busy) return null;
-    this.s.activity = null;
+    this.setActivity(null);
     return { ok: true, msg: '不去了，回家~' };
   },
 
@@ -514,29 +556,30 @@ const Game = {
   sleep(auto = false) {
     if (this.busy) return fail(`正${this.activityLabel()}呢`);
     if (this.sleeping) return fail('已经在睡啦');
-    this.s.activity = { type: 'sleep', start: Date.now(), auto };
-    return { ok: true, msg: auto ? '主人不在，我先睡啦…zzz' : '晚安…zzz' };
+    const now = townDate();
+    const night = isNight(now.getHours());
+    let until = null;
+    if (night && !auto) {
+      const d = new Date(now);
+      if (now.getHours() >= WAKE_HOUR) d.setDate(d.getDate() + 1);
+      d.setHours(WAKE_HOUR, 0, 0, 0);
+      until = d.getTime();
+    }
+    this.setActivity({ type: 'sleep', start: Date.now(), auto, until });
+    return { ok: true, msg: auto ? '主人不在，我先回家睡啦…zzz' : night ? '晚安…zzz' : '睡个午觉…zzz' };
   },
 
   wake(byClick) {
     if (!this.sleeping) return null;
-    this.s.activity = null;
+    this.setActivity(null);
     if (byClick && this.s.energy < 60) {
       this.apply({ mood: -5 });
       return { ok: true, msg: '被吵醒了，哼！' };
     }
-    return { ok: true, msg: '早上好！' };
+    return { ok: true, msg: wakeLine(townDate().getHours()) };
   },
 
   // ---------- instant actions ----------
-
-  play() {
-    const why = this.blocked();
-    if (why) return fail(why);
-    if (this.s.energy < 8) return fail('太累了，玩不动…');
-    this.apply(PLAY_EFFECT);
-    return { ok: true, msg: '好好玩！再来再来~', fx: `🎵${this.playExp(PLAY_EXP.play)}` };
-  },
 
   // A mini game the player played against the pig; result is from the player's side.
   // The pig enjoys any game, and gloats a little more when it wins.
@@ -1069,6 +1112,7 @@ const Game = {
     rec.gift = dayKey();
     if (tier === 'wish') rec.wish = dayKey();
     if (npc.loves.includes(itemId) && !(rec.fav ||= []).includes(itemId)) rec.fav.push(itemId);
+    (rec.gave ||= {})[itemId] = giftTaste(id, itemId);
     this.apply({ mood: tier === 'wish' ? 5 : 3 });
     // a favourite counts extra on their birthday, also when it was the wish
     const love = npc.loves.includes(itemId) ? (isBirthday(id) ? NPC_POINTS.birthdayLove : NPC_POINTS.love) : 0;

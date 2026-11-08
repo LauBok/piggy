@@ -5,7 +5,6 @@ const $ = (id) => document.getElementById(id);
 
 let snap = null;
 let sheet = null; // open sheet: a place id or 'settings'
-let drawerOpen = false;
 let lastKey = '';
 let firstTab = new URLSearchParams(location.search).get('tab');
 
@@ -101,7 +100,7 @@ const Hud = {
 
   // the 地图 / 背包 / 设置 buttons look pressed while their panel is open
   tools() {
-    const on = { map: mapOpen, bag: drawerOpen, settings: sheet === 'settings', friends: sheet === 'friends' };
+    const on = { map: mapOpen, bag: sheet === 'bag', settings: sheet === 'settings', friends: sheet === 'friends' };
     document.querySelectorAll('[data-tool]').forEach((el) => el.classList.toggle('on', !!on[el.dataset.tool]));
   },
 };
@@ -167,7 +166,7 @@ function structKey() {
   const U = SheetUI;
   if (U.activeGame) return JSON.stringify([sheet, U.activeGame, U.gameSession]);
   return JSON.stringify([
-    sheet, drawerOpen, drawerTab, basket, s.inventory, Math.floor(s.money), s.level, s.courses, s.activity && [s.activity.type, s.activity.id],
+    sheet, SheetUI.bagCat, basket, s.inventory, Math.floor(s.money), s.level, s.courses, s.activity && [s.activity.type, s.activity.id],
     snap.sleeping, s.follow, s.mini, s.name, s.wear, s.npc, s.helpReady, s.hobbyReady, s.playDay, s.health >= MIN_HEALTH_TO_ACT, s.album.length, s.fishReady,
     Math.floor(Date.now() / 60000), U.furnTab, U.treeSel, U.schoolStage, U.schoolMajor, U.workFilter, U.armed, U.upd,
     sheet === 'tower' ? [Math.round(s.hunger), Math.round(s.energy)] : 0, gameBlock(snap),
@@ -222,20 +221,22 @@ function renderSheet() {
   }
 }
 
-// ---------- the bag drawer: 🎒 what you have, 🛵 跑腿 (delivery from the supermarket) ----------
+// ---------- the bag: its groups down the left, what's in the open one on the right, and
+// 🛵 跑腿 (delivery from the supermarket) as the last group ----------
 
 // the bag's groups, named as the shops name them
-const BAG_CATS = ['food', 'hygiene', 'medicine', 'toy', 'fish'].map((id) => [id, SHOP_CATS.find((c) => c.id === id).name]);
+const BAG_CATS = ['food', 'hygiene', 'medicine', 'toy', 'fish'].map((id) => SHOP_CATS.find((c) => c.id === id));
 const DELIVERY_SHOPS = ['supermarket', 'bakery', 'farm', 'restaurant', 'clinic'];
-let drawerTab = (() => {
+SheetUI.bagCat = (() => {
   try {
-    return localStorage.getItem('drawerTab') === 'delivery' ? 'delivery' : 'bag';
+    return localStorage.getItem('bagCat') || 'food';
   } catch {
-    return 'bag';
+    return 'food';
   }
 })();
 
-const bagItems = (s) => ITEMS.filter((it) => s.inventory[it.id] > 0 && BAG_CATS.some(([c]) => c === it.cat));
+const bagItems = (s) => ITEMS.filter((it) => s.inventory[it.id] > 0 && BAG_CATS.some((c) => c.id === it.cat));
+const bagCount = (s, cat) => bagItems(s).filter((it) => it.cat === cat).reduce((t, it) => t + s.inventory[it.id], 0);
 const STAT_ICON = Object.fromEntries(STATS.map((st) => [st.key, st.icon]));
 
 // What an item would do to the pig right now: each stat's value before and after (0 to 100).
@@ -250,9 +251,6 @@ function effectsNow(it, eff = it.effects) {
   });
 }
 
-// the tooltip: every stat it changes, one per line
-const effList = (it, eff) => effectsNow(it, eff).map((e) => `${STAT_ICON[e.k]} ${STAT_NAME[e.k]} ${e.from} → ${e.to}`).join('\n');
-
 // on a 跑腿 tile (bought for later, not used now): what it gives, as stat icon and amount
 function gainTag(it) {
   const e = effectsNow(it).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
@@ -260,52 +258,43 @@ function gainTag(it) {
 }
 const gainList = (it) => effectsNow(it).map((e) => `${STAT_ICON[e.k]} ${STAT_NAME[e.k]} ${e.d > 0 ? '+' : ''}${e.d}`).join('\n');
 
-// on the tile: the main stat as icon, now → after; muted when it's already full
-function effTag(it, eff) {
-  const e = effectsNow(it, eff).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
-  if (!e) return '';
-  // already full (or empty, for a cost): just the value, greyed
-  if (e.to === e.from) return `<span class="dr-ef full"><i>${STAT_ICON[e.k]}</i>${e.from}</span>`;
-  return `<span class="dr-ef" style="--c: var(--st-${e.k})"><i>${STAT_ICON[e.k]}</i>${e.from}<span class="ar">→</span><b>${e.to}</b></span>`;
-}
-
-// one tile: icon, name, its main effect (in that stat's colour), and a corner badge
-function itemTile(it, { action, eff, badge = '', ok = true, tip = '', extra = '' }) {
-  const main = effTag(it, eff);
-  // usable now: point at it to see the change on the top bar's stats (a toy also tires the pig)
-  const delta = Object.fromEntries(effectsNow(it, eff).map((e) => [e.k, e.d]));
-  if (it.cat === 'toy') for (const [k, v] of Object.entries(TOY_COST)) delta[k] = (delta[k] || 0) + v;
-  const pv = action === 'use' && ok ? `data-preview="${esc(JSON.stringify(delta))}"` : '';
-  return `<button class="dr-item" data-action="${action}" data-id="${it.id}" ${pv} ${ok ? '' : 'disabled'} title="${esc(tip || `${it.name}\n${effList(it, eff)}`)}" ${extra}>
-    <span class="dr-ic">${it.icon}</span><span class="dr-nm">${it.name}</span>${main}${badge}</button>`;
-}
-
 function groupsHtml(list, tile) {
-  return BAG_CATS.map(([cat, name]) => {
-    const its = list.filter((it) => it.cat === cat);
+  return BAG_CATS.map(({ id, name }) => {
+    const its = list.filter((it) => it.cat === id);
     return its.length ? `<div class="dr-grp"><small>${name}</small><div>${its.map(tile).join('')}</div></div>` : '';
   }).join('');
 }
 
-function bagHtml(s) {
-  const items = bagItems(s);
-  if (!items.length) {
-    return `<div class="dr-empty"><span>🎒</span><b>背包空空的</b><button class="btn" data-action="drawerTab" data-id="delivery">🛵 跑腿</button></div>`;
+// One thing in the bag: what it does to the pig now, and 使用 (or why not)
+function bagRow(s, it) {
+  const fish = it.cat === 'fish';
+  let fx = Object.fromEntries(effectsNow(it).map((e) => [e.k, e.d]));
+  let why = snap.sleeping ? '在睡觉' : '';
+  if (it.cat === 'toy') {
+    fx = { mood: Math.round(it.effects.mood * toyFun(s, it.id)) };
+    for (const [k, v] of Object.entries(TOY_COST)) fx[k] = (fx[k] || 0) + v;
+    const wait = minutesLeft(s.toyReady[it.id]);
+    if (!why && snap.busy) why = busyWhy(snap);
+    if (!why && wait > 0) why = `${Math.ceil(wait)} 分钟后`;
   }
-  return `<div class="dr-groups">${groupsHtml(items, (it) => {
-    let ok = !snap.sleeping;
-    let eff = it.effects;
-    let badge = `<span class="dr-ct">${s.inventory[it.id]}</span>`;
-    if (it.cat === 'toy') {
-      const wait = minutesLeft(s.toyReady[it.id]);
-      const fun = toyFun(s, it.id);
-      eff = { mood: Math.round(it.effects.mood * fun) };
-      badge = wait > 0 ? `<span class="dr-ct cd">⏱️${Math.ceil(wait)}</span>` : '';
-      ok = ok && !snap.busy && wait <= 0;
-    }
-    if (it.cat === 'fish') return itemTile(it, { action: 'use', eff: {}, badge, tip: it.name });
-    return itemTile(it, { action: 'use', eff, badge, ok, extra: it.cat === 'toy' && !ok ? 'data-cool' : '' });
-  })}</div>`;
+  return `<div class="card bag-row ${why ? 'off' : ''}"${fish || why ? '' : preview(fx)}>
+    <div class="bag-ic">${it.icon}</div>
+    <div class="bag-m"><b>${it.name}<em>×${s.inventory[it.id]}</em></b><div class="chips">${fish ? '' : changes(s, fx)}</div></div>
+    ${fish ? '' : `<div class="bag-act">${why ? `<small class="why">${why}</small>` : ''}<button class="btn primary" data-action="use" data-id="${it.id}" ${why ? 'disabled' : ''}>使用</button></div>`}</div>`;
+}
+
+function bagPage(snap) {
+  const s = snap.s;
+  const cat = SheetUI.bagCat;
+  const tab = (id, icon, name, n) => `<button class="bag-tab ${cat === id ? 'on' : ''}" data-action="bagCat" data-id="${id}"><span>${icon}</span>${name}${n ? `<em>${n}</em>` : ''}</button>`;
+  const nav = BAG_CATS.map((c) => tab(c.id, c.icon, c.name, bagCount(s, c.id))).join('') + tab('delivery', '🛵', '跑腿', basketCount());
+  let list;
+  if (cat === 'delivery') list = deliveryHtml(s);
+  else {
+    const items = bagItems(s).filter((it) => it.cat === cat);
+    list = items.length ? items.map((it) => bagRow(s, it)).join('') : `<div class="sheet-empty"><div class="empty-ic">${SHOP_CATS.find((c) => c.id === cat).icon}</div></div>`;
+  }
+  return `<div class="bag-page"><nav class="bag-nav">${nav}</nav><div class="bag-list">${list}</div></div>`;
 }
 
 // 跑腿: tap a tile to put one in the basket, − or right-click to take one out; the bill and
@@ -331,36 +320,27 @@ function deliveryHtml(s) {
   </div>`;
 }
 
-function renderDrawer() {
-  const el = $('drawer');
-  el.classList.toggle('on', drawerOpen);
-  document.body.classList.toggle('bag-open', drawerOpen);
-  if (!drawerOpen) return;
-  const s = snap.s;
-  const n = bagItems(s).reduce((t, it) => t + s.inventory[it.id], 0);
-  const tab = (id, label) => `<button class="dr-tab ${drawerTab === id ? 'on' : ''}" data-action="drawerTab" data-id="${id}">${label}</button>`;
-  el.innerHTML = `<div class="dr-head">${tab('bag', `🎒 背包${n ? ` <small>${n}</small>` : ''}`)}${tab('delivery', `🛵 跑腿${basketCount() ? ` <small>${basketCount()}</small>` : ''}`)}
-      <button class="dr-x" data-action="closeSheet" title="关上 (Esc)">${ICON.close}</button></div>
-    <div class="dr-body">${drawerTab === 'delivery' ? deliveryHtml(s) : bagHtml(s)}</div>`;
-}
-
-// Open the drawer: on a given tab, or 跑腿 when the bag is empty, or the last tab
-function openBag(tab) {
+// Open the bag: on a given group, or the last one if it still has something, or else the first
+// group with anything in it (跑腿 when the bag is empty)
+function openBag(cat) {
   closeMap();
-  sheet = null;
-  drawerOpen = true;
-  setDrawerTab(tab || (bagItems(snap.s).length ? drawerTab : 'delivery'));
+  const s = snap.s;
+  if (!cat) {
+    cat = SheetUI.bagCat;
+    if (cat !== 'delivery' && !bagCount(s, cat)) cat = BAG_CATS.find((c) => bagCount(s, c.id))?.id || 'delivery';
+  }
+  setBagCat(cat);
+  openSheet('bag');
 }
 
-function setDrawerTab(id) {
-  drawerTab = id;
+function setBagCat(id) {
+  SheetUI.bagCat = id;
   try {
-    localStorage.setItem('drawerTab', id);
+    localStorage.setItem('bagCat', id);
   } catch {}
   lastKey = '';
   update();
 }
-
 
 function update() {
   if (!snap) return;
@@ -371,7 +351,6 @@ function update() {
   if (key !== lastKey) {
     lastKey = key;
     renderSheet();
-    renderDrawer();
   }
 }
 
@@ -390,7 +369,6 @@ function openSheet(id) {
     }
   }
   sheet = id;
-  drawerOpen = false;
   City.togglePigMenu(false);
   lastKey = '';
   update();
@@ -400,7 +378,6 @@ function openSheet(id) {
 function closeAll() {
   sheet = null;
   closeMap();
-  drawerOpen = false;
   SheetUI.activeGame = null;
   SheetUI.duel = null;
   City.togglePigMenu(false);
@@ -542,10 +519,10 @@ const LOCAL = {
   closeSheet: closeAll,
   settings: () => (sheet === 'settings' ? closeAll() : openSheet('settings')),
   bag: () => {
-    if (drawerOpen) closeAll();
+    if (sheet === 'bag') closeAll();
     else openBag();
   },
-  drawerTab: (id) => setDrawerTab(id),
+  bagCat: (id) => setBagCat(id),
   basketAdd: (id) => {
     basket[id] = (basket[id] || 0) + 1;
     update();
@@ -560,8 +537,9 @@ const LOCAL = {
     const list = Object.entries(basket).map(([id, k]) => `${id}:${k}`).join(',');
     if (!list) return;
     window.home.act('order', list);
+    const first = ITEM_BY_ID[Object.keys(basket)[0]];
     for (const id of Object.keys(basket)) delete basket[id];
-    setDrawerTab('bag');
+    setBagCat(first.cat);
   },
   // hungry: the 跑腿 tab brings food right here; the other stats show where to fix them
   stat: (key) => (key === 'hunger' ? openBag('delivery') : LOCAL.goto(STAT_PLACE[key])),
@@ -572,6 +550,16 @@ const LOCAL = {
   goHome: () => {
     City.togglePigMenu(false);
     if (City.canWalk(true)) City.walkTo(PLACE_BY_ID.home.entry);
+  },
+  // sleep is in bed at home: walk home, go in, and lie down
+  bedtime: () => {
+    City.togglePigMenu(false);
+    if (Interior.open && Interior.own) return window.home.act('sleep');
+    if (!City.canWalk(true)) return;
+    City.walkTo(PLACE_BY_ID.home.entry, () => {
+      City.enter('home');
+      window.home.act('sleep');
+    });
   },
   album: () => openSheet('album'),
   furnTab: (id) => { SheetUI.furnTab = id; update(); },
@@ -672,14 +660,14 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     if (City.talk) City.endTalk();
-    else if (sheet || drawerOpen || mapOpen) closeAll();
+    else if (sheet || mapOpen) closeAll();
     else if (Interior.talk) Interior.endTalk();
     else if (Interior.open) Interior.leave();
     else window.home.close();
     return;
   }
   if (e.key.toLowerCase() === 'm' && !sheet) return LOCAL.map();
-  if (e.key.toLowerCase() === 'b' && !sheet && !mapOpen) return LOCAL.bag();
+  if (e.key.toLowerCase() === 'b' && (!sheet || sheet === 'bag') && !mapOpen) return LOCAL.bag();
   if (e.key.toLowerCase() === 'f' && (!sheet || sheet === 'friends') && !mapOpen && !Interior.open) return LOCAL.friends();
   const handled = Interior.open ? !sheet && !mapOpen && Interior.key(e, true) : City.key(e, true);
   if (handled) e.preventDefault();
@@ -721,6 +709,8 @@ City.init({
   act: (action, id) => window.home.act(action, id),
   onBlocked: (msg) => toast({ msg, ok: false }),
   onMap: () => LOCAL.map(),
+  // going somewhere from the map while indoors: step out first
+  goOut: () => Interior.open && Interior.leave(),
 });
 Interior.init({
   // out of someone's house: back on their doorstep, maybe with a little something from them
@@ -750,6 +740,16 @@ window.home.onState((s) => {
     snap = s;
     TOWN_SAVE = s.s;
     closeAll();
+  }
+  // fallen asleep because nobody's around: he goes home to bed by himself
+  const auto = (x) => x?.s.activity?.type === 'sleep' && x.s.activity.auto;
+  if (auto(s) && !auto(snap) && !(Interior.open && Interior.own)) {
+    snap = s;
+    TOWN_SAVE = s.s;
+    if (Interior.open) Interior.leave();
+    closeAll();
+    City.placePig(PLACE_BY_ID.home.entry.x, PLACE_BY_ID.home.entry.y);
+    City.enter('home');
   }
   snap = s;
   TOWN_SAVE = s.s;

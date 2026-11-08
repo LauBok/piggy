@@ -776,7 +776,7 @@ const FIXTURE_ART = {
     s += ibox(0.3, 0.2, w - 0.6, 0.5, 0.12, '#ffffff', { y0: 0.2, r: 9, ol: 2, front: '#f1eef0' });
     s += ibox(0.06, 1.0, w - 0.12, d - 0.96, 0.24, '#ffc9de', { y0: 0.02, r: 8, front: darker('#ffc9de', 0.1) });
     s += [0.45, 1.05, 1.65].map((x, i) => iheart(IX(x), IY(1.75 + (i % 2) * 0.4, 0.26) - 2, '#fff0f6', 0.9)).join('');
-    return { w, d, h: 0.6, svg: s };
+    return { w, d, h: 0.6, svg: s, seat: [w / 2, 1.5, 0.25] };
   },
   table: () => {
     const xc = 1.3;
@@ -846,7 +846,7 @@ const HOUSE_LAYOUTS = [
     rooms: [{ w: 17, name: '小猪窝', look: 'pink', window: 11.65 }],
     door: 7.5,
     fixtures: [['nightstand', 0.6, 0.05], ['rug', 2.1, 3.35, { w: 2.4, d: 1.1, look: 'lilac' }], ['rug', 11.65, 1.7, { w: 4.2, d: 3 }],
-      ['coffee', 11.65, 2.65], ['futon', 2.15, 0.15, { unless: 'bed' }], ['plant', 0.75, 7.95, { unless: 'tub' }]],
+      ['coffee', 11.65, 2.65], ['futon', 2.15, 0.15, { unless: 'bed', use: 'sleep' }], ['plant', 0.75, 7.95, { unless: 'tub' }]],
     spots: {
       bed: [2.15, 0], wardrobe: [4.6, 0], desk: [7.65, 0], sofa: [11.65, 0], piano: [15.25, 0],
       tub: [1.6, 7.5], tub3: [1.7, 6.5], bubbler: [3.9, 8.15], easel: [15.6, 3.9], pot: [15.0, 8.0],
@@ -864,7 +864,7 @@ const HOUSE_LAYOUTS = [
     rooms: [{ w: 10, name: '卧室', look: 'lilac', window: 7.9 }, { w: 13, name: '客厅', look: 'mint', window: 6.6, clock: 11 }],
     doors: [[4.0, 7.0]],
     door: 15.9,
-    fixtures: [['nightstand', 0.6, 0.05], ['rug', 2.1, 3.35, { w: 2.4, d: 1.1, look: 'lilac' }], ['mat', 7.9, 2.55], ['futon', 2.15, 0.15, { unless: 'bed' }],
+    fixtures: [['nightstand', 0.6, 0.05], ['rug', 2.1, 3.35, { w: 2.4, d: 1.1, look: 'lilac' }], ['mat', 7.9, 2.55], ['futon', 2.15, 0.15, { unless: 'bed', use: 'sleep' }],
       ['floorlamp', 14.95, 0.3], ['rug', 17.0, 1.7, { w: 4.2, d: 3, look: 'mint' }], ['coffee', 17.0, 2.65], ['plant', 10.95, 8.05]],
     spots: {
       bed: [2.15, 0], wardrobe: [4.6, 0], tub: [7.9, 0], bubbler: [9.4, 2.65],
@@ -897,7 +897,7 @@ const HOUSE_LAYOUTS = [
     rooms: [{ w: 17, name: '卧室', look: 'lilac', window: 11.6 }, { w: 9, name: '浴室', look: 'sky', window: 7.2 }],
     doors: [[4.0, 7.0]],
     stairs: 0,
-    fixtures: [['nightstand', 9.75, 0.05], ['rug', 8.15, 3.35, { w: 2.6, d: 1.2, look: 'lilac' }], ['plant', 0.65, 8.05], ['futon', 8.15, 0.15, { unless: 'bed' }],
+    fixtures: [['nightstand', 9.75, 0.05], ['rug', 8.15, 3.35, { w: 2.6, d: 1.2, look: 'lilac' }], ['plant', 0.65, 8.05], ['futon', 8.15, 0.15, { unless: 'bed', use: 'sleep' }],
       ['rug', 12.6, 4.6, { w: 3.4, d: 2.4 }], ['coffee', 12.6, 5.3],
       ['sink', 22.6, 0.05], ['mat', 19.9, 2.6], ['plant', 25.9, 8.05]],
     spots: {
@@ -926,7 +926,7 @@ const HOUSE_LAYOUTS = [
     rooms: [{ w: 17, name: '卧室', look: 'lilac', window: 11.6 }, { w: 9, name: '浴室', look: 'sky', window: 7.2 }, { w: 9, name: '星空塔楼', look: 'night', window: 4.5 }],
     doors: [[4.0, 7.0], [4.0, 7.0]],
     stairs: 0,
-    fixtures: [['nightstand', 9.75, 0.05], ['rug', 8.15, 3.35, { w: 2.6, d: 1.2, look: 'lilac' }], ['plant', 0.65, 8.05], ['futon', 8.15, 0.15, { unless: 'bed' }],
+    fixtures: [['nightstand', 9.75, 0.05], ['rug', 8.15, 3.35, { w: 2.6, d: 1.2, look: 'lilac' }], ['plant', 0.65, 8.05], ['futon', 8.15, 0.15, { unless: 'bed', use: 'sleep' }],
       ['rug', 12.6, 4.6, { w: 3.4, d: 2.4 }], ['coffee', 12.6, 5.3],
       ['sink', 22.6, 0.05], ['mat', 19.9, 2.6], ['plant', 25.9, 8.05],
       ['rug', 31.3, 4.0, { w: 4, d: 2.6, look: 'night' }], ['telescope', 31.3, 1.8]],
@@ -1427,7 +1427,7 @@ const Interior = {
       else props.push({ zi: art.flat ? 1 : izi(z + art.d), svg: `<g ${use} transform="translate(${IX(x0)} ${IY(z)})">${art.svg}</g>` });
       if (!art.flat && !art.wall) this.fixtures.push({ x0, z0: z, x1: x0 + art.w, z1: z + art.d });
       // something on the wall is in reach from a step or two out, over whatever stands below it
-      if (o.use) this.usable.push({ use: o.use, wall: !!art.wall, box: art.wall ? { x0, z0: 0, x1: x0 + art.w, z1: 1.5 } : { x0, z0: z, x1: x0 + art.w, z1: z + art.d }, h: art.wall ? z + 0.6 : art.h || 1.5 });
+      if (o.use) this.usable.push({ use: o.use, wall: !!art.wall, art, zi: art.flat ? 1 : izi(z + art.d), box: art.wall ? { x0, z0: 0, x1: x0 + art.w, z1: 1.5 } : { x0, z0: z, x1: x0 + art.w, z1: z + art.d }, h: art.wall ? z + 0.6 : art.h || 1.5 });
     }
     props.push(...this.wallsSvg());
     this.props = props;
@@ -1599,7 +1599,7 @@ const Interior = {
       if (!FURN_USE[p.group] || !p.box) continue;
       out.push({ box: p.box, h: p.art.h || 2, label: FURN_USE[p.group].label(this.snap), run: () => this.useFurn(p) });
     }
-    for (const u of this.usable) out.push({ ...u, label: this.home.labels[u.use], run: () => this.useFixture(u) });
+    for (const u of this.usable) out.push({ ...u, label: u.use === 'sleep' ? FURN_USE.bed.label(this.snap) : this.home.labels[u.use], run: () => this.useFixture(u) });
     for (const p of this.people) out.push({ box: { x0: p.x - 0.35, z0: p.z - 0.3, x1: p.x + 0.35, z1: p.z }, h: p.small ? 2.1 : 2.7, person: p, label: '说话', run: () => this.meet(p.id) });
     return out;
   },
@@ -1968,6 +1968,8 @@ const Interior = {
 
   // The table, the tea set, their pride and joy
   useFixture(u) {
+    // the futon at home, until there's a bed
+    if (u.use === 'sleep') return this.cb.onUse(...FURN_USE.bed.act(this.snap));
     if (u.use === 'tea') return this.askTea();
     // their pride and joy: they tell you about it, a bit more each time
     const id = this.home.host;
@@ -2033,7 +2035,8 @@ const Interior = {
       this.goFloor(f);
       this.centerCam(true);
     }
-    const piece = group && this.items.find((p) => p.group === group);
+    // no bed yet: he sleeps on the futon
+    const piece = group && (this.items.find((p) => p.group === group) || (group === 'bed' && this.usable.find((u) => u.use === 'sleep')));
     if (piece && piece.art.seat && !this.route) {
       const [sx, sz, lift] = piece.art.seat;
       this.place(piece.box.x0 + sx, piece.box.z0 + sz, lift);

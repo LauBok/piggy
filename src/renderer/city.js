@@ -1429,7 +1429,7 @@ const City = {
     if (snap.busy) return this.togglePigMenu(false);
     const btns = snap.sleeping
       ? [['wake', '☀️', '起床'], ['album', '📷', '相册']]
-      : [['play', '🤸', '玩耍'], ['sleep', '😴', '睡觉'], ['goHome', '🏠', '回家'], ['album', '📷', '相册']];
+      : [['bedtime', '😴', '睡觉'], ['goHome', '🏠', '回家'], ['album', '📷', '相册']];
     m.innerHTML = btns.map(([a, ic, t]) => `<button data-action="${a}" title="${t}"><span>${ic}</span><small>${t}</small></button>`).join('');
     m.classList.add('on');
   },
@@ -1576,6 +1576,7 @@ const City = {
     let press = null;
     let dragged = false;
     box.onpointerdown = (e) => {
+      if (e.button !== 0) return;
       press = { x: e.clientX, y: e.clientY, vx: v.x, vy: v.y };
       dragged = false;
       box.setPointerCapture(e.pointerId);
@@ -1584,16 +1585,20 @@ const City = {
       if (!press) return;
       const dx = e.clientX - press.x;
       const dy = e.clientY - press.y;
-      if (!dragged && Math.hypot(dx, dy) < 5) return;
+      if (!dragged && Math.hypot(dx, dy) < 8) return;
       dragged = true;
       box.classList.add('dragging');
       v.x = press.vx - dx / v.k;
       v.y = press.vy - dy / v.k;
       show();
     };
-    box.onpointerup = () => {
+    // a press that didn't turn into a drag is a click on whatever is under the mouse (the box
+    // holds the pointer while pressed, so the click event itself would only name the box)
+    box.onpointerup = (e) => {
+      const click = press && !dragged;
       press = null;
       box.classList.remove('dragging');
+      if (click) this.mapClick(document.elementFromPoint(e.clientX, e.clientY));
     };
     // zoom around the point under the mouse
     box.onwheel = (e) => {
@@ -1601,33 +1606,27 @@ const City = {
       const r = box.getBoundingClientRect();
       zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top);
     };
-    box.onclick = (e) => {
-      if (dragged) return;
-      // someone's face: go and find them
-      const who = e.target.closest('[data-mnpc]');
-      if (who) {
-        this.cb.onMap();
-        return this.findNpc(who.dataset.mnpc);
-      }
-      // someone's house: walk to their door and knock
-      const home = e.target.closest('[data-mhome]');
-      if (home) {
-        this.cb.onMap();
-        return this.goVisit(home.dataset.mhome);
-      }
-      // a building: walk over to its door (just look at it if the pig can't walk now)
-      const t = e.target.closest('[data-mplace]');
-      if (!t) return;
-      this.cb.onMap();
-      if (this.canWalk(true)) this.walkTo(PLACE_BY_ID[t.dataset.mplace].entry);
-      else this.flyToPlace(t.dataset.mplace);
-    };
     el.querySelector('.mv-ctl').onclick = (e) => {
       const z = e.target.closest('[data-z]')?.dataset.z;
       if (z === 'in') zoomAt(1.35);
       else if (z === 'out') zoomAt(1 / 1.35);
       else if (z === 'pig') centre();
     };
+  },
+
+  // A click on the big map: a face finds that neighbour, a house goes to knock, a building
+  // walks to its door (or just shows it if the pig can't walk now)
+  mapClick(target) {
+    const who = target?.closest('[data-mnpc]');
+    const home = target?.closest('[data-mhome]');
+    const place = target?.closest('[data-mplace]');
+    if (!who && !home && !place) return;
+    this.cb.onMap();
+    this.cb.goOut?.();
+    if (who) return this.findNpc(who.dataset.mnpc);
+    if (home) return this.goVisit(home.dataset.mhome);
+    if (this.canWalk(true)) this.walkTo(PLACE_BY_ID[place.dataset.mplace].entry);
+    else this.flyToPlace(place.dataset.mplace);
   },
 
   closeMap() {

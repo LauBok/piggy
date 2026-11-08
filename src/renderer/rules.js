@@ -142,14 +142,23 @@ const dayKey = () => new Date().toDateString();
 // latest snapshot's). Town time is where the clock was last set plus the time since, at today's
 // speed: real time while the pig is busy or asleep, TOWN_SPEED times faster while he's free.
 let TOWN_SAVE = null;
-const townRate = (s) => (s.activity ? 1 : TOWN_SPEED);
+function townRate(s) {
+  const a = s.activity;
+  if (!a) return TOWN_SPEED;
+  if (a.type === 'sleep') return a.auto ? 0 : SLEEP_SPEED;
+  return 1;
+}
 function townNow() {
   const c = TOWN_SAVE?.clock;
   return c ? c.t + (Date.now() - c.at) * townRate(TOWN_SAVE) : Date.now();
 }
 const townDate = () => new Date(townNow());
 // The real moment that a town moment was (or will be), at the speed now
-const realOf = (t) => Date.now() - (townNow() - t) / (TOWN_SAVE ? townRate(TOWN_SAVE) : 1);
+const realOf = (t) => Date.now() - (townNow() - t) / ((TOWN_SAVE && townRate(TOWN_SAVE)) || 1);
+
+// What the pig says on waking, by the hour in town
+const wakeLine = (h) => (h >= 5 && h < 11 ? '早上好！' : h >= 11 && h < 14 ? '中午好！' : h >= 14 && h < 18 ? '下午好！' : '晚上好！');
+const isNight = (h) => h >= 19 || h < 5;
 
 // Drawn icons for buttons, where the game fonts have no such character (styled by .ic)
 const ICON = {
@@ -195,12 +204,25 @@ const npcDailyCap = (id) => (isBirthday(id) ? NPC_BIRTHDAY_DAILY : NPC_DAILY);
 
 // How a neighbour takes a present: wish, love, like, dislike or plain
 function giftTier(s, id, itemId) {
-  const n = NPC_BY_ID[id];
   if (itemId === npcWish(id) && !wishDone(s, id)) return 'wish';
+  return giftTaste(id, itemId);
+}
+// What they think of a thing, wish or not: love, like, plain or dislike
+function giftTaste(id, itemId) {
+  const n = NPC_BY_ID[id];
   if (n.loves.includes(itemId)) return 'love';
   if (n.likes.includes(itemId)) return 'like';
   if (n.dislike === itemId) return 'dislike';
   return 'plain';
+}
+// Everything given to a neighbour so far and how they took it, favourites first:
+// [{ id, taste }]. Favourites found before this was kept count too.
+function giftsGiven(s, id) {
+  const rec = s.npc?.[id];
+  const gave = { ...Object.fromEntries((rec?.fav || []).map((k) => [k, 'love'])), ...(rec?.gave || {}) };
+  const order = ['love', 'like', 'plain', 'dislike'];
+  return Object.entries(gave).filter(([k]) => ITEM_BY_ID[k]).map(([k, taste]) => ({ id: k, taste }))
+    .sort((a, b) => order.indexOf(a.taste) - order.indexOf(b.taste));
 }
 // What the pig could give: things to eat, toys and medicine in the bag; the wish first
 function giftable(s, id) {

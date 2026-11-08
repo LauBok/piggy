@@ -38,7 +38,6 @@ const BATH_MINUTES = 15;
 const BATH_EFFECT = { clean: 20, mood: 3 };
 // Petting: a little mood, at most every 20 s and only up to 60
 const PET_MOOD = { mood: 2, everyMs: 20000, upTo: 60 };
-const PLAY_EFFECT = { mood: 8, energy: -8, hunger: -3 };
 const MINIGAME_COST = { energy: -5, hunger: -2 };
 
 // Free help so a broke, sick pig can always recover. It takes a while (minutes), so buying
@@ -162,11 +161,31 @@ const MAX_LEVEL = 30;
 // every time of day. While he's doing something (a lesson, a shift, a soak, asleep) and while
 // the app is closed it keeps real time: a 45-minute lesson is 45 minutes in town too.
 const TOWN_SPEED = 6;
+// Asleep in bed the night flies by: the town's clock runs this many times faster than real time
+// and the pig rests that much faster too, so a night in bed is a few minutes. While he's asleep
+// because you're away, the town stops altogether until you're back.
+const SLEEP_SPEED = 60;
+// A night's sleep (gone to bed from 19:00 until 5:00) lasts until this hour; any other sleep is a
+// nap, until he's rested
+const WAKE_HOUR = 7;
 // Time alone grows the pig slowly (awake, asleep or closed); studying grows it fastest.
-// Little ones (below Lv.6) grow mostly by playing, and get nothing from working.
+// Little ones (below Lv.6) grow mostly at kindergarten and by playing, and get nothing from working.
 const EXP_PER_MIN = { alive: 0.1, kidAlive: 0.02, study: 1, work: 0.1 };
 const EXP_PER_SHIFT = 2;
 const EXP_PER_LESSON = 5;
+// Kindergarten, until primary school (below Lv.6): a short class of any of these, as often as he
+// likes. It grows him like a lesson does, minute by minute, and he comes out happier.
+const KINDER_CLASSES = [
+  { id: 'sing', name: '唱歌', icon: '🎵' },
+  { id: 'draw', name: '画画', icon: '🖍️' },
+  { id: 'blocks', name: '搭积木', icon: '🧱' },
+  { id: 'story', name: '听故事', icon: '📚' },
+  { id: 'game', name: '做游戏', icon: '🎈' },
+];
+const KINDER_BY_ID = Object.fromEntries(KINDER_CLASSES.map((k) => [k.id, k]));
+const KINDER_MIN = 15;
+const KINDER_DRAIN = { hunger: 1.2, clean: 0.8, energy: 2 };
+const KINDER_MOOD = 5;
 // Each school level is a school year, so it lasts about as long as that year's lessons need.
 // LEVEL_DAYS: roughly how many days a level takes someone who checks in a few times a day
 // (the exp of that year's lessons is added on top, below the course list).
@@ -185,7 +204,6 @@ const EXP_PER_DAY = 200;
 // Exp from playing, by how hard it is to win. The same at every age: it matters a lot while
 // levels are cheap and little once they cost more. Only PLAY_EXP_DAILY counts each day.
 const PLAY_EXP = {
-  play: 3,
   toy: 5,
   hobby: 4,
   rps: { win: 3, draw: 2, lose: 1 },

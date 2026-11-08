@@ -12,7 +12,7 @@ const LINES = {
   sulk: ['哼！', '不理你了！', '还戳！', '哼哼！'],
 };
 // little symbols that pop up now and then while busy
-const BUSY_FX = { study: ['💡', '✏️', '❓', '📝', '💡'], work: ['💦', '💪', '💦', '😤'] };
+const BUSY_FX = { study: ['💡', '✏️', '❓', '📝', '💡'], work: ['💦', '💪', '💦', '😤'], kinder: ['🎵', '⭐', '😄', '🖍️'] };
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
 // The most urgent stat the pig needs help with, or null
@@ -148,6 +148,9 @@ const App = {
       case 'hobby':
         res = Game.startHobby(id);
         break;
+      case 'kinder':
+        res = Game.startKinder(id);
+        break;
       case 'minigame': {
         const [name, result] = String(id).split(':');
         res = Game.minigame(name, result);
@@ -242,14 +245,6 @@ const App = {
         break;
       case 'wake':
         res = Game.wake(false);
-        break;
-      case 'play':
-        res = Game.play();
-        if (res.ok) {
-          PetView.flash('happy', 1500);
-          this.pose('jump', 1400);
-          this.hold(2500);
-        }
         break;
       case 'cancel':
         res = Game.cancel();
