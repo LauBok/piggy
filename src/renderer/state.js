@@ -614,6 +614,8 @@ const Game = {
     if (fee && this.s.money < fee) return fail(`${h.name}要 ${fee} 金币`);
     if (id === 'soak' && this.s.energy >= 95) return fail('精神好着呢，不用泡');
     if (h.park && !parkOpen()) return fail(`游乐园 ${Math.floor(PARK_HOURS[0] / 60)}:00 开放`);
+    const up = keeperBackAt(id);
+    if (up) return fail(`${{ clinic: '诊所', meal: '食堂' }[id]} ${clockText(up)} 开放`);
     if (id === 'fireworks' && !fireworksOn()) return fail('现在没有烟花');
     const fest = OUTINGS.find((o) => o.festival === id);
     if (fest && !outingOn(this.s, fest)) return fail(`现在没有${h.name}`);

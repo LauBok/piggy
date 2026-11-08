@@ -390,8 +390,15 @@ const City = {
   // what someone is doing at a town moment (now, by default)
   planOf(id, now = townNow()) {
     const c = this.plans[id];
-    if (c && now >= c.at && now < c.end) return c;
-    return (this.plans[id] = npcPlan(id, now));
+    if (c && now >= c.from && now < c.until) return c;
+    const plan = npcPlan(id, now);
+    // a shift behind their own counter: on their way a little before, so they're in on the hour
+    const n = NPC_BY_ID[id];
+    const next = npcPlan(id, plan.end);
+    const atWork = (p) => p.act === 'work' && p.where === n.place;
+    const early = atWork(next) && !atWork(plan);
+    if (early && next.at - now < KEEPER_LEAD) return (this.plans[id] = { ...next, from: next.at - KEEPER_LEAD, until: next.end });
+    return (this.plans[id] = { ...plan, from: plan.at, until: early ? next.at - KEEPER_LEAD : plan.end });
   },
 
   // Where someone stands for an entry of their day; k: how many got to that place before them
@@ -419,11 +426,18 @@ const City = {
     const r = this.routes[n.id];
     if (r?.key === key && r.det === det) return r;
     const from = det ? det.from : this.spotOf(n, plan.prev);
-    // when they set off, in real time: they walk at their own pace however fast the town's clock goes
+    // when they set off, in real time: they walk at their own pace however fast the town's clock
+    // goes. To their own counter they leave early enough to get there right on time.
+    const speed = NPC_SPEED[n.id] || NPC_SPEED._;
+    const d = Math.hypot(from.x - dest.x, from.y - dest.y);
+    if (!det && plan.act === 'work' && plan.where === n.place && d >= 4) {
+      const pts = findPath({ ...from }, { ...dest });
+      const len = pathLength(pts);
+      return (this.routes[n.id] = { key, det, pts, len, t0: realOf(plan.at) - (len / speed) * 1000 });
+    }
     const t0 = det ? det.t0 : realOf(plan.at);
     // long since there (no way round is three times the straight line): no need to find the way
-    const d = Math.hypot(from.x - dest.x, from.y - dest.y);
-    const there = d < 4 || ((Date.now() - t0) / 1000) * (NPC_SPEED[n.id] || NPC_SPEED._) > d * 3;
+    const there = d < 4 || ((Date.now() - t0) / 1000) * speed > d * 3;
     const pts = there ? [dest] : findPath({ ...from }, { ...dest });
     return (this.routes[n.id] = { key, det, pts, len: pathLength(pts), t0 });
   },
@@ -435,6 +449,8 @@ const City = {
     const r = this.routeOf(n, plan, dest);
     const speed = NPC_SPEED[n.id] || NPC_SPEED._;
     const walked = ((now - r.t0) / 1000) * speed;
+    // not off yet: still where they were
+    if (walked < 0) return { ...r.pts[0], dir: 0, moving: false, shown: !npcInside(plan.prev) };
     if (r.len > 4 && walked < r.len) {
       const pt = pointAlong(r.pts, walked / r.len);
       return { x: pt.x, y: pt.y, dir: pt.dir, moving: true, shown: true };

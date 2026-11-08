@@ -37,7 +37,8 @@ const Hud = {
     clock.title = '猪猪城的时间';
     clock.innerHTML = '<span id="hudClockIc"></span><b id="hudClock"></b>';
     document.querySelector('.window').appendChild(clock);
-    setInterval(() => this.clock(), 2000);
+    // often enough that a night in bed (a town minute each second) ticks by evenly
+    setInterval(() => this.clock(), 250);
   },
 
   // The town's day and time (its own clock, see TOWN_SPEED), with the sun or the moon
@@ -55,8 +56,11 @@ const Hud = {
     const s = snap.s;
     $('hudName').textContent = s.name;
     $('hudLv').textContent = `Lv.${s.level}`;
-    const exp = s.level >= MAX_LEVEL ? 100 : (s.exp / expNeed(s.level)) * 100;
+    const max = s.level >= MAX_LEVEL;
+    const exp = max ? 100 : (s.exp / expNeed(s.level)) * 100;
     $('hudXp').style.width = `${exp}%`;
+    // the numbers behind the bar, on hover
+    document.querySelector('.hud-sub').title = max ? '经验 满级' : `经验 ${Math.floor(s.exp)} / ${expNeed(s.level)}`;
     $('hudCoins').textContent = fmtCoins(s.money);
     this.clock();
     // what's under the pointer may have been redrawn: preview whatever is there now

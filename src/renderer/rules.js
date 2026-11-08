@@ -247,9 +247,11 @@ function npcDay(id, d) {
   const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   return npcDayList(id, d).map((e, i) => {
     const [h, m] = e[0].split(':').map(Number);
-    const jitter = i ? hashStr(`${day}${id}${i}`) % 16 : 0;
     let [where, act] = [e[1], e[2]];
     if (Array.isArray(where)) [where, act] = where[hashStr(day + id) % where.length];
+    // a little give in everyone's day, except a shift behind their own counter: that starts on time
+    const sharp = act === 'work' && where === NPC_BY_ID[id].place;
+    const jitter = i && !sharp ? hashStr(`${day}${id}${i}`) % 16 : 0;
     return { at: midnight + (h * 60 + m + jitter) * 60000, where, act };
   });
 }
@@ -364,6 +366,8 @@ function outingWhy(s, o, busy) {
   if (o.hobby) return minutesLeft(s.hobbyReady[o.hobby]) > 0 ? '刚玩过' : '';
   const h = FREE_HELP_BY_ID[o.help];
   if (o.help === 'meal' && s.hunger >= 95) return '已吃饱';
+  const up = keeperBackAt(o.help);
+  if (up) return `${clockText(up)} 开放`;
   if (o.help === 'soak' && s.energy >= 95) return '精神很好';
   if (h.fee && s.money < h.fee * 2) return '金币不够';
   if (minutesLeft(s.helpReady[o.help]) > 0) return '刚去过';
@@ -405,6 +409,21 @@ function npcPerk(s, key, base) {
 
 // Who runs a shop (null if nobody does)
 const keeperOf = (placeId) => NPCS.find((n) => n.place === placeId && n.spot == null) || null;
+
+// Services someone has to be there for: the doctor sees you at the clinic, the cook feeds you at
+// the canteen, while they're at work there. Otherwise: the town moment they're next back; else null
+const HELP_KEEPER = { clinic: 'clinic', meal: 'canteen' };
+function keeperBackAt(helpId, now = townNow()) {
+  const k = HELP_KEEPER[helpId] && keeperOf(HELP_KEEPER[helpId]);
+  if (!k || npcAtWork(k.id, now)) return null;
+  let t = now;
+  for (let i = 0; i < 24 * 12 && !npcAtWork(k.id, t); i++) t += 5 * 60000;
+  return npcPlan(k.id, t).at;
+}
+const clockText = (t) => {
+  const d = new Date(t);
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
 
 // A shop's price multiplier for this pig: the friendlier its keeper, the cheaper
 function shopDiscount(s, placeId) {

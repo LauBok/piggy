@@ -108,6 +108,8 @@ function helpHero(snap, id) {
   // the theme park keeps its hours, the fireworks are on weekend nights, a festival has its hours
   const fest = OUTINGS.find((o) => o.festival === id);
   if (!why && h.park && !parkOpen()) why = `${hhmm(PARK_HOURS[0])} 开放`;
+  const up = keeperBackAt(id);
+  if (!why && up) why = `${clockText(up)} 开放`;
   if (!why && id === 'fireworks' && !fireworksOn()) why = `周末 ${FIREWORKS_HOURS[0] / 60}:00`;
   if (!why && fest && !outingOn(s, fest)) why = minuteOf(townDate()) < fest.hours[0] ? `${hhmm(fest.hours[0])} 开始` : '已结束';
   const verb = { meal: '吃饭', clinic: '看病', soak: '泡温泉', movie: '看电影', ferris: '坐摩天轮', carousel: '坐木马', haunted: '进鬼屋', fireworks: '看烟花',
