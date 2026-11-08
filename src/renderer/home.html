@@ -8,21 +8,26 @@
     />
     <title>猪猪城</title>
     <link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="pig.css" />
     <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="games.css" />
     <link rel="stylesheet" href="city.css" />
+    <link rel="stylesheet" href="sheets.css" />
+    <link rel="stylesheet" href="hud.css" />
   </head>
   <body>
     <div class="window">
       <header id="hud"></header>
-      <div id="viewport"><div id="world"></div></div>
+      <div id="viewport"><div id="world"></div><div id="weather"></div></div>
       <aside id="sheet"></aside>
       <div id="interior"></div>
+      <div id="status"></div>
       <div id="minimap"></div>
+      <div id="mapScrim" data-action="closeMap"></div>
       <div id="mapView"></div>
       <div id="drawer"></div>
-      <div id="toast"></div>
+      <div id="toasts"></div>
     </div>
 
     <script src="data.js"></script>
@@ -33,6 +38,7 @@
     <script src="city-art.js"></script>
     <script src="city.js"></script>
     <script src="interior.js"></script>
+    <script src="homes.js"></script>
     <script src="sheets.js"></script>
     <script src="home.js"></script>
   </body>

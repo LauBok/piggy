@@ -350,3 +350,9 @@
 
 /* a hairstyle hides the little curl on top */
 .has-hair .tuft { display: none; }
+
+/* soaking in the hot spring: only the top half shows above the water */
+.soaking .pig {
+  clip-path: inset(0 0 42% 0);
+  transform: translateY(18%);
+}

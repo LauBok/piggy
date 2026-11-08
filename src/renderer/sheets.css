@@ -1,0 +1,2070 @@
+/* The sheets: the pages that open over the map when the pig goes into a building.
+   Everything here is scoped to #sheet so it never leaks into the HUD, map or bag.
+   Layout of a sheet: banner (64px) → main action / grid / list → secondary sections → folded locked groups.
+   Grids are for things to buy, lists for things to do over time. One filled button per row. */
+
+#sheet {
+  background: var(--page);
+  border-radius: var(--r-sheet);
+  overflow: hidden;
+  font: var(--fs-body) / 1.45 var(--f-body);
+  color: var(--ink);
+}
+
+/* the app doesn't set border-box globally; the sheet's own pieces use it */
+#sheet .bnr, #sheet .sh-body, #sheet .card, #sheet .row, #sheet .tile, #sheet .goods, #sheet .btn, #sheet .seg button,
+#sheet .stage, #sheet .mj, #sheet .crow, #sheet .lk, #sheet .chip, #sheet .ib, #sheet .sh-x, #sheet .sh-back,
+#sheet .namecard input, #sheet .wear-btn, #sheet .furn, #sheet .npc-card {
+  box-sizing: border-box;
+}
+
+#sheet .sh-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  padding: var(--s4) var(--s4) var(--s5);
+}
+
+/* flex children with overflow: hidden would otherwise shrink to nothing */
+#sheet .sh-body > * {
+  flex-shrink: 0;
+}
+
+#sheet .sh-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+#sheet .sh-body::-webkit-scrollbar-thumb {
+  background: var(--line-2);
+  border-radius: 3px;
+}
+
+#sheet b {
+  font-weight: 700;
+}
+
+#sheet .muted {
+  color: var(--muted);
+  font-size: var(--fs-meta);
+}
+
+#sheet .money {
+  color: var(--coin);
+}
+
+#sheet .danger {
+  color: var(--warn);
+}
+
+/* ---------- banner ---------- */
+
+#sheet .bnr {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  height: 64px;
+  padding: 0 var(--s3) 0 var(--s4);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--b1) 72%, white), color-mix(in srgb, var(--b2) 28%, white));
+  border-bottom: 1px solid color-mix(in srgb, var(--b2) 30%, white);
+}
+
+/* a little scalloped awning along the top */
+#sheet .bnr::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 6px;
+  background: radial-gradient(circle at 8px 0, color-mix(in srgb, var(--b2) 55%, white) 6px, transparent 7px) 0 0 / 16px 6px repeat-x;
+}
+
+#sheet .bnr.slim {
+  height: 50px;
+  gap: var(--s2);
+  padding-left: var(--s2);
+}
+
+#sheet .bnr-ic {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-btn);
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 24px;
+}
+
+#sheet .bnr-t {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+  margin-right: auto;
+}
+
+#sheet .bnr-t > b {
+  font: var(--fs-title) var(--f-title);
+  letter-spacing: 0.5px;
+}
+
+#sheet .bnr.slim .bnr-t > b {
+  font-size: 18px;
+}
+
+#sheet .bnr-t small {
+  font-size: var(--fs-meta);
+  color: color-mix(in srgb, var(--b2) 45%, var(--ink));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#sheet .sh-x,
+#sheet .sh-back {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--accent-ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#sheet .sh-back {
+  font-size: 17px;
+}
+
+#sheet .sh-x:hover,
+#sheet .sh-back:hover {
+  background: #fff;
+}
+
+/* ---------- neighbours: the keeper pill in a banner, and rows on the neighbours' page ---------- */
+
+#sheet .npc-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+#sheet .npc-card.keeper {
+  height: 48px;
+  padding: 0 var(--s2) 0 var(--s1);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+#sheet .npc-av {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--sunken);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#sheet .npc-av svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#sheet .npc-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+#sheet .npc-main .nm > b {
+  font: 14px var(--f-title);
+}
+
+#sheet .hbar {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-cap);
+  color: var(--accent-ink);
+}
+
+#sheet .hbar i {
+  position: relative;
+  display: block;
+  width: 60px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--st-track);
+  overflow: hidden;
+}
+
+#sheet .hbar i::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--p);
+  background: var(--accent);
+  border-radius: 3px;
+}
+
+/* where the perk starts */
+#sheet .hbar i::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--m);
+  width: 2px;
+  background: #fff;
+}
+
+#sheet .hbar em {
+  font-style: normal;
+}
+
+#sheet .npc-acts {
+  display: flex;
+  gap: var(--s1);
+}
+
+#sheet .ib {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--sunken);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#sheet span.ib {
+  cursor: default;
+  opacity: 0.75;
+}
+
+#sheet .ib.hi {
+  background: var(--accent-soft);
+}
+
+#sheet .ib.wish.have {
+  background: var(--coin-soft);
+  box-shadow: 0 0 0 2px var(--coin-hue);
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+#sheet .ib.wish.done {
+  background: transparent;
+}
+
+#sheet .npc-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--s3);
+}
+
+#sheet .npc-row {
+  gap: var(--s3);
+  padding: var(--s3) var(--s4) var(--s3) var(--s3);
+}
+
+#sheet .npc-row .npc-av {
+  width: 52px;
+  height: 52px;
+}
+
+#sheet .npc-row .npc-main {
+  flex: 1;
+}
+
+#sheet .npc-row .npc-main .nm > b {
+  font-size: var(--fs-name);
+}
+
+/* ---------- sections, toolbars, tabs ---------- */
+
+#sheet .sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+#sheet .sec-h {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 26px;
+}
+
+#sheet .sec-h > b {
+  font: var(--fs-sec) var(--f-title);
+  font-weight: normal;
+  letter-spacing: 0.5px;
+}
+
+#sheet .sec-h > small {
+  color: var(--muted);
+  font-size: var(--fs-meta);
+}
+
+#sheet .sec-h .right,
+#sheet .toolbar .right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+#sheet .toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: calc(var(--s3) - var(--s5));
+}
+
+#sheet .seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-btn);
+  background: var(--sunken);
+}
+
+#sheet .seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 var(--s3);
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-2);
+  font: var(--fs-meta) var(--f-body);
+  cursor: pointer;
+}
+
+#sheet .seg button:hover {
+  color: var(--ink);
+}
+
+#sheet .seg button.on {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(140, 60, 90, 0.12);
+}
+
+#sheet .seg em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+#sheet .grp {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: calc(var(--s3) - var(--s5));
+  padding: 0 var(--s1);
+  color: var(--muted);
+  font-size: var(--fs-meta);
+}
+
+#sheet .grp::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* ---------- chips and stat changes ---------- */
+
+#sheet .chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s2);
+}
+
+#sheet .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--r-chip);
+  background: var(--sunken);
+  color: var(--ink-2);
+  font-size: var(--fs-cap);
+  white-space: nowrap;
+}
+
+#sheet .chip.tag {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+#sheet .chip.bonus {
+  background: var(--pig-soft);
+  color: var(--pig);
+}
+
+#sheet .chip.ok,
+#sheet .chip.gain {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+#sheet .chip.need {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+#sheet .chip.coin {
+  background: var(--coin-soft);
+  color: var(--coin);
+}
+
+/* a stat change: icon, now → after */
+#sheet .sd {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink-2);
+  font-size: var(--fs-meta);
+  white-space: nowrap;
+}
+
+#sheet .sd i {
+  font-style: normal;
+  color: var(--muted);
+  margin: 0 1px;
+}
+
+/* .sd twice: wins over containers that style every <b> as a title (hero card, row value) */
+#sheet .sd.sd b {
+  font: 700 var(--fs-meta) var(--f-body);
+  color: var(--ink);
+}
+
+#sheet .sd.sd.up b {
+  color: var(--ok);
+}
+
+#sheet .sd.sd.bad b {
+  color: var(--warn);
+}
+
+#sheet .sd.flat {
+  opacity: 0.45;
+}
+
+/* ---------- progress ---------- */
+
+#sheet .bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--st-track);
+  overflow: hidden;
+}
+
+#sheet .bar i {
+  display: block;
+  width: var(--p);
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+#sheet .bar.ok i {
+  background: var(--ok);
+}
+
+/* ---------- the goods grid ---------- */
+
+#sheet .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--s3);
+}
+
+#sheet .goods {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--s3);
+  text-align: center;
+  transition: transform 0.12s, box-shadow 0.15s;
+}
+
+#sheet .goods:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sh-lift);
+}
+
+#sheet .goods-ic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-top: 2px;
+  border-radius: 14px;
+  background: var(--sunken);
+  font-size: 30px;
+}
+
+#sheet .goods > b {
+  font: var(--fs-name) / 1.2 var(--f-title);
+  font-weight: normal;
+}
+
+#sheet .goods .chips {
+  justify-content: center;
+  min-height: 18px;
+}
+
+#sheet .goods .btn {
+  width: 100%;
+  height: 30px;
+  margin-top: auto;
+}
+
+/* "已有 3" */
+#sheet .goods .corner {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 0 6px;
+  border-radius: var(--r-chip);
+  background: var(--sunken);
+  color: var(--ink-2);
+  font-size: var(--fs-cap);
+}
+
+/* a neighbour's special item */
+#sheet .pin {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffd43b;
+  box-shadow: 0 0 0 2px #fff;
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+#sheet .goods.mystery {
+  background: repeating-linear-gradient(135deg, #fff 0 10px, #fdf3f7 10px 20px);
+}
+
+#sheet .goods.mystery .goods-ic {
+  background: #fff;
+  border: 1.5px dashed var(--line-2);
+  color: var(--muted);
+  font: 26px var(--f-title);
+}
+
+#sheet .goods.mystery > b {
+  color: var(--ink-2);
+}
+
+#sheet .goods.current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+#sheet .look-prev {
+  margin: 0 auto;
+}
+
+/* ---------- lists ---------- */
+
+#sheet .list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#sheet .list > .row + .row {
+  border-top: 1px solid var(--line);
+}
+
+#sheet .row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: var(--h-row);
+  padding: var(--s2) var(--s4);
+}
+
+#sheet .row-ic {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-btn);
+  background: var(--sunken);
+  font-size: 22px;
+}
+
+#sheet .row-m {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+#sheet .row-m .t {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+#sheet .row-m .t > b {
+  font: var(--fs-name) var(--f-title);
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+#sheet .row-m .t small {
+  color: var(--muted);
+  font-size: var(--fs-cap);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#sheet .where {
+  cursor: pointer;
+}
+
+#sheet .where:hover {
+  color: var(--accent-ink);
+}
+
+#sheet .row-v {
+  flex-shrink: 0;
+  min-width: 76px;
+  text-align: right;
+  line-height: 1.2;
+}
+
+#sheet .row-v > b {
+  color: var(--coin);
+  font-size: var(--fs-name);
+}
+
+#sheet .row-v small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-cap);
+}
+
+#sheet .row-v small.warn {
+  color: var(--warn);
+}
+
+#sheet .row > .btn {
+  flex-shrink: 0;
+  min-width: 76px;
+}
+
+#sheet .row .gap {
+  flex-shrink: 0;
+  width: 76px;
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--fs-cap);
+}
+
+#sheet .row.locked .row-ic {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+#sheet .row.locked .row-m .t > b {
+  color: var(--ink-2);
+}
+
+#sheet .row.locked .row-v > b {
+  color: var(--muted);
+}
+
+#sheet .row.now {
+  background: linear-gradient(90deg, var(--accent-soft), transparent 60%);
+}
+
+#sheet .own {
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: var(--fs-cap);
+}
+
+/* ---------- a folded group ---------- */
+
+#sheet .fold > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 0 var(--s4);
+  color: var(--ink-2);
+  font-size: var(--fs-meta);
+  list-style: none;
+  cursor: pointer;
+}
+
+#sheet .fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+#sheet .fold > summary small {
+  color: var(--muted);
+}
+
+#sheet .fold-ic {
+  font-size: 14px;
+}
+
+#sheet .fold-ar {
+  margin-left: auto;
+  font-style: normal;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+#sheet .fold[open] .fold-ar {
+  transform: rotate(90deg);
+}
+
+#sheet .fold .list.card {
+  border: none;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#sheet .list.card + .fold {
+  margin-top: calc(var(--s2) - var(--s3));
+}
+
+/* ---------- a building's main service ---------- */
+
+#sheet .hero {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4) var(--s5) var(--s4) var(--s4);
+}
+
+#sheet .hero-ic {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--sunken);
+  font-size: 36px;
+}
+
+#sheet .hero-m {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#sheet .hero-m > b {
+  font: 20px var(--f-title);
+  font-weight: normal;
+}
+
+#sheet .hero-act {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+#sheet .hero-act .btn {
+  height: 40px;
+  min-width: 112px;
+  font-size: 14px;
+}
+
+#sheet .why {
+  color: var(--ink-2);
+  font-size: var(--fs-meta);
+}
+
+/* ---------- the bank ---------- */
+
+#sheet .vault {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  overflow: hidden;
+}
+
+#sheet .vault-l {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4) var(--s5);
+}
+
+#sheet .vault-pig {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  font-size: 38px;
+}
+
+#sheet .vault-m {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#sheet .vault-m small {
+  color: var(--muted);
+  font-size: var(--fs-meta);
+}
+
+#sheet .hero-n {
+  font: var(--fs-hero) / 1.1 var(--f-title);
+  font-weight: normal;
+  color: var(--coin);
+  letter-spacing: 0.5px;
+}
+
+#sheet .vault-m .next {
+  color: var(--ink-2);
+  font-size: var(--fs-meta);
+}
+
+#sheet .vault-r {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  background: var(--sunken);
+  border-left: 1px solid var(--line);
+}
+
+#sheet .amt {
+  display: grid;
+  grid-template-columns: 36px repeat(4, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+#sheet .amt > span {
+  color: var(--ink-2);
+  font-size: var(--fs-meta);
+}
+
+#sheet .amt .btn {
+  height: 30px;
+  padding: 0;
+  font-size: var(--fs-meta);
+}
+
+#sheet .amt .btn:disabled {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* ---------- small square tiles: at home ---------- */
+
+#sheet .tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--s3);
+}
+
+#sheet .tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--s3) var(--s2) 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--sh-card);
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.15s;
+}
+
+#sheet .tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sh-lift);
+}
+
+#sheet .tile-ic {
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+#sheet .tile > b {
+  font: 14px var(--f-title);
+  font-weight: normal;
+}
+
+#sheet .tile small {
+  color: var(--muted);
+  font-size: var(--fs-cap);
+}
+
+#sheet .tile.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+#sheet .tile:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ---------- home and study ---------- */
+
+#sheet .dollhouse {
+  width: min(100%, 560px);
+  margin: 0 auto;
+}
+
+#sheet .wardrobe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+#sheet .wear-btn {
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+#sheet .wear-btn.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+#sheet .furn-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--s2);
+}
+
+#sheet .furn {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+}
+
+#sheet .furn .row-m > b {
+  font-size: 14px;
+}
+
+#sheet .furn.idle {
+  opacity: 0.45;
+}
+
+/* ---------- the school ---------- */
+
+#sheet .path {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: calc(var(--s3) - var(--s5));
+}
+
+#sheet .stage {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px var(--s2);
+  border: none;
+  border-radius: var(--r-btn);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+#sheet .stage:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+#sheet .stage .n {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-2);
+  font-size: var(--fs-meta);
+  white-space: nowrap;
+}
+
+#sheet .stage .s {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--fs-cap);
+}
+
+#sheet .stage.done .n,
+#sheet .stage.done .s {
+  color: var(--ok);
+}
+
+#sheet .stage.on {
+  background: var(--surface);
+  box-shadow: var(--sh-card), inset 0 0 0 1.5px var(--accent);
+}
+
+#sheet .stage.on .n {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+#sheet .stage.young {
+  opacity: 0.5;
+}
+
+#sheet .majors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: calc(var(--s3) - var(--s5));
+}
+
+#sheet .mj {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink-2);
+  font: var(--fs-meta) var(--f-body);
+  cursor: pointer;
+}
+
+#sheet .mj.started {
+  border-color: var(--line-2);
+}
+
+#sheet .mj.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+#sheet .two {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: var(--s3);
+  align-items: start;
+}
+
+#sheet .clist {
+  display: flex;
+  flex-direction: column;
+  padding: var(--s1) 0;
+  overflow: hidden;
+}
+
+#sheet .crow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 var(--s3);
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: 14px var(--f-body);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+#sheet .crow:hover {
+  background: var(--page);
+}
+
+#sheet .crow-ic {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--sunken);
+  font-size: 16px;
+}
+
+#sheet .crow > b {
+  flex: 1;
+  min-width: 0;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#sheet .crow .stt {
+  color: var(--muted);
+  font-size: var(--fs-cap);
+  white-space: nowrap;
+}
+
+#sheet .crow.done > b,
+#sheet .crow.done .crow-ic {
+  opacity: 0.55;
+}
+
+#sheet .crow.ready .stt {
+  color: var(--ink-2);
+  font-weight: 700;
+}
+
+#sheet .crow.ready .stt,
+#sheet .crow.studying .stt {
+  color: var(--accent-ink);
+}
+
+#sheet .crow.locked .crow-ic,
+#sheet .crow.locked > b {
+  opacity: 0.5;
+}
+
+#sheet .crow.sel {
+  background: var(--accent-soft);
+}
+
+#sheet .crow.sel > b {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+#sheet .clist .sub {
+  margin-top: var(--s1);
+  padding: 6px var(--s3) 2px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-cap);
+}
+
+#sheet .detail {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+}
+
+#sheet .d-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+#sheet .d-top .hero-ic {
+  width: 60px;
+  height: 60px;
+  font-size: 34px;
+}
+
+#sheet .d-top > div > b {
+  display: block;
+  margin-bottom: 4px;
+  font: 20px var(--f-title);
+  font-weight: normal;
+}
+
+#sheet .pips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#sheet .pips i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--sunken);
+  color: var(--muted);
+  font: 700 10px var(--f-body);
+  font-style: normal;
+}
+
+#sheet .pips i.on {
+  background: var(--ok);
+  color: #fff;
+}
+
+#sheet .pips i.next {
+  background: #fff;
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+#sheet .pips i.open {
+  background: #fff;
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+#sheet .pips i.later {
+  opacity: 0.6;
+}
+
+#sheet .pips small {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: var(--fs-cap);
+}
+
+#sheet .links {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  align-items: center;
+  gap: 6px var(--s2);
+  font-size: var(--fs-meta);
+}
+
+#sheet .links > span {
+  color: var(--muted);
+}
+
+#sheet .links > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#sheet .lk {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 var(--s2);
+  border: none;
+  border-radius: var(--r-chip);
+  background: var(--sunken);
+  color: var(--ink-2);
+  font: var(--fs-meta) var(--f-body);
+  cursor: pointer;
+}
+
+#sheet span.lk {
+  cursor: default;
+}
+
+#sheet .lk:hover {
+  filter: brightness(0.97);
+}
+
+#sheet .lk.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+#sheet .lk.need {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+#sheet .d-act {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: 2px;
+}
+
+#sheet .d-act .btn {
+  height: 38px;
+  min-width: 140px;
+  font-size: 14px;
+}
+
+/* ---------- games ---------- */
+
+#sheet .play-day {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  margin-bottom: calc(var(--s3) - var(--s5));
+}
+
+#sheet .play-day .bar {
+  flex: 0 1 240px;
+}
+
+#sheet .play-day .bar i {
+  background: var(--coin-hue);
+}
+
+#sheet .play-day > b {
+  font-size: var(--fs-meta);
+}
+
+#sheet .play-day .why {
+  margin-left: auto;
+}
+
+#sheet .game-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--s3);
+}
+
+#sheet .game-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--s5) var(--s3) var(--s4);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.15s;
+}
+
+#sheet .game-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sh-lift);
+}
+
+#sheet .game-card:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
+
+#sheet .game-ic {
+  font-size: 36px;
+  line-height: 1.2;
+}
+
+#sheet .game-card > b {
+  font: var(--fs-name) var(--f-title);
+  font-weight: normal;
+}
+
+#sheet .game-area {
+  flex: 1;
+}
+
+/* ---------- city hall ---------- */
+
+#sheet .namecard {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+}
+
+#sheet .namecard .lbl {
+  font: var(--fs-name) var(--f-title);
+}
+
+#sheet .namecard input {
+  flex: 1;
+  height: var(--h-btn);
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-btn);
+  background: var(--page);
+  color: var(--ink);
+  font: var(--fs-body) var(--f-body);
+  outline: none;
+}
+
+#sheet .namecard input:focus {
+  border-color: var(--accent);
+  background: #fff;
+}
+
+/* ---------- settings ---------- */
+
+#sheet .set-row {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#sheet .set-row:hover {
+  background: var(--page);
+}
+
+#sheet .sw {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--line-2);
+  transition: background 0.15s;
+}
+
+#sheet .sw::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: left 0.15s;
+}
+
+#sheet .sw.on {
+  background: var(--accent);
+}
+
+#sheet .sw.on::after {
+  left: 21px;
+}
+
+/* ---------- empty pages ---------- */
+
+#sheet .sheet-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s6) 0;
+  color: var(--muted);
+}
+
+#sheet .sheet-empty .empty-ic {
+  font-size: 40px;
+  opacity: 0.6;
+}
+
+
+#sheet .npc-main .nm {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+#sheet .perk {
+  color: var(--muted);
+  font-size: var(--fs-cap);
+  white-space: nowrap;
+}
+
+#sheet .perk.on {
+  color: var(--ink-2);
+}
+
+#sheet .fold-icons {
+  margin-left: var(--s2);
+  font-size: 14px;
+  letter-spacing: 2px;
+  opacity: 0.6;
+}
+
+#sheet .row-m .t .chip.where {
+  height: 18px;
+  cursor: pointer;
+}
+
+#sheet .row-m .t .chip.where:hover {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+#sheet .row-v small.mood.up {
+  color: var(--ok);
+}
+
+#sheet .row-v small.mood.down {
+  color: var(--warn);
+}
+
+#sheet .vault-m .next .chip {
+  height: 18px;
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+
+#sheet .npc-main .nm > b {
+  white-space: nowrap;
+}
+
+/* on the neighbours' page the hearts go under the name */
+#sheet .npc-row .npc-main .nm {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+#sheet .npc-row .hbar i {
+  width: 90px;
+}
+
+#sheet .dollhouse {
+  width: min(100%, 500px);
+}
+
+/* ---------- the garden: one raised bed and a seed tray ---------- */
+
+#sheet .garden {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s4);
+}
+
+#sheet .bed {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: min(100%, 600px);
+  padding: 14px;
+  border-radius: 18px;
+  box-sizing: border-box;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 60px),
+    linear-gradient(#c99260, #a7703f);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset 0 -4px 0 rgba(0, 0, 0, 0.15), var(--sh-card);
+}
+
+#sheet .sq {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 5 / 4;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0 3px, transparent 3px 15px),
+    radial-gradient(circle at 30% 30%, #8a5d3c, #694328);
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  font: inherit;
+}
+
+/* planting: only the chosen seed's button shows, faintly until pointed at */
+#sheet .sq-plant {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  border: none;
+  background: transparent;
+  font-size: 30px;
+  opacity: 0.22;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+#sheet .sq-plant:hover {
+  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#sheet .sq .plant {
+  line-height: 1;
+  filter: drop-shadow(0 2px 1px rgba(40, 20, 10, 0.35));
+}
+
+#sheet .sq.is-sprout .plant {
+  font-size: 28px;
+}
+
+#sheet .sq.is-leafy .plant {
+  font-size: 44px;
+}
+
+/* just sown: a few seeds in the soil */
+#sheet .seedling {
+  display: block;
+  width: 8px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f1d39a;
+  box-shadow: -16px 5px 0 #f1d39a, 15px 3px 0 #f1d39a;
+}
+
+#sheet .sq.grow small {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: var(--fs-cap);
+}
+
+#sheet .sq .bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 8px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+#sheet .sq .bar i {
+  background: #8ce99a;
+}
+
+#sheet .sq.ripe {
+  cursor: pointer;
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.3), inset 0 0 0 3px rgba(255, 224, 102, 0.9), 0 0 14px rgba(255, 212, 59, 0.55);
+}
+
+#sheet .sq.ripe .crop {
+  font-size: 54px;
+  line-height: 1;
+  filter: drop-shadow(0 3px 2px rgba(40, 20, 10, 0.35));
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+#sheet .tray-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: min(100%, 600px);
+}
+
+#sheet .tray {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 60px;
+  padding: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--sh-card);
+  box-sizing: border-box;
+}
+
+#sheet .seed {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 54px;
+  padding: 4px 0 2px;
+  border-radius: var(--r-btn);
+  background: var(--sunken);
+  cursor: pointer;
+}
+
+#sheet .seed input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#sheet .seed:has(input:checked) {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+#sheet .seed span {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+#sheet .seed small {
+  color: var(--ink-2);
+  font-size: var(--fs-cap);
+}
+
+#sheet .tray-row > .btn {
+  height: 44px;
+  min-width: 100px;
+}
+
+#sheet .stage .bar {
+  align-self: stretch;
+  width: 100%;
+}
+
+/* ---------- friends: where they are, birthdays, favourites; the keeper out; who's in ---------- */
+
+/* what they wish for: a thought bubble with the thing in it, like the one over their head in town */
+#sheet .npc-wish {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 28px;
+  margin: 0 4px 6px 0;
+  padding: 0;
+  border: none;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1.5px var(--line-2);
+  font-size: 15px;
+  line-height: 1;
+}
+
+#sheet .npc-wish::before,
+#sheet .npc-wish::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 1.5px var(--line-2);
+}
+
+#sheet .npc-wish::before {
+  left: 3px;
+  bottom: -5px;
+  width: 7px;
+  height: 7px;
+}
+
+#sheet .npc-wish::after {
+  left: -2px;
+  bottom: -10px;
+  width: 4px;
+  height: 4px;
+}
+
+/* in the bag: it can be given right here */
+#sheet .npc-wish.have {
+  background: var(--coin-soft);
+  box-shadow: 0 0 0 2px var(--coin-hue), 0 0 8px rgba(250, 176, 5, 0.45);
+  cursor: pointer;
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+#sheet .npc-wish.have::before,
+#sheet .npc-wish.have::after {
+  background: var(--coin-soft);
+  box-shadow: 0 0 0 1.5px var(--coin-hue);
+}
+
+/* where they are: a map pin */
+#sheet .npc-pin {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0 4px 4px;
+  padding: 0;
+  border: none;
+  border-radius: 50% 50% 50% 0;
+  background: var(--accent);
+  box-shadow: var(--sh-btn);
+  transform: rotate(-45deg);
+  cursor: pointer;
+}
+
+#sheet .npc-pin span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 13px;
+  line-height: 1;
+  transform: rotate(45deg);
+}
+
+#sheet .npc-pin:hover {
+  background: var(--accent-ink);
+}
+
+#sheet .npc-card.keeper.out .npc-av {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+#sheet .npc-card.keeper.out .nm > b {
+  color: var(--muted);
+}
+
+#sheet .npc-card.keeper .npc-pin {
+  width: 26px;
+  height: 26px;
+}
+
+#sheet .npc-card.keeper .npc-pin span {
+  width: 19px;
+  height: 19px;
+  font-size: 11px;
+}
+
+#sheet .npc-acts {
+  align-items: center;
+}
+
+#sheet .npc-bday {
+  font-size: 14px;
+  line-height: 1;
+}
+
+#sheet .npc-favs {
+  display: flex;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+#sheet .npc-row .npc-acts {
+  flex-shrink: 0;
+}
+
+#sheet .npc-list.friends {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* others inside: their faces on the banner */
+#sheet .bnr-here {
+  display: flex;
+  flex-shrink: 0;
+  margin-right: var(--s1);
+}
+
+#sheet .here-av {
+  width: 38px;
+  height: 38px;
+  margin-left: -8px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--sunken);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#sheet .here-av:first-child {
+  margin-left: 0;
+}
+
+#sheet .here-av:hover {
+  position: relative;
+  transform: translateY(-2px);
+}
+
+#sheet .here-av svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* a game against a neighbour */
+#sheet .bnr.duel {
+  gap: var(--s3);
+}
+
+#sheet .duel-av {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fff;
+  overflow: hidden;
+}
+
+#sheet .duel-av svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#sheet .bnr.duel .bnr-t small {
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+}
+
+#sheet .duel-game {
+  flex-shrink: 0;
+  color: var(--ink-2);
+  font-size: var(--fs-meta);
+  white-space: nowrap;
+}
+
+/* ---------- the barn and the flats ---------- */
+
+.sell-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.card.goods.none .goods-ic {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+
+.apt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.apt-row + .apt-row {
+  margin-top: 8px;
+}
+
+.apt-floor {
+  flex: none;
+  width: 44px;
+  padding: 6px 0;
+  border-radius: 8px;
+  background: #e7f5ff;
+  box-shadow: inset 0 -3px 0 #a5d8ff;
+  color: #1c7ed6;
+  font: bold 13px/1 var(--f-body);
+  text-align: center;
+}
+
+.apt-row .npc-row {
+  flex: 1;
+  margin: 0;
+}
+
+/* ---------- the photo album: polaroids ---------- */
+#sheet .album {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 18px 16px;
+  padding: 4px 2px 10px;
+}
+
+#sheet .photo {
+  margin: 0;
+  padding: 10px 10px 8px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(120, 70, 90, 0.16);
+  transform: rotate(-1.2deg);
+}
+
+#sheet .photo:nth-child(2n) {
+  transform: rotate(1.4deg);
+}
+
+#sheet .photo:nth-child(3n) {
+  transform: rotate(-0.4deg);
+}
+
+#sheet .ph-pic {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 3px;
+  overflow: hidden;
+  background: linear-gradient(var(--sky) 0 62%, var(--ground) 62% 100%);
+}
+
+#sheet .ph-back {
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  transform: translateX(-50%);
+  font-size: 54px;
+  line-height: 1;
+  opacity: 0.95;
+}
+
+#sheet .ph-deco {
+  position: absolute;
+  left: 10%;
+  top: 10%;
+  font-size: 20px;
+  line-height: 1;
+}
+
+#sheet .ph-pig {
+  position: absolute;
+  left: 8%;
+  bottom: 2%;
+  width: 46%;
+}
+
+#sheet .ph-npc {
+  position: absolute;
+  right: 6%;
+  bottom: 2%;
+  width: 40%;
+}
+
+#sheet .ph-npc.small {
+  width: 32%;
+}
+
+#sheet .ph-pig svg,
+#sheet .ph-npc svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#sheet .photo figcaption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 2px 0;
+}
+
+#sheet .photo figcaption b {
+  font: 15px var(--f-title);
+  color: var(--ink);
+}
+
+#sheet .photo figcaption small {
+  flex-shrink: 0;
+  color: var(--ink-3);
+}

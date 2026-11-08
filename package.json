@@ -13,7 +13,7 @@
     "content": "node scripts/build-content.js"
   },
   "piggy": {
-    "shellApi": 2
+    "shellApi": 3
   },
   "build": {
     "appId": "com.laubok.piggy",

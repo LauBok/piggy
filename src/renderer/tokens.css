@@ -1,0 +1,98 @@
+/* The shared design tokens of both windows (the pet and the town). Every other stylesheet uses these. */
+:root {
+  /* text */
+  --ink: #4a2c38; /* titles and main text */
+  --ink-2: #7a5f6b; /* body and secondary text */
+  --muted: #a8939b; /* captions, hints, disabled */
+
+  /* surfaces */
+  --page: #fff6f9; /* a sheet's flat background */
+  --surface: #ffffff; /* cards */
+  --sunken: #fdf0f4; /* icon plates, progress tracks, disabled buttons */
+  --line: #f5dfe7; /* hairlines */
+  --line-2: #eccfda; /* stronger dividers */
+  --scrim: rgba(74, 44, 56, 0.28);
+
+  /* the accent: one per screen */
+  --accent: #f06b95;
+  --accent-hi: #f58bab;
+  --accent-soft: #ffe6ee;
+  --accent-ink: #c8426e; /* pink text on white or accent-soft */
+
+  /* meanings */
+  --coin: #c46a00;
+  --coin-soft: #fff4dc;
+  --coin-hue: #f59f00; /* the coin itself, stars */
+  --ok: #2b9a5e;
+  --ok-soft: #e5f6ec;
+  --warn: #c0392b;
+  --warn-soft: #fdecea;
+  --pig: #8e6cf0; /* the pig as the other player in games */
+  --pig-soft: #f1ecff;
+
+  /* the five stats: a dot, a thin bar or an icon, never a chip background */
+  --st-hunger: #fd7e14;
+  --st-clean: #339af0;
+  --st-energy: #37b24d;
+  --st-health: #f03e3e;
+  --st-mood: #e64980;
+  --st-track: #f3e9ed;
+
+  /* type */
+  --f-title: 'PigTitle', 'PigRound', 'Microsoft YaHei UI', sans-serif;
+  --f-body: 'PigRound', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
+  --fs-cap: 11px;
+  --fs-meta: 12px;
+  --fs-body: 13px;
+  --fs-name: 15px;
+  --fs-sec: 17px;
+  --fs-title: 22px;
+  --fs-hero: 30px;
+
+  /* spacing, 4pt */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+
+  /* radius */
+  --r-chip: 8px;
+  --r-btn: 12px;
+  --r-card: 16px;
+  --r-sheet: 20px;
+  --r-pill: 999px;
+
+  /* elevation */
+  --sh-card: 0 1px 2px rgba(140, 60, 90, 0.06), 0 2px 8px rgba(240, 107, 149, 0.06);
+  --sh-lift: 0 4px 14px rgba(240, 107, 149, 0.18);
+  --sh-btn: 0 2px 6px rgba(240, 107, 149, 0.28);
+  --sh-float: 0 6px 18px rgba(74, 44, 56, 0.22), 0 0 0 1px rgba(255, 173, 198, 0.7); /* over the desktop */
+
+  /* controls */
+  --h-btn: 32px;
+  --h-btn-sm: 26px;
+  --h-row: 60px;
+  --hit: 34px;
+
+  /* older names, kept so existing rules keep working */
+  --pink: var(--accent);
+  --pink-2: var(--accent-hi);
+  --pink-soft: var(--accent-soft);
+  --pink-line: var(--line);
+  --card: var(--surface);
+  --grad: linear-gradient(180deg, var(--accent-hi), var(--accent));
+}
+
+/* drawn icons on buttons (ICON in rules.js), where the game fonts have no such character */
+.ic {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.125em;
+}

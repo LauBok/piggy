@@ -90,6 +90,8 @@ const ROAD_DEFS = [
   { stone: true, pts: [[1250, 2050], [2440, 2050]] },
   { stone: true, pts: [[1250, 2370], [2440, 2370]] },
   { stone: true, pts: [[2440, 2370], [2910, 2400]] },
+  // on to the theme park's gate
+  { pts: [[2910, 2400], [3120, 2470], [3360, 2500]] },
 ];
 const ROADS = ROAD_DEFS.map((r) => ({ ...r, line: r.stone ? r.pts : smoothLine(r.pts) }));
 
@@ -98,7 +100,7 @@ const ROADS = ROAD_DEFS.map((r) => ({ ...r, line: r.stone ? r.pts : smoothLine(r
 const PLACES = [
   // the hills
   { id: 'truffle', name: '松露林', icon: '🍄', kind: 'forest', x: 90, y: 60, w: 680, h: 300, sheet: 'jobs' },
-  { id: 'spring', name: '泥浴温泉', icon: '♨️', kind: 'spring', x: 1560, y: 110, w: 360, h: 210, sheet: 'jobs' },
+  { id: 'spring', name: '泥浴温泉', icon: '♨️', kind: 'spring', x: 1560, y: 110, w: 360, h: 210, sheet: 'spring' },
   { id: 'site', name: '工地', icon: '🏗️', kind: 'site', x: 2600, y: 470, w: 440, h: 260, sheet: 'jobs' },
 
   // school district: spaced out along a tree-lined walk
@@ -112,13 +114,13 @@ const PLACES = [
     look: { body: '#dbe4ff', roof: 'dome', roofColor: '#91a7ff', win: [1, 3] } },
 
   // downtown: packed close together
-  { id: 'tower', name: '任务大楼', icon: '🏢', kind: 'building', x: 1300, y: 990, w: 180, h: 230, sheet: 'tower',
+  { id: 'tower', name: '职业介绍所', icon: '🏢', kind: 'building', x: 1300, y: 990, w: 180, h: 230, sheet: 'tower',
     look: { body: '#c5f6fa', roof: 'flat', roofColor: '#66d9e8', win: [5, 3], extra: 'antenna' } },
   { id: 'office', name: '写字楼', icon: '🏙️', kind: 'building', x: 1500, y: 1000, w: 170, h: 220, sheet: 'jobs',
     look: { body: '#e7f5ff', roof: 'flat', roofColor: '#74c0fc', win: [5, 3] } },
   { id: 'cityhall', name: '市政厅', icon: '🏛️', kind: 'building', x: 1730, y: 1030, w: 340, h: 190, sheet: 'cityhall',
     look: { body: '#fff9db', roof: 'dome', roofColor: '#ffd43b', win: [1, 4], extra: 'columns' } },
-  { id: 'bank', name: '存钱罐银行', icon: '🐷', kind: 'building', x: 2130, y: 1060, w: 210, h: 160, sheet: 'jobs',
+  { id: 'bank', name: '存钱罐银行', icon: '🐷', kind: 'building', x: 2130, y: 1060, w: 210, h: 160, sheet: 'bank',
     look: { body: '#fff0f6', roof: 'pediment', roofColor: '#f783ac', win: [1, 3], extra: 'columns' } },
   { id: 'supermarket', name: '超市', icon: '🛒', kind: 'building', x: 1290, y: 1280, w: 180, h: 190, sheet: 'shop',
     look: { body: '#e7f5ff', roof: 'flat', roofColor: '#1c7ed6', awning: ['#fa5252', '#fff'], win: [1, 3], extra: ['carts'] } },
@@ -141,7 +143,7 @@ const PLACES = [
     look: { body: '#f4ece4', roof: 'flat', roofColor: '#a9805b', awning: ['#94d82d', '#fff'], win: [1, 4], extra: ['warehouse', 'sofaout'] } },
 
   // pig village
-  { id: 'home', name: '猪猪的家', icon: '🏠', kind: 'home', x: 260, y: 1120, w: 210, h: 180, sheet: 'home' },
+  { id: 'home', name: '小猪的家', icon: '🏠', kind: 'home', x: 260, y: 1120, w: 210, h: 180, sheet: 'home' },
   { id: 'kinder', name: '幼儿园', icon: '🧸', kind: 'building', x: 700, y: 1530, w: 170, h: 150, sheet: 'jobs',
     look: { body: '#fff3bf', roof: 'gable', roofColor: '#ffa94d', win: [1, 2], extra: 'balloons' } },
   { id: 'farm', name: '农牧市场', icon: '🧺', kind: 'building', x: 620, y: 1150, w: 210, h: 140, sheet: 'shop',
@@ -165,22 +167,36 @@ const PLACES = [
     look: { body: '#fff5f5', roof: 'gable', roofColor: '#e03131', awning: ['#e03131', '#fff'], win: [1, 3], extra: 'lantern' } },
   { id: 'artschool', name: '艺术培训', icon: '🎼', kind: 'building', x: 1720, y: 2180, w: 180, h: 150, sheet: 'jobs',
     look: { body: '#f8f0fc', roof: 'gable', roofColor: '#9775fa', win: [2, 2], extra: 'note' } },
-  { id: 'salon', name: '美容院', icon: '💇', kind: 'building', x: 1915, y: 2185, w: 180, h: 145, sheet: 'salon',
+  { id: 'salon', name: '理发店', icon: '💇', kind: 'building', x: 1915, y: 2185, w: 180, h: 145, sheet: 'salon',
     look: { body: '#f8f0fc', roof: 'gable', roofColor: '#f06595', awning: ['#f06595', '#fff'], win: [1, 2] } },
+  { id: 'beauty', name: '美容店', icon: '💅', kind: 'building', x: 2140, y: 1855, w: 170, h: 145, sheet: 'beauty',
+    look: { body: '#e6fcf5', roof: 'dome', roofColor: '#20c997', awning: ['#20c997', '#fff'], win: [1, 2] } },
   { id: 'courier', name: '快递站', icon: '📦', kind: 'building', x: 2120, y: 2190, w: 220, h: 140, sheet: 'jobs',
     look: { body: '#fff3bf', roof: 'flat', roofColor: '#f59f00', win: [1, 2], extra: 'garage' } },
+
+  // in town: books, a film, a cup of something; the flats where four neighbours live
+  { id: 'bookstore', name: '书店', icon: '📚', kind: 'building', x: 1490, y: 1300, w: 170, h: 170, sheet: 'shop',
+    look: { body: '#fff4e6', roof: 'gable', roofColor: '#94d82d', awning: ['#2f9e44', '#fff'], win: [1, 2] } },
+  { id: 'cinema', name: '电影院', icon: '🎬', kind: 'building', x: 1730, y: 1540, w: 220, h: 160, sheet: 'cinema',
+    look: { body: '#f3f0ff', roof: 'flat', roofColor: '#7048e8', win: [1, 3] } },
+  { id: 'cafe', name: '咖啡馆', icon: '☕', kind: 'building', x: 1962, y: 1580, w: 118, h: 120, sheet: 'shop',
+    look: { body: '#f8f0e3', roof: 'gable', roofColor: '#a9805b', awning: ['#a9805b', '#fff'], win: [1, 2] } },
+  { id: 'apt', name: '公寓', icon: '🏢', kind: 'building', x: 2140, y: 1520, w: 150, h: 190, sheet: 'apt',
+    look: { body: '#e7f5ff', roof: 'flat', roofColor: '#339af0', win: [4, 2] } },
+  // in the village: the barn buys the vegetable patch's harvest
+  { id: 'barn', name: '谷仓', icon: '🌾', kind: 'barn', x: 640, y: 560, w: 200, h: 180, sheet: 'barn' },
+  // past the furniture warehouse: the theme park, its gate at the bottom
+  { id: 'funpark', name: '游乐园', icon: '🎡', kind: 'funpark', x: 3150, y: 2030, w: 420, h: 440, sheet: 'funpark' },
 ];
 const PLACE_BY_ID = Object.fromEntries(PLACES.map((p) => [p.id, p]));
 
-// Buildings that are just part of town (you can't go in), to fill the streets and the countryside
+// Other buildings: the windmill, just part of the countryside, and the homes the pig can visit
 const DECOS = [
-  { name: '书店', icon: '📚', x: 1490, y: 1300, w: 170, h: 170, look: { body: '#fff4e6', roof: 'gable', roofColor: '#94d82d', awning: ['#2f9e44', '#fff'], win: [1, 2] } },
-  { name: '电影院', icon: '🎬', x: 1730, y: 1540, w: 220, h: 160, look: { body: '#f3f0ff', roof: 'flat', roofColor: '#7048e8', win: [1, 3] } },
-  { name: '咖啡馆', icon: '☕', x: 1962, y: 1580, w: 118, h: 120, look: { body: '#f8f0e3', roof: 'gable', roofColor: '#a9805b', awning: ['#a9805b', '#fff'], win: [1, 2] } },
-  { name: '公寓', icon: '🏢', x: 2140, y: 1520, w: 150, h: 190, look: { body: '#e7f5ff', roof: 'flat', roofColor: '#339af0', win: [4, 2] } },
-  { name: '谷仓', icon: '🌾', kind: 'barn', x: 640, y: 560, w: 200, h: 180 },
   { name: '风车', icon: '🌀', kind: 'windmill', x: 900, y: 1000, w: 120, h: 220 },
-  { name: '牧场小屋', icon: '🐄', kind: 'cottage', x: 620, y: 2130, w: 160, h: 140 },
+  // three keepers' homes, which the pig can visit (home: whose)
+  { name: '牧场小屋', icon: '🐄', kind: 'ranchhouse', home: 'cow', x: 620, y: 2130, w: 160, h: 140 },
+  { name: '木工房', icon: '🪚', kind: 'woodshop', home: 'bear', x: 2770, y: 1950, w: 150, h: 130 },
+  { name: '龟壳屋', icon: '🐢', kind: 'shellhouse', home: 'turtle', x: 2770, y: 1392, w: 130, h: 110 },
 ];
 
 // Farm fields and the ranch's pasture in the village: fenced, the pig walks round them
@@ -199,7 +215,7 @@ const COTTAGE_H = 130;
 const PLACE_EXTRAS = {
   bakery: ['chimney', 'breadwin'], toy: ['teddy', 'balloons'], clothes: ['mannequin'], restaurant: ['lantern', 'chimney'],
   canteen: ['chimney'], clinic: ['cross', 'ambulance'], courier: ['garage', 'truck'], artschool: ['note', 'keys'],
-  office: ['glass'], tower: ['antenna', 'helipad', 'glass'], salon: ['pole'],
+  office: ['glass'], tower: ['antenna', 'helipad', 'glass'], salon: ['pole'], beauty: ['vanity'],
 };
 
 for (const p of PLACES) {
@@ -214,6 +230,16 @@ HN.houses = COTTAGES.map(([dx, dy]) => ({ x: HN.x + dx + COTTAGE_W / 2, y: HN.y 
 HN.door = { x: HN.houses[2].x, y: HN.houses[2].y - 18 };
 HN.entry = HN.houses[2];
 
+// The homes the pig can visit: whose, the house's door, and where he stands to knock
+const HOMES = {};
+COTTAGES.forEach(([dx, dy], i) => {
+  const door = { x: HN.x + dx + COTTAGE_W / 2, y: HN.y + dy + COTTAGE_H };
+  HOMES[NPCS.find((n) => n.spot === i).id] = { door, entry: { x: door.x, y: door.y + 18 }, h: COTTAGE_H };
+});
+for (const d of DECOS) {
+  if (d.home) HOMES[d.home] = { door: { x: d.x + d.w / 2, y: d.y + d.h }, entry: { x: d.x + d.w / 2, y: d.y + d.h + 18 }, h: d.h };
+}
+
 // A point next to a place: its door moved by (dx, dy)
 const near = (id, dx = 0, dy = 0) => ({ x: PLACE_BY_ID[id].door.x + dx, y: PLACE_BY_ID[id].door.y + dy });
 
@@ -223,6 +249,8 @@ const DONATION_SPOTS = {
   statue: near('plaza', 100, -70),
   ferris: { x: 3260, y: 1900 },
   bridge: near('lake', 0, -130),
+  park: { x: 3010, y: 1820 },
+  rocket: { x: 3470, y: 1500 },
 };
 
 // ---------- what blocks walking ----------
@@ -234,7 +262,7 @@ const BLOCKERS = (() => {
   const rects = [];
   const ellipses = [];
   for (const p of PLACES) {
-    if (['building', 'home', 'pavilion', 'stage', 'garden'].includes(p.kind)) rects.push([p.x, p.y, p.x + p.w, p.y + p.h - 4]);
+    if (['building', 'home', 'pavilion', 'stage', 'garden', 'barn', 'funpark'].includes(p.kind)) rects.push([p.x, p.y, p.x + p.w, p.y + p.h - 4]);
     if (p.kind === 'lake') ellipses.push({ cx: p.x + p.w / 2, cy: p.y + p.h / 2 + 6, rx: p.w / 2, ry: p.h / 2 - 6 });
     if (p.kind === 'spring') ellipses.push({ cx: p.x + p.w / 2, cy: p.y + p.h - 70, rx: p.w / 2 - 10, ry: 56 });
   }
@@ -439,6 +467,13 @@ const JOB_SCENES = {
   professor: { place: 'college', tpl: 'room', room: 'lecture' },
   surgeon: { place: 'clinic', tpl: 'room', room: 'ward' },
   scientist: { place: 'museum', tpl: 'room', room: 'rocket' },
+  judge: { place: 'cityhall', tpl: 'room', room: 'court' },
+  justice: { place: 'cityhall', tpl: 'room', room: 'court' },
+  bridgeeng: { place: 'site', tpl: 'stand', spot: near('site', -30, -24), hold: '📐', fx: ['🌉', '💡'] },
+  planner: { place: 'cityhall', tpl: 'stand', spot: near('cityhall', 40, 20), hold: '🗺️', fx: ['📐', '💡'] },
+  principal: { place: 'primary', tpl: 'room', room: 'lecture' },
+  specialist: { place: 'clinic', tpl: 'room', room: 'ward' },
+  governor: { place: 'bank', tpl: 'room', room: 'fund' },
 };
 
 // A delivery round's full route: from the depot through every stop, along open ground.
@@ -458,7 +493,39 @@ for (const sc of Object.values(JOB_SCENES)) {
 // Which school building teaches a stage
 const STAGE_PLACE = { primary: 'primary', middle: 'middle', high: 'middle', college: 'college', master: 'college', phd: 'college' };
 
+// soaking in the middle of the hot spring, steam rising
+const SOAK_SCENE = { tpl: 'stand', spot: near('spring', 0, -62), pose: 'soaking', fx: ['♨️', '😌', '💤'] };
+
 const SOCCER_SCENE = { tpl: 'patrol', a: near('field', -80, -70), b: near('field', 80, -70), hold: '⚽', fx: ['⚽', '💨'] };
+
+// Things done outdoors with a friend: where the pig stands, and (mate) where the friend stands
+// beside him, as an offset, with what they hold
+const OUTDOOR_SCENES = {
+  ducks: { place: 'lake', scene: { tpl: 'stand', spot: { x: 2944, y: 1384 }, hold: '🍞', fx: ['🦆', '🍞', '💕'] } },
+  kite: { place: 'field', scene: { tpl: 'stand', spot: { x: 2616, y: 1722 }, hold: '🪁', fx: ['🪁', '💨', '😄'] } },
+  stars: { place: 'museum', scene: { tpl: 'stand', spot: { x: 2272, y: 730 }, hold: '🔭', fx: ['⭐', '🌙', '✨'] } },
+  garden: { place: 'garden', scene: { tpl: 'stand', spot: { x: 128, y: 1302 }, pose: 'dig', hold: '🌱', fx: ['💦', '🌱'] } },
+  // fireworks, watched from outside the theme park's gate; the festivals in the square or by the lake
+  fireworks: { place: 'funpark', scene: { tpl: 'stand', spot: { x: 3290, y: 2512 }, fx: ['🎆', '🎇', '✨'] } },
+  newyear: { place: 'plaza', scene: { tpl: 'stand', spot: { x: 1860, y: 1446 }, hold: '🧧', fx: ['🧧', '🎊', '🏮'] } },
+  lantern: { place: 'plaza', scene: { tpl: 'stand', spot: { x: 1830, y: 1452 }, hold: '🏮', fx: ['🏮', '❓', '💡'] } },
+  dragon: { place: 'lake', scene: { tpl: 'stand', spot: { x: 3230, y: 1384 }, fx: ['🐉', '🥁', '💦'] } },
+  moon: { place: 'lake', scene: { tpl: 'stand', spot: { x: 2990, y: 1396 }, hold: '🥮', fx: ['🌕', '✨', '🥮'] } },
+  xmas: { place: 'plaza', scene: { tpl: 'stand', spot: { x: 1840, y: 1452 }, fx: ['🎄', '⭐', '🎁'] } },
+};
+const OUTING_MATES = {
+  soak: { dx: 54, dy: 2, act: 'soak' }, soccer: { dx: 200, dy: 6 }, ducks: { dx: -44, dy: 2, hold: '🍞' }, kite: { dx: 62, dy: 6, hold: '🪁' },
+  stars: { dx: 62, dy: 2 }, garden: { dx: 52, dy: 4, hold: '💦' },
+  fireworks: { dx: 56, dy: 2 }, newyear: { dx: 56, dy: 2, hold: '🍡' }, lantern: { dx: 56, dy: 2, hold: '🏮' }, dragon: { dx: -52, dy: 2 },
+  moon: { dx: 56, dy: 2, hold: '🥮' }, xmas: { dx: 56, dy: 2 },
+};
+
+// The theme park's rides, seen through a cut-away bubble over each ride (at: where its tail points)
+const RIDE_SCENES = {
+  ferris: { tpl: 'room', room: 'ferris', at: { x: 3265, y: 2040 } },
+  carousel: { tpl: 'room', room: 'carousel', at: { x: 3465, y: 2110 } },
+  haunted: { tpl: 'room', room: 'haunted', at: { x: 3235, y: 2330 } },
+};
 
 // Where the pig is for what it's doing: { place, scene }, or no place when it's free to roam
 function sceneOf(snap) {
@@ -470,6 +537,12 @@ function sceneOf(snap) {
     case 'work':
       return { place: JOB_SCENES[a.id].place, scene: JOB_SCENES[a.id] };
     case 'help':
+      if (a.id === 'soak') return { place: 'spring', scene: SOAK_SCENE };
+      if (a.id === 'movie') return { place: 'cinema', scene: { tpl: 'room', room: 'cinema' } };
+      if (a.id === 'cafe') return { place: 'cafe', scene: { tpl: 'room', room: 'cafe' } };
+      if (a.id === 'read') return { place: 'bookstore', scene: { tpl: 'room', room: 'books' } };
+      if (RIDE_SCENES[a.id]) return { place: 'funpark', scene: RIDE_SCENES[a.id] };
+      if (OUTDOOR_SCENES[a.id]) return OUTDOOR_SCENES[a.id];
       return a.id === 'meal'
         ? { place: 'canteen', scene: { tpl: 'room', room: 'canteen' } }
         : { place: 'clinic', scene: { tpl: 'room', room: 'clinic' } };
@@ -491,28 +564,104 @@ const STAT_PLACE = { hunger: 'supermarket', clean: 'bubble', energy: 'home', hea
 // The old pages of the home window (tray menu, right-click), as places
 const TAB_TO_PLACE = { status: null, bag: 'bag', shop: 'supermarket', school: 'primary', work: 'tower', games: 'chess', more: 'settings' };
 
-// What passers-by and the farm animals say when you right-click them
+// What passers-by and the farm animals say when you click them. The passers are visitors to
+// town, of kinds no neighbour is, so nobody takes one for a friend: a hello, nothing more.
 const PASSER_LINES = {
-  cat: ['今天天气真好~', '我去买小鱼干🐟', '喵？', '你也来逛街呀'],
-  rabbit: ['胡萝卜打折啦🥕', '跳跳跳~', '小猪你好呀', '我在找兔婆婆'],
-  bear: ['哪里有蜂蜜卖🍯', '嗷~好困', '散步真舒服', '要去公园吗？'],
-  duck: ['嘎嘎！', '去湖边游泳咯🦆', '嘎…好像迷路了', '你见过嘎嘎大厨吗？'],
-  dog: ['汪！一起跑步吗', '我在找骨头🦴', '今天也加油！', '汪汪~'],
-  sheep: ['咩~好热', '刚剪了毛，凉快！', '咩咩~你好', '诊所在那边哦'],
+  chick: ['叽叽！小猪你好！', '叽？你也出来散步呀？', '我在找小虫子，你看见了吗？', '叽叽叽，走得我腿都酸了。'],
+  alpaca: ['嗯？你好。', '今天的风好舒服啊。', '别怕，我不吐口水的。', '我从山那边来，走了好久。'],
+  penguin: ['好热好热……你好呀！', '摇摇摆摆，摇摇摆摆~', '你们这儿没有冰吗？', '我是来旅游的🐧'],
+  frog: ['呱！你好！', '呱呱，是不是要下雨了？', '我刚从湖边跳过来的。', '呱……别踩到我哦。'],
   '🐄': ['哞~', '哞——今天的草真香', '哞？'],
   '🐑': ['咩~', '咩咩咩', '要摸摸我的毛吗？'],
   '🐐': ['咩咩！', '我什么都能吃！'],
   '🐔': ['咯咯哒🥚', '咯咯？', '下了个蛋！'],
 };
 
+// ---------- where the neighbours are ----------
+// Spots in town that aren't places to go into, for the neighbours' days (NPC_DAYS): a name and
+// icon for the friends page, the door they go in and out of (and the pig walks to, to find
+// them), and where they stand there.
+const NPC_PLACES = {
+  meadow: { name: '草地', icon: '🌼', door: { x: 2960, y: 1560 }, spots: [[2950, 1556], [2994, 1566], [2900, 1520], [3040, 1540]] },
+  park: { name: '中央公园', icon: '🌳', door: { x: 2650, y: 1200 } },
+  tree: { name: '大树', icon: '🌳', door: { x: 2706, y: 1430 } },
+  boat: { name: '小船屋', icon: '⛵', door: { x: 3332, y: 1236 } },
+  shell: { name: '龟壳屋', icon: '🐢', door: HOMES.turtle.entry },
+  woodshop: { name: '木工房', icon: '🪚', door: HOMES.bear.entry },
+  ranch: { name: '牧场', icon: '🐄', door: { x: 700, y: 2288 }, spots: [[532, 2210], [532, 2320]] },
+};
+// the cottages next door: each neighbour's own, with room for a visitor or two
+HN.houses.forEach((h, i) => {
+  const owner = NPCS.find((n) => n.spot === i);
+  NPC_PLACES[`cottage${i}`] = { name: `${owner.name}家`, icon: '🏡', door: h, spots: [[h.x + 44, h.y - 6], [h.x - 40, h.y - 4], [h.x + 84, h.y + 4]] };
+});
+
+// Where someone stands at a place, by what they're doing (_: anything else there). Keepers at
+// work stand by their door; anyone inside is out of sight, at the door.
+const NPC_SPOTS = {
+  plaza: {
+    rest: [[1766, 1490], [1800, 1490], [2004, 1490], [2038, 1490]],
+    taichi: [[1840, 1352], [1880, 1346]],
+    hop: [[1966, 1440]],
+    play: [[1972, 1426], [2014, 1430]],
+    fountain: [[1948, 1362], [1986, 1370]],
+  },
+  lake: {
+    ducks: [[2992, 1378], [3030, 1382]],
+    wash: [[3164, 1374]],
+    rest: [[3108, 1386], [3146, 1384]],
+    swim: [[3030, 1326], [3070, 1300]],
+  },
+  chess: { chess: [[2612, 980]] },
+  // the raccoon won't go into the crowded café: she sits at its door
+  cafe: { rest: [[1990, 1722], [2054, 1724]] },
+  field: { ball: [[2604, 1746], [2690, 1748]], kite: [[2566, 1700]], rest: [[2528, 1806]] },
+  museum: { stars: [[2346, 722]] },
+  kinder: { class: [[742, 1702]] },
+  site: { site: [[2742, 692]] },
+  garden: { garden: [[206, 1300]] },
+  spring: { soak: [[1690, 334]] },
+};
+// Ones who walk about while they're at it: back and forth along these (and how fast, px a second)
+const NPC_LOOPS = {
+  'park:run': { pts: [[2440, 1240], [2650, 1200], [2760, 980], [3100, 900], [3450, 980]], speed: 70 },
+  'lake:walk': { pts: [[2884, 1332], [2960, 1374], [3080, 1388], [3200, 1374], [3290, 1324]], speed: 18 },
+  'primary:patrol': { pts: [[1330, 786], [1500, 772], [1660, 764]], speed: 22 },
+};
+// how fast each one walks across town, px a second
+const NPC_SPEED = { turtle: 16, rabbit: 46, _: 38 };
+// what they hold or do while at it
+const NPC_HOLD = { kite: '🪁', ducks: '🍞', stars: '🔭', wash: '🧸', swim: '💦', pine: '🌰', ball: '⚽', site: '🔨', flowers: '🌷', soak: '♨️', rest: '', cafe: '☕' };
+// the little faces that pop up between two who are there together
+const NPC_PAIR_FX = { chess: ['♟️', '🤔', '😄'], play: ['😄', '🎈'], visit: ['😊', '🍪', '🍵'], porch: ['😊', '🍵'], rest: ['😊', '💬'], kite: ['🪁', '😄'], _: ['😊'] };
+
+// The place nearest a point (where a photo was taken): the one whose ground it's on or closest to
+function nearestPlace({ x, y }) {
+  let best = PLACES[0];
+  let bd = Infinity;
+  for (const p of PLACES) {
+    const d = Math.hypot(Math.max(p.x - x, 0, x - p.x - p.w), Math.max(p.y - y, 0, y - p.y - p.h));
+    if (d < bd) [best, bd] = [p, d];
+  }
+  return best.id;
+}
+
+// A place's name and icon, and where to walk to find someone there
+function npcPlace(where) {
+  const p = PLACE_BY_ID[where];
+  if (p) return { name: p.name, icon: p.icon, door: p.entry };
+  return NPC_PLACES[where];
+}
+
 // One line under each place's name on its screen
 const PLACE_TAGLINES = {
   truffle: '树下的泥土里藏着香喷喷的松露', spring: '泡一泡，烦恼全跑光', site: '新城区正在盖楼',
   primary: '一起读书写字吧', middle: '初中和高中都在这里', college: '学士、硕士、博士', museum: '星星、火箭和恐龙骨头',
-  tower: '城里所有的活儿都在这儿接', office: '敲键盘的声音从不停', cityhall: '户口、学历和捐建', bank: '每一枚金币都有家',
+  tower: '城里所有的活儿都在这儿接', office: '敲键盘的声音从不停', cityhall: '猪猪城的大小事都归这儿管', bank: '存进来，每天都有利息',
   supermarket: '吃的用的，一站买齐', plaza: '喷泉边总有人在唱歌', artpalace: '音乐会和画展', canteen: '免费的热饭，管饱',
   clinic: '绵绵医生在等你', chess: '龟爷爷总在等人下棋', stage: '今晚有演出', lake: '鸭子们在游泳', field: '来踢一场！',
-  home: '最舒服的地方', kinder: '小朋友们在做游戏', farm: '刚从地里摘的，新鲜！', garden: '种点什么吧',
+  home: '最舒服的地方', kinder: '小朋友们在做游戏', farm: '刚从地里摘的，新鲜！', garden: '自家种的最好吃',
   neighbors: '邻居们的小房子', bakery: '每天清晨新鲜出炉', bubble: '香香的泡泡', toy: '新玩具到货啦', clothes: '今天穿什么好呢',
-  furniture: '把家布置得漂漂亮亮', salon: '换个新造型吧', store: '缺什么都可以来看看', restaurant: '热腾腾的饭菜', artschool: '学琴、学画画', courier: '包裹送到家门口',
+  furniture: '把家布置得漂漂亮亮', salon: '剪个新发型吧', beauty: '换一身新毛色', store: '缺什么都可以来看看', restaurant: '热腾腾的饭菜', artschool: '学琴、学画画', courier: '包裹送到家门口',
+  bookstore: '一本好书，能看一整个下午', cinema: '灯一关，故事就开始了', cafe: '靠窗的位子最舒服', apt: '楼里住着四户人家', barn: '菜园收的菜、湖里钓的鱼，这里都收',
 };

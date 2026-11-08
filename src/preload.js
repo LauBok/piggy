@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('pet', {
   loadSave: () => ipcRenderer.invoke('save:load'),
   writeSave: (data) => ipcRenderer.sendSync('save:write', data),
+  keepPig: (data) => ipcRenderer.sendSync('pigs:keep', data),
+  listPigs: () => ipcRenderer.invoke('pigs:list'),
+  takePig: (id) => ipcRenderer.sendSync('pigs:take', id),
   getBounds: () => ipcRenderer.invoke('win:getBounds'),
   workArea: () => ipcRenderer.invoke('screen:workArea'),
   cursor: () => ipcRenderer.invoke('screen:cursor'),

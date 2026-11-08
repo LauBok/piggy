@@ -20,18 +20,37 @@ function seeded(seed) {
   };
 }
 
-const emo = (x, y, size, ch, extra = '') =>
-  `<text x="${x}" y="${y}" font-size="${size}" text-anchor="middle" dominant-baseline="central" ${extra}>${ch}</text>`;
+// An emoji drawn as text (class e: the emoji font; other text in the town uses the game font)
+const emo = (x, y, size, ch, extra = '') => {
+  // a class in extra joins e instead of being a second class attribute
+  const cls = (extra.match(/class="([^"]*)"/) || [, ''])[1];
+  const rest = extra.replace(/class="[^"]*"/, '');
+  return `<text class="e ${cls}" x="${x}" y="${y}" font-size="${size}" text-anchor="middle" dominant-baseline="central" ${rest}>${ch}</text>`;
+};
 
 // ---------- scenery ----------
 
+// The town's season while it's drawn (seasonOf, by the real date): the trees' colours and the
+// snow on the ground follow it
+let TOWN_SEASON = seasonOf();
+const TREE_COLORS = {
+  spring: [['#8ce99a', '#69db7c'], ['#fcc2d7', '#faa2c1'], ['#96f2d7', '#63e6be'], ['#ffc9c9', '#ffa8a8']],
+  summer: [['#8ce99a', '#69db7c'], ['#a9e34b', '#94d82d'], ['#96f2d7', '#63e6be'], ['#ffc9c9', '#ffa8a8']],
+  autumn: [['#ffc078', '#ffa94d'], ['#ffd43b', '#fcc419'], ['#ff8787', '#ff6b6b'], ['#ffa94d', '#ff922b']],
+  winter: [['#e9ecef', '#ced4da'], ['#d0ebff', '#a5d8ff'], ['#e9ecef', '#dee2e6'], ['#f1f3f5', '#dee2e6']],
+};
+
 function treeSvg(x, y, k = 1, kind = 0) {
-  const greens = [['#8ce99a', '#69db7c'], ['#a9e34b', '#94d82d'], ['#96f2d7', '#63e6be'], ['#ffc9c9', '#ffa8a8']][kind % 4];
+  const greens = TREE_COLORS[TOWN_SEASON][kind % 4];
+  // spring blossom, snow on top in winter
+  const top = { spring: '#fff0f6', winter: '#fff' }[TOWN_SEASON];
   return `<g class="tree"><ellipse cx="${x}" cy="${y}" rx="${14 * k}" ry="${4 * k}" fill="rgba(60,90,40,.13)"/>
     <rect x="${x - 3 * k}" y="${y - 16 * k}" width="${6 * k}" height="${16 * k}" rx="${2 * k}" fill="#c08a5b"/>
     <circle cx="${x}" cy="${y - 28 * k}" r="${16 * k}" fill="${greens[0]}"/>
     <circle cx="${x - 9 * k}" cy="${y - 20 * k}" r="${10 * k}" fill="${greens[1]}"/>
     <circle cx="${x + 9 * k}" cy="${y - 21 * k}" r="${11 * k}" fill="${greens[0]}"/>
+    ${top === '#fff' ? `<path d="M${x - 15 * k} ${y - 30 * k} a${15 * k} ${14 * k} 0 0 1 ${30 * k} 0 q${-7 * k} ${4 * k} ${-15 * k} 0 q${-8 * k} ${4 * k} ${-15 * k} 0 Z" fill="#fff"/>` : ''}
+    ${top === '#fff0f6' ? [[-7, -30], [6, -34], [8, -22], [-10, -19], [0, -24]].map(([dx, dy]) => `<circle cx="${x + dx * k}" cy="${y + dy * k}" r="${2.4 * k}" fill="#fff0f6"/>`).join('') : ''}
     <circle cx="${x - 5 * k}" cy="${y - 33 * k}" r="${4 * k}" fill="#fff" opacity=".35"/></g>`;
 }
 
@@ -40,8 +59,16 @@ const flower = (x, y, c) => `<g><circle cx="${x}" cy="${y}" r="3.2" fill="${c}"/
 const bush = (x, y, k = 1) => `<g><circle cx="${x - 8 * k}" cy="${y - 6 * k}" r="${8 * k}" fill="#8ce99a"/>
   <circle cx="${x + 6 * k}" cy="${y - 7 * k}" r="${9 * k}" fill="#69db7c"/><circle cx="${x}" cy="${y - 12 * k}" r="${7 * k}" fill="#8ce99a"/></g>`;
 
-const lampPost = (x, y) => `<g><rect x="${x - 1.5}" y="${y - 34}" width="3" height="34" fill="#868e96"/>
+// What lights up after dark, noted while the town is drawn: every window ([x, y, w, h]), every
+// lamp's bulb ([x, y]), and the pig's own house's windows (redrawn when he moves); see
+// City.drawLights
+const CITY_LIGHTS = { windows: [], lamps: [], home: [] };
+
+const lampPost = (x, y) => {
+  CITY_LIGHTS.lamps.push([x, y - 36]);
+  return `<g><rect x="${x - 1.5}" y="${y - 34}" width="3" height="34" fill="#868e96"/>
   <circle cx="${x}" cy="${y - 36}" r="5" fill="#fff3bf" stroke="#adb5bd" stroke-width="1.5"/></g>`;
+};
 
 const bench = (x, y) => `<g><rect x="${x - 14}" y="${y - 10}" width="28" height="5" rx="2" fill="#c08a5b"/>
   <rect x="${x - 14}" y="${y - 17}" width="28" height="4" rx="2" fill="#d9a066"/>
@@ -66,8 +93,8 @@ function doorPaths() {
     return best;
   };
   const doors = [
-    ...PLACES.filter((p) => ['building', 'home', 'pavilion', 'stage'].includes(p.kind)).map((p) => p.door),
-    ...PLACE_BY_ID.neighbors.houses.map((h) => ({ x: h.x, y: h.y - 18 })),
+    ...PLACES.filter((p) => ['building', 'home', 'pavilion', 'stage', 'barn', 'funpark'].includes(p.kind)).map((p) => p.door),
+    ...Object.values(HOMES).map((h) => h.door),
   ];
   // in town the paving already reaches every door
   const paved = (d) => DISTRICTS.some((r) => ['stone', 'brick'].includes(r.ground) && d.x > r.rect[0] && d.x < r.rect[2] && d.y > r.rect[1] && d.y < r.rect[3]);
@@ -304,6 +331,8 @@ function decoSvg(d) {
       <g class="blades" style="transform-origin:${cx}px ${y + 66}px">${[0, 90, 180, 270].map((a) => `<rect x="${cx - 7}" y="${y - 6}" width="14" height="72" rx="3" fill="#fff" stroke="#c9a77c" stroke-width="2" transform="rotate(${a} ${cx} ${y + 66})"/>`).join('')}</g>
       <circle cx="${cx}" cy="${y + 66}" r="7" fill="#8c6239"/>`;
   }
+  const homeArt = { ranchhouse: ranchHouseSvg, woodshop: woodshopSvg, shellhouse: shellHouseSvg }[d.kind];
+  if (homeArt) return homeArt(x, y, w, h);
   return cottage(x, y, w, h, '#fff4e6', '#c08a5b');
 }
 
@@ -463,8 +492,11 @@ function facade(p) {
   const doorH = Math.min(34, bh * 0.38);
   const winBottom = y + h - 10;
   const [rows, cols] = L.win;
-  const win = (wx, wy, ww, wh) => `<rect x="${wx}" y="${wy}" width="${ww}" height="${wh}" rx="4" fill="#e7f5ff" stroke="${line}" stroke-width="1.2"/>
+  const win = (wx, wy, ww, wh) => {
+    CITY_LIGHTS.windows.push([wx, wy, ww, wh]);
+    return `<rect x="${wx}" y="${wy}" width="${ww}" height="${wh}" rx="4" fill="#e7f5ff" stroke="${line}" stroke-width="1.2"/>
     <path d="M${wx + 4} ${wy + wh - 4} L${wx + ww - 6} ${wy + 4}" stroke="#fff" stroke-width="2.4" opacity=".9" stroke-linecap="round"/>`;
+  };
   // between columns, if any: the three gaps, the middle one has the door
   const colX = [].concat(L.extra || []).includes('columns') ? [0, 1, 2].map((i) => x + 10 + (i + 0.5) * ((w - 20) / 3)) : null;
   const xs = (n) => colX || [...Array(n)].map((_, c) => x + 12 + ((w - 24) / n) * (c + 0.5));
@@ -513,7 +545,7 @@ function facade(p) {
         svg += `<path d="M${cx + 30} ${y} V${y - 22}" stroke="#868e96" stroke-width="2"/><circle cx="${cx + 30}" cy="${y - 24}" r="3" fill="#ff6b6b" class="blink-light"/>`;
         break;
       case 'helipad':
-        svg += `<circle cx="${x + 40}" cy="${y + roofH / 2 - 2}" r="12" fill="#fff" stroke="#fab005" stroke-width="2"/>${emo(x + 40, y + roofH / 2 - 1, 12, 'H', 'fill="#fab005" font-weight="bold"')}`;
+        svg += `<circle cx="${x + 40}" cy="${y + roofH / 2 - 2}" r="12" fill="#fff" stroke="#fab005" stroke-width="2"/><text x="${x + 40}" y="${y + roofH / 2 - 1}" font-size="12" font-weight="bold" fill="#fab005" text-anchor="middle" dominant-baseline="central">H</text>`;
         break;
       case 'glass':
         svg += `<path d="M${x + 8} ${ground - 30} L${x + w * 0.55} ${by + 6} L${x + w * 0.7} ${by + 6} L${x + 22} ${ground - 30} Z" fill="#fff" opacity=".22"/>`;
@@ -542,6 +574,10 @@ function facade(p) {
         svg += `<rect x="${cx + dw / 2 + 8}" y="${ground - 50}" width="12" height="44" rx="6" fill="#fff" stroke="${line}"/>
           <g class="pole-stripes" clip-path="inset(0)">${[0, 1, 2, 3].map((i) => `<path d="M${cx + dw / 2 + 8} ${ground - 46 + i * 11} l12 -8" stroke="#fa5252" stroke-width="4"/>`).join('')}</g>
           <circle cx="${cx + dw / 2 + 14}" cy="${ground - 52}" r="5" fill="#ffd43b"/>`;
+        break;
+      case 'vanity':
+        // bottles of fur dye in the windows
+        svg += emo(x + 30, ground - 26, 16, '🧴') + emo(x + w - 30, ground - 26, 16, '🎨');
         break;
       case 'chimney':
         svg += `<rect x="${x + w - 46}" y="${y - 14}" width="16" height="26" fill="#c9a77c" stroke="${darker('#c9a77c')}"/>
@@ -698,13 +734,303 @@ const PLACE_ART = {
     svg += fence(p.x - 8, p.y - 4, p.w + 16, p.h + 8, [p.x + p.w / 2 - 22, p.x + p.w / 2 + 22]);
     return svg + `<g id="gardenCrops"></g>`;
   },
-  houses(p) {
-    let svg = '';
-    const colors = [['#ffe3e3', '#ff8787'], ['#e3fafc', '#3bc9db'], ['#fff3bf', '#fab005']];
-    COTTAGES.forEach(([dx, dy], i) => (svg += cottage(p.x + dx, p.y + dy, COTTAGE_W, COTTAGE_H, colors[i][0], colors[i][1])));
+  // the red barn, its big doors open
+  barn: (p) => decoSvg({ ...p, kind: 'barn' }),
+  // the theme park: a striped fence round it with the gate at the front; the ferris wheel and the
+  // carousel at the back, the haunted house, the sweet stall and the bumper cars at the front
+  funpark(p) {
+    const { x, y, w, h } = p;
+    const cx = x + w / 2;
+    const base = y + h;
+    let svg = `<rect x="${x}" y="${y + 16}" width="${w}" height="${h - 16}" rx="26" fill="#fff4e6"/>
+      <path d="M${cx} ${base} V${y + 296} M${x + 40} ${y + 292} H${x + w - 40}" stroke="#ffe3c2" stroke-width="28" stroke-linecap="round" fill="none"/>`;
+    // the ferris wheel
+    const fx = x + 115;
+    const fy = y + 134;
+    const r = 90;
+    const cabins = ['#ff8787', '#ffd43b', '#74c0fc', '#b197fc', '#69db7c', '#ffa94d'];
+    svg += `<path d="M${fx - 50} ${y + 282} L${fx} ${fy} L${fx + 50} ${y + 282} M${fx - 30} ${y + 230} H${fx + 30}" stroke="#adb5bd" stroke-width="7" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+      <g class="wheel-spin" style="transform-origin:${fx}px ${fy}px">
+        <circle cx="${fx}" cy="${fy}" r="${r}" fill="none" stroke="#f783ac" stroke-width="6"/><circle cx="${fx}" cy="${fy}" r="${r * 0.55}" fill="none" stroke="#fcc2d7" stroke-width="3"/>
+        ${[...Array(12)].map((_, i) => {
+    const a = (i / 12) * Math.PI * 2;
+    const [ex, ey] = [fx + Math.cos(a) * r, fy + Math.sin(a) * r];
+    return `<path d="M${fx} ${fy} L${ex} ${ey}" stroke="#fcc2d7" stroke-width="2.5"/><circle cx="${ex}" cy="${ey}" r="12" fill="${cabins[i % cabins.length]}" stroke="#fff" stroke-width="3"/>`;
+  }).join('')}</g>
+      <circle cx="${fx}" cy="${fy}" r="10" fill="#e64980" stroke="#fff" stroke-width="3"/>`;
+    // the carousel: a striped tent roof on poles, horses going up and down
+    const ox = x + 318;
+    const top = y + 70;
+    const rim = y + 140;
+    const stripes = [...Array(8)].map((_, i) => {
+      const a = ox - 84 + i * 21;
+      return `<path d="M${ox} ${top} L${a} ${rim} L${a + 21} ${rim} Z" fill="${i % 2 ? '#fff' : '#ff6b6b'}"/>`;
+    }).join('');
+    svg += `<ellipse cx="${ox}" cy="${y + 236}" rx="90" ry="18" fill="#f08c00"/><ellipse cx="${ox}" cy="${y + 230}" rx="90" ry="18" fill="#ffd43b"/>
+      ${[-58, -20, 20, 58].map((dx) => `<rect x="${ox + dx - 2.5}" y="${rim}" width="5" height="${y + 230 - rim}" fill="#fab005"/>`).join('')}
+      ${[-58, -20, 20, 58].map((dx, i) => `<g class="bob" style="animation-delay:${-i * 0.5}s">${emo(ox + dx, y + 196 - (i % 2) * 14, 30, '🎠')}</g>`).join('')}
+      ${stripes}<path d="M${ox - 84} ${rim} H${ox + 84}" stroke="#e03131" stroke-width="3"/>
+      ${[...Array(8)].map((_, i) => `<circle cx="${ox - 74 + i * 21}" cy="${rim + 3}" r="8" fill="${i % 2 ? '#fff' : '#ff6b6b'}" stroke="#e03131" stroke-width="1.5"/>`).join('')}
+      <path d="M${ox} ${top} V${top - 24}" stroke="#868e96" stroke-width="2.5"/><path d="M${ox} ${top - 24} l18 6 -18 6 Z" fill="#ffd43b"/>`;
+    for (let i = 0; i < 8; i++) CITY_LIGHTS.lamps.push([ox - 74 + i * 21, rim + 3]);
+    // the haunted house: crooked purple, a little tower, a friendly ghost at the window
+    const hx = x + 28;
+    const hy = y + 316;
+    const hw = 124;
+    const hb = y + 412;
+    svg += `${houseShadow(hx, hy, hw, hb - hy, hy + 20)}
+      <path d="M${hx} ${hb} V${hy + 34} L${hx + hw / 2} ${hy - 6} L${hx + hw} ${hy + 34} V${hb} Z" fill="#9775fa" stroke="#6741d9" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M${hx - 8} ${hy + 38} L${hx + hw / 2} ${hy - 10} L${hx + hw + 8} ${hy + 38}" fill="none" stroke="#5f3dc4" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M${hx + hw - 34} ${hy + 10} V${hy - 30} H${hx + hw - 12} V${hy + 26}" fill="#845ef7" stroke="#6741d9" stroke-width="2"/>
+      <path d="M${hx + hw - 40} ${hy - 28} L${hx + hw - 23} ${hy - 56} L${hx + hw - 6} ${hy - 28} Z" fill="#5f3dc4"/>
+      <path d="M${hx + hw / 2 - 16} ${hb} V${hb - 30} a16 16 0 0 1 32 0 V${hb} Z" fill="#3b2a6b"/>
+      <path d="M${hx + 4} ${hy + 40} q14 4 18 18 M${hx + 4} ${hy + 50} q8 2 10 10 M${hx + 4} ${hy + 40} l14 14" stroke="#e5dbff" stroke-width="1.2" fill="none"/>`;
+    for (const [wx, wy] of [[hx + 16, hy + 50], [hx + hw - 40, hy + 50]]) {
+      svg += `<rect x="${wx}" y="${wy}" width="24" height="22" rx="4" fill="#3b2a6b" stroke="#6741d9" stroke-width="2"/>`;
+      CITY_LIGHTS.windows.push([wx + 2, wy + 2, 20, 18]);
+    }
+    svg += `<g class="bob">${emo(hx + hw - 23, hy - 4, 22, '👻')}</g>${emo(hx + 28, hy + 61, 14, '👻', 'opacity=".85"')}`;
+    // the sweet stall by the path
+    const sx = x + 182;
+    const sy = y + 228;
+    svg += `<rect x="${sx}" y="${sy + 18}" width="40" height="34" rx="3" fill="#fff" stroke="#e64980" stroke-width="2"/>
+      ${[0, 1, 2, 3].map((i) => `<path d="M${sx - 4 + i * 12} ${sy + 18} h12 l-2 -14 h-10 Z" fill="${i % 2 ? '#fff' : '#f783ac'}" stroke="#e64980" stroke-width="1"/>`).join('')}
+      ${emo(sx + 10, sy - 6, 16, '🍭')}${emo(sx + 30, sy - 8, 16, '🍦')}${emo(sx + 20, sy + 34, 14, '🍿')}`;
+    // the bumper cars: a fenced floor, little round cars
+    const ax = x + 284;
+    const ay = y + 318;
+    svg += `<rect x="${ax}" y="${ay}" width="118" height="88" rx="14" fill="#495057" stroke="#fab005" stroke-width="5" stroke-dasharray="12 8"/>
+      ${[[ax + 30, ay + 30, '#ff6b6b'], [ax + 80, ay + 46, '#4dabf7'], [ax + 46, ay + 66, '#ffd43b']].map(([bx, by, c]) => `<ellipse cx="${bx}" cy="${by + 4}" rx="17" ry="11" fill="#212529" opacity=".5"/>
+        <ellipse cx="${bx}" cy="${by}" rx="17" ry="11" fill="${c}" stroke="#fff" stroke-width="2.5"/><rect x="${bx - 1.5}" y="${by - 30}" width="3" height="28" fill="#adb5bd"/>`).join('')}`;
+    // the fence, open at the gate, and the gate itself
+    const gap = 48;
+    svg += `<path d="M${cx - gap} ${base} H${x + 26} Q${x} ${base} ${x} ${base - 26} V${y + 42} Q${x} ${y + 16} ${x + 26} ${y + 16} H${x + w - 26} Q${x + w} ${y + 16} ${x + w} ${y + 42} V${base - 26} Q${x + w} ${base} ${x + w - 26} ${base} H${cx + gap}"
+        fill="none" stroke="#f783ac" stroke-width="6"/>
+      <path d="M${cx - gap} ${base} H${x + 26} Q${x} ${base} ${x} ${base - 26} V${y + 42} Q${x} ${y + 16} ${x + 26} ${y + 16} H${x + w - 26} Q${x + w} ${y + 16} ${x + w} ${y + 42} V${base - 26} Q${x + w} ${base} ${x + w - 26} ${base} H${cx + gap}"
+        fill="none" stroke="#fff" stroke-width="6" stroke-dasharray="10 10"/>`;
+    for (const gx of [cx - gap, cx + gap]) {
+      svg += `<rect x="${gx - 8}" y="${base - 74}" width="16" height="78" rx="4" fill="#f06595" stroke="#c2255c" stroke-width="2"/><circle cx="${gx}" cy="${base - 80}" r="8" fill="#ffd43b" stroke="#f08c00" stroke-width="2"/>`;
+      CITY_LIGHTS.lamps.push([gx, base - 80]);
+    }
+    const nameW = p.name.length * 17 + 30;
+    svg += `<path d="M${cx - gap} ${base - 66} Q${cx} ${base - 104} ${cx + gap} ${base - 66}" fill="none" stroke="#f06595" stroke-width="8"/>
+      <rect x="${cx - nameW / 2}" y="${base - 108}" width="${nameW}" height="26" rx="8" fill="#fff8e7" stroke="#c2255c" stroke-width="2"/>
+      <text class="boardtext" x="${cx}" y="${base - 94.5}">${p.name}</text>
+      ${[[-1, '#ff8787'], [1, '#74c0fc']].map(([s, c]) => `<path d="M${cx + s * (gap + 6)} ${base - 82} q${s * 6} -18 ${s * 2} -36" stroke="#adb5bd" fill="none"/><ellipse cx="${cx + s * (gap + 8)}" cy="${base - 126}" rx="9" ry="11" fill="${c}" class="bob"/>`).join('')}`;
     return svg;
   },
+  // the neighbours' three houses, each its owner's own: the rabbit's burrow, the panda's bamboo
+  // hut, the hedgehog's stump. Each is something to click: walking up to its door to visit.
+  houses(p) {
+    const art = [burrowSvg, bambooHutSvg, stumpSvg];
+    return COTTAGES.map(([dx, dy], i) => `<g class="visit" data-home="${NPCS.find((n) => n.spot === i).id}">${art[i](p.x + dx, p.y + dy, COTTAGE_W, COTTAGE_H)}</g>`).join('');
+  },
 };
+
+// ---------- homes to visit ----------
+// Each drawn in the box (x, y, w, h), the door at the middle of the bottom edge, a shadow falling
+// to the right like every other building's
+
+const houseShadow = (x, y, w, h, top) => `<path d="M${x + w - 4} ${top} L${x + w + 16} ${top + 14} L${x + w + 16} ${y + h + 8} L${x + 12} ${y + h + 8} L${x} ${y + h} Z" fill="rgba(70,50,40,.13)"/>`;
+
+// The rabbit's burrow: a grassy mound with a low round door between two carrot posts, two round
+// skylights on top like eyes
+function burrowSvg(x, y, w, h) {
+  const cx = x + w / 2;
+  const b = y + h;
+  const top = y + 22;
+  let s = `<ellipse cx="${cx + 10}" cy="${b + 3}" rx="${w / 2 + 6}" ry="9" fill="rgba(70,50,40,.13)"/>
+    <path d="M${x + 2} ${b} C${x + 2} ${top + 10} ${x + 30} ${top} ${cx} ${top} C${x + w - 30} ${top} ${x + w - 2} ${top + 10} ${x + w - 2} ${b} Z" fill="#a9d97a" stroke="#74b04a" stroke-width="2"/>
+    <path d="M${x + 22} ${top + 30} C${x + 34} ${top + 12} ${cx - 10} ${top + 6} ${cx + 8} ${top + 6}" stroke="#d3f0ae" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8"/>
+    <path d="M${x + 14} ${b - 16} C${x + 40} ${b - 26} ${x + w - 40} ${b - 26} ${x + w - 14} ${b - 16} L${x + w - 6} ${b} L${x + 6} ${b} Z" fill="#c99a6b" stroke="#a37446" stroke-width="1.5"/>`;
+  // grass tufts and a few flowers on the mound
+  for (const [dx, dy] of [[-48, 40], [-20, 26], [30, 30], [52, 52], [-58, 70], [8, 54]]) s += `<path d="M${cx + dx - 4} ${top + dy} q2 -7 4 0 q2 -6 4 0" stroke="#74b04a" stroke-width="1.6" fill="none"/>`;
+  for (const [dx, dy, c] of [[-34, 58, '#ff8fab'], [44, 66, '#fff3bf'], [16, 18, '#ffd43b']]) s += `<circle cx="${cx + dx}" cy="${top + dy}" r="3" fill="${c}" stroke="#fff" stroke-width="1"/>`;
+  // the skylights
+  for (const k of [-1, 1]) {
+    CITY_LIGHTS.windows.push([cx + k * 26 - 9.5, top + 14.5, 19, 13]);
+    s += `<ellipse cx="${cx + k * 26}" cy="${top + 22}" rx="12" ry="9" fill="#8a6a4a"/><ellipse cx="${cx + k * 26}" cy="${top + 21}" rx="9.5" ry="6.5" fill="#e7f5ff" stroke="#c4a27e" stroke-width="1.5"/>
+      <path d="M${cx + k * 26 - 4} ${top + 19} l3 -2" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;
+  }
+  // the low round door with stones round it
+  s += `<path d="M${cx - 20} ${b} V${b - 14} a20 20 0 0 1 40 0 V${b} Z" fill="#8a6a4a"/>
+    <path d="M${cx - 15} ${b} V${b - 14} a15 15 0 0 1 30 0 V${b} Z" fill="#e8925a" stroke="#b5683a" stroke-width="1.5"/>
+    <path d="M${cx} ${b - 28} V${b}" stroke="#b5683a" stroke-width="1.2"/><circle cx="${cx + 7}" cy="${b - 12}" r="2" fill="#fff3bf"/>`;
+  for (const [a, r] of [[200, 21], [235, 22], [270, 23], [305, 22], [340, 21]]) {
+    const t = (a * Math.PI) / 180;
+    s += `<ellipse cx="${cx + Math.cos(t) * r}" cy="${b - 14 + Math.sin(t) * r}" rx="5" ry="3.5" fill="#dcd3c6" stroke="#b5aa9a" stroke-width="1"/>`;
+  }
+  // carrot posts either side
+  for (const k of [-1, 1]) {
+    const px = cx + k * 36;
+    s += `<path d="M${px - 6} ${b - 24} L${px + 6} ${b - 24} L${px + 1.5} ${b + 2} L${px - 1.5} ${b + 2} Z" fill="#ff922b" stroke="#e8590c" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M${px - 4} ${b - 17} h4 M${px + 1} ${b - 10} h3" stroke="#e8590c" stroke-width="1.2"/>
+      <path d="M${px} ${b - 24} l-6 -9 M${px} ${b - 24} l0 -11 M${px} ${b - 24} l6 -9" stroke="#51cf66" stroke-width="3" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+
+// The panda's bamboo hut: walls of bamboo poles, a thatched roof ridged with bamboo, a round
+// moon window, a red lantern by the door, a clump of bamboo growing up beside it and a stool
+function bambooHutSvg(x, y, w, h) {
+  const cx = x + w / 2;
+  const b = y + h;
+  const eave = y + 52;
+  let s = houseShadow(x, y, w, h, eave);
+  // the bamboo behind, to the right
+  const stalk = (sx, top, c) => {
+    let t = `<rect x="${sx - 3}" y="${top}" width="6" height="${b - top}" rx="3" fill="${c}" stroke="${darker(c, 0.25)}" stroke-width="1"/>`;
+    for (let yy = top + 16; yy < b - 4; yy += 16) t += `<path d="M${sx - 3} ${yy} h6" stroke="${darker(c, 0.3)}" stroke-width="1.4"/>`;
+    for (const [dy, k] of [[6, 1], [24, -1], [44, 1]]) t += `<path d="M${sx} ${top + dy} q${k * 9} -4 ${k * 16} 2 q${-k * 8} 2 ${-k * 16} -2 Z" fill="#69db7c" stroke="#37b24d" stroke-width="1"/>`;
+    return t;
+  };
+  s += stalk(x + w - 2, y - 6, '#8fd46a') + stalk(x + w + 9, y + 10, '#a3dc7c');
+  // walls: poles side by side
+  const wx = x + 10;
+  const ww = w - 20;
+  s += `<rect x="${wx}" y="${eave - 4}" width="${ww}" height="${b - eave + 4}" fill="#cfe39a" stroke="#93ad5a" stroke-width="1.5"/>`;
+  for (let px = wx + 7; px < wx + ww; px += 9) s += `<path d="M${px} ${eave} V${b}" stroke="#a9c46e" stroke-width="1.6"/>`;
+  for (const yy of [eave + 22, eave + 50]) s += `<path d="M${wx} ${yy} H${wx + ww}" stroke="#8aa356" stroke-width="2.2"/>`;
+  // thatched roof with a bamboo ridge
+  s += `<path d="M${x - 4} ${eave + 2} L${x + 22} ${y + 14} L${x + w - 22} ${y + 14} L${x + w + 4} ${eave + 2} Z" fill="#e2bf74" stroke="#b08a3e" stroke-width="1.8" stroke-linejoin="round"/>`;
+  for (let px = x + 4; px < x + w; px += 8) s += `<path d="M${px} ${eave} L${px + (px - cx) * 0.12} ${y + 20}" stroke="#c9a253" stroke-width="1.3"/>`;
+  s += `<path d="M${x - 4} ${eave + 2} H${x + w + 4}" stroke="#b08a3e" stroke-width="3" stroke-linecap="round"/>
+    <rect x="${x + 16}" y="${y + 8}" width="${w - 32}" height="10" rx="5" fill="#8fd46a" stroke="#5c9e3a" stroke-width="1.5"/>
+    ${[0.25, 0.5, 0.75].map((u) => `<path d="M${x + 16 + (w - 32) * u} ${y + 8} v10" stroke="#5c9e3a" stroke-width="1.2"/>`).join('')}`;
+  // moon window with a lattice
+  const mx = x + 36;
+  const my = eave + 30;
+  CITY_LIGHTS.windows.push([mx - 13, my - 13, 26, 26]);
+  s += `<circle cx="${mx}" cy="${my}" r="16" fill="#fff9db" stroke="#8a6a3a" stroke-width="3"/>
+    <path d="M${mx - 15} ${my} H${mx + 15} M${mx} ${my - 15} V${my + 15} M${mx - 10} ${my - 11} V${my + 11} M${mx + 10} ${my - 11} V${my + 11}" stroke="#8a6a3a" stroke-width="1.4"/>`;
+  // door, lantern, stool
+  const dx = cx + 18;
+  s += `<rect x="${dx - 14}" y="${b - 38}" width="28" height="38" rx="2" fill="#a0673f" stroke="#7a4a2a" stroke-width="1.5"/>
+    <path d="M${dx} ${b - 38} V${b}" stroke="#7a4a2a" stroke-width="1.2"/><circle cx="${dx - 4}" cy="${b - 18}" r="1.6" fill="#ffd43b"/><circle cx="${dx + 4}" cy="${b - 18}" r="1.6" fill="#ffd43b"/>
+    <path d="M${dx + 24} ${eave + 2} V${eave + 10}" stroke="#7a4a2a" stroke-width="1.5"/>
+    <ellipse cx="${dx + 24}" cy="${eave + 19}" rx="8" ry="10" fill="#fa5252" stroke="#c92a2a" stroke-width="1.5"/>
+    <path d="M${dx + 18} ${eave + 13} h12 M${dx + 18} ${eave + 25} h12" stroke="#ffd43b" stroke-width="2"/><path d="M${dx + 24} ${eave + 29} v6" stroke="#ffd43b" stroke-width="1.5"/>
+    <rect x="${x + 2}" y="${b - 12}" width="20" height="5" rx="2" fill="#cfe39a" stroke="#8aa356" stroke-width="1.2"/>
+    <path d="M${x + 5} ${b - 7} V${b + 2} M${x + 19} ${b - 7} V${b + 2}" stroke="#8aa356" stroke-width="2.5"/>`;
+  return s;
+}
+
+// The hedgehog's stump: a big hollow tree stump with a door cut in it, a roof of fallen leaves
+// in reds and yellows, a knot-hole window, flowers round the front and a basket of apples
+function stumpSvg(x, y, w, h) {
+  const cx = x + w / 2;
+  const b = y + h;
+  const sx = x + 14;
+  const sw = w - 28;
+  const top = y + 40;
+  let s = houseShadow(x, y, w, h, top);
+  // the stump: bark sides, roots spreading at the foot
+  s += `<path d="M${sx} ${top} V${b - 6} q-10 4 -16 6 H${sx + sw + 16} q-6 -2 -16 -6 V${top} Z" fill="#a47148" stroke="#7a4f2c" stroke-width="2" stroke-linejoin="round"/>`;
+  for (let px = sx + 10; px < sx + sw - 4; px += 13) s += `<path d="M${px} ${top + 8} q3 ${(b - top) / 2} -1 ${b - top - 14}" stroke="#8a5c36" stroke-width="2" fill="none"/>`;
+  // leaves piled on top for a roof
+  const leaf = (lx, ly, r, c, a) => `<path d="M${lx - r} ${ly} Q${lx} ${ly - r * 1.1} ${lx + r} ${ly} Q${lx} ${ly + r * 0.7} ${lx - r} ${ly} Z" fill="${c}" stroke="${darker(c, 0.25)}" stroke-width="1.2" transform="rotate(${a} ${lx} ${ly})"/>
+    <path d="M${lx - r * 0.8} ${ly} H${lx + r * 0.8}" stroke="${darker(c, 0.3)}" stroke-width="1" transform="rotate(${a} ${lx} ${ly})"/>`;
+  const cols = ['#ff922b', '#fa5252', '#fcc419', '#e8590c', '#ffa94d'];
+  const rows = [[top + 6, 9, 15, -8], [top - 6, 8, 16, 0], [top - 18, 6, 16, 6], [top - 28, 4, 15, -4]];
+  rows.forEach(([ly, n, r, a], j) => {
+    const span = sw + 26 - j * 26;
+    for (let i = 0; i < n; i++) s += leaf(cx - span / 2 + (span * (i + 0.5)) / n, ly + (i % 2) * 3, r, cols[(i * 3 + j) % cols.length], a + (i % 3 - 1) * 14);
+  });
+  // knot-hole window and the arched door
+  CITY_LIGHTS.windows.push([sx + 14, top + 25.5, 16, 13]);
+  s += `<ellipse cx="${sx + 22}" cy="${top + 32}" rx="11" ry="9" fill="#6b4226"/><ellipse cx="${sx + 22}" cy="${top + 32}" rx="8" ry="6.5" fill="#fff3bf" stroke="#c99a6b" stroke-width="1.2"/>
+    <path d="M${cx + 4} ${b - 4} V${b - 30} a14 14 0 0 1 28 0 V${b - 4} Z" fill="#5c3a21"/>
+    <path d="M${cx + 8} ${b - 4} V${b - 29} a10 10 0 0 1 20 0 V${b - 4} Z" fill="#d39a5e" stroke="#9c6a3c" stroke-width="1.5"/>
+    <circle cx="${cx + 24}" cy="${b - 16}" r="1.8" fill="#fff3bf"/>`;
+  // flowers along the front and apples by the door
+  for (const [fx, c] of [[x + 2, '#ff8fab'], [x + 12, '#ffd43b'], [x + 24, '#b197fc'], [x + w - 4, '#ff8fab'], [x + w + 6, '#ffd43b']]) {
+    s += `<path d="M${fx} ${b + 4} V${b - 6}" stroke="#51cf66" stroke-width="1.6"/><circle cx="${fx}" cy="${b - 8}" r="3.6" fill="${c}" stroke="#fff" stroke-width="1"/>`;
+  }
+  s += `<path d="M${cx - 30} ${b - 10} h24 l-3 12 h-18 Z" fill="#d9a066" stroke="#a0673f" stroke-width="1.5"/>
+    ${[[-24, -13], [-16, -14], [-10, -12], [-20, -18]].map(([ax, ay]) => `<circle cx="${cx + ax}" cy="${b + ay}" r="4" fill="#fa5252" stroke="#c92a2a" stroke-width="1"/>`).join('')}`;
+  return s;
+}
+
+// The cow's ranch house: the little farmhouse with milk churns and a bale of hay by the door
+function ranchHouseSvg(x, y, w, h) {
+  const cx = x + w / 2;
+  const b = y + h;
+  let s = cottage(x, y, w, h, '#fff4e6', '#c0503a');
+  for (const k of [0, 1]) {
+    const mx = x + 18 + k * 16;
+    s += `<path d="M${mx - 6} ${b + 4} V${b - 14} q0 -4 3 -6 h6 q3 2 3 6 V${b + 4} Z" fill="#dee2e6" stroke="#868e96" stroke-width="1.5"/>
+      <rect x="${mx - 4}" y="${b - 24}" width="8" height="4" rx="1.5" fill="#ced4da" stroke="#868e96" stroke-width="1.2"/><path d="M${mx - 6} ${b - 4} h12" stroke="#adb5bd" stroke-width="1.5"/>`;
+  }
+  s += `<rect x="${cx + 26}" y="${b - 14}" width="34" height="20" rx="4" fill="#ffd43b" stroke="#e0a800" stroke-width="1.5"/>
+    <path d="M${cx + 30} ${b - 8} h26 M${cx + 30} ${b - 2} h26" stroke="#f0b400" stroke-width="1.2"/><path d="M${cx + 38} ${b - 14} v20 M${cx + 48} ${b - 14} v20" stroke="#c99a2e" stroke-width="1.6"/>`;
+  return s;
+}
+
+// The bear's woodshop: a log cabin, the log ends showing at the corners, planks stacked by the
+// door, a saw hanging on the wall and curls of smoke from the chimney
+function woodshopSvg(x, y, w, h) {
+  const cx = x + w / 2;
+  const b = y + h;
+  const eave = y + 50;
+  let s = houseShadow(x, y, w, h, eave);
+  s += `<rect x="${x + w - 44}" y="${y + 6}" width="14" height="30" fill="#8c6239" stroke="#6b4423" stroke-width="1.5"/>
+    <circle class="puff" cx="${x + w - 37}" cy="${y - 2}" r="5"/><circle class="puff" cx="${x + w - 32}" cy="${y - 11}" r="4" style="animation-delay:-1.6s"/>`;
+  // logs, each a long rounded bar, ends round at both sides
+  const n = 6;
+  const lh = (b - eave) / n;
+  for (let i = 0; i < n; i++) {
+    const ly = eave + i * lh;
+    s += `<rect x="${x + 6}" y="${ly}" width="${w - 12}" height="${lh}" rx="${lh / 2}" fill="${i % 2 ? '#c8945e' : '#d3a26c'}" stroke="#8c6239" stroke-width="1.4"/>`;
+    for (const ex of [x + 8, x + w - 8]) s += `<circle cx="${ex}" cy="${ly + lh / 2}" r="${lh / 2 + 1}" fill="#e8c393" stroke="#8c6239" stroke-width="1.4"/><circle cx="${ex}" cy="${ly + lh / 2}" r="${lh / 5}" fill="none" stroke="#b5875a" stroke-width="1"/>`;
+  }
+  // a plank roof
+  s += `<path d="M${x - 6} ${eave + 4} L${cx} ${y + 10} L${x + w + 6} ${eave + 4} Z" fill="#9c6b3e" stroke="#6b4423" stroke-width="2" stroke-linejoin="round"/>`;
+  for (let k = 1; k < 4; k++) s += `<path d="M${x - 6 + (cx - x + 6) * (k / 4)} ${eave + 4 - (eave - y - 6) * (k / 4)} L${x + w + 6 - (x + w + 6 - cx) * (k / 4)} ${eave + 4 - (eave - y - 6) * (k / 4)}" stroke="#7d5330" stroke-width="1.3"/>`;
+  // a window, the door, the saw, the planks
+  CITY_LIGHTS.windows.push([x + 20, eave + 14, 26, 22]);
+  s += `<rect x="${x + 20}" y="${eave + 14}" width="26" height="22" rx="3" fill="#fff3bf" stroke="#6b4423" stroke-width="2"/><path d="M${x + 33} ${eave + 14} v22 M${x + 20} ${eave + 25} h26" stroke="#6b4423" stroke-width="1.4"/>
+    <rect x="${cx - 13}" y="${b - 40}" width="26" height="40" rx="3" fill="#8c6239" stroke="#5c3a1e" stroke-width="1.5"/><path d="M${cx - 13} ${b - 27} h26 M${cx - 13} ${b - 13} h26" stroke="#6b4423" stroke-width="1.2"/><circle cx="${cx + 7}" cy="${b - 20}" r="1.8" fill="#ffd43b"/>
+    <path d="M${x + w - 46} ${eave + 16} h26 l-3 9 h-23 Z" fill="#ced4da" stroke="#868e96" stroke-width="1.2"/><path d="M${x + w - 44} ${eave + 25} ${[...Array(8)].map((_, i) => `l1.5 2.5 l1.5 -2.5`).join(' ')}" stroke="#868e96" stroke-width="1" fill="none"/>
+    <rect x="${x + w - 26}" y="${eave + 12}" width="10" height="16" rx="3" fill="#a0673f" stroke="#6b4423" stroke-width="1.2"/>
+    ${[0, 1, 2].map((i) => `<rect x="${x + w - 2 - i * 3}" y="${b - 8 - i * 6}" width="34" height="6" rx="1.5" fill="${i % 2 ? '#e0b07a' : '#d39a5e'}" stroke="#8c6239" stroke-width="1.2"/>`).join('')}`;
+  return s;
+}
+
+// The turtle's shell house by the lake: a low dome patterned in green hexagons like a shell, a
+// round door with a flat stone for a step, and a fishing rod leaning by it
+function shellHouseSvg(x, y, w, h) {
+  const cx = x + w / 2;
+  const b = y + h;
+  const r = w / 2 - 6;
+  const ry = h - 18;
+  const top = b - ry;
+  let s = `<ellipse cx="${cx + 12}" cy="${b + 2}" rx="${w / 2 + 4}" ry="9" fill="rgba(70,50,40,.13)"/>
+    <clipPath id="shellClip"><path d="M${cx - r} ${b} A${r} ${ry} 0 0 1 ${cx + r} ${b} Z"/></clipPath>
+    <path d="M${cx - r} ${b} A${r} ${ry} 0 0 1 ${cx + r} ${b} Z" fill="#8fcf9f"/>
+    <g clip-path="url(#shellClip)">`;
+  // the hexagons: a big one on top, a ring round it
+  const hex = (hx, hy, hr, c) => `<path d="M${[0, 1, 2, 3, 4, 5].map((i) => `${hx + hr * Math.cos((Math.PI / 3) * i)} ${hy + hr * 0.8 * Math.sin((Math.PI / 3) * i)}`).join(' L')} Z" fill="${c}" stroke="#4f8a62" stroke-width="2.2" stroke-linejoin="round"/>`;
+  // a honeycomb of plates, squashed a little as the dome curves away
+  const R = 19;
+  const vs = Math.sqrt(3) * R * 0.8;
+  for (let i = -3; i <= 3; i++) {
+    for (let j = 0; j < 5; j++) {
+      const hx = cx + i * 1.5 * R;
+      const hy = top + 10 + j * vs + (Math.abs(i) % 2 ? vs / 2 : 0);
+      s += hex(hx, hy, R - 1.5, (i + j) % 3 ? '#a9d6b5' : '#7fb991');
+    }
+  }
+  s += `</g><path d="M${cx - r} ${b} A${r} ${ry} 0 0 1 ${cx + r} ${b}" fill="none" stroke="#4f8a62" stroke-width="2.5"/>
+    <path d="M${cx - r * 0.6} ${top + 20} A${r * 0.8} ${r * 0.8} 0 0 1 ${cx - 6} ${top + 4}" stroke="#d3f0dc" stroke-width="4" fill="none" stroke-linecap="round" opacity=".8"/>
+    <rect x="${cx - r - 4}" y="${b - 8}" width="${2 * r + 8}" height="10" rx="5" fill="#e9c98f" stroke="#b5894e" stroke-width="1.6"/>`;
+  // door and step
+  s += `<path d="M${cx - 14} ${b - 6} V${b - 22} a14 14 0 0 1 28 0 V${b - 6} Z" fill="#a0673f" stroke="#6b4423" stroke-width="1.6"/><circle cx="${cx + 7}" cy="${b - 16}" r="1.8" fill="#ffd43b"/>
+    <ellipse cx="${cx}" cy="${b + 6}" rx="18" ry="5" fill="#ced4da" stroke="#adb5bd" stroke-width="1.2"/>
+    <path d="M${x + w - 4} ${b + 2} L${x + w + 26} ${y + 10}" stroke="#c99a2e" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M${x + w + 26} ${y + 10} q10 18 4 40" stroke="#868e96" stroke-width="1" fill="none"/><circle cx="${x + w + 30}" cy="${y + 52}" r="2.5" fill="#fa5252"/>
+    <path d="M${x + w - 14} ${b + 4} h14 l-2 -10 h-10 Z" fill="#d9b26a" stroke="#a0673f" stroke-width="1.3"/>`;
+  return s;
+}
 
 // A little house with its gable to the front; the two roof slopes run back and up
 // The six plots of the vegetable patch, three by two
@@ -730,6 +1056,7 @@ function cottage(x, y, w, h, body, roof) {
   const cx = x + w / 2;
   const eave = y + 56;
   const peak = y + 26;
+  CITY_LIGHTS.windows.push([x + 20, eave + 14, 24, 22], [x + w - 44, eave + 14, 24, 22]);
   return `<path d="M${x + w} ${eave} L${x + w + 16} ${eave + 12} L${x + w + 16} ${y + h + 8} L${x + 12} ${y + h + 8} L${x} ${y + h} Z" fill="rgba(70,50,40,.13)"/>
     <path d="M${x - 6} ${eave} L${cx} ${peak} L${cx} ${y} L${x - 6} ${eave - 26} Z" fill="${darker(roof, 0.12)}" stroke="${darker(roof)}" stroke-width="1.5" stroke-linejoin="round"/>
     <path d="M${x + w + 6} ${eave} L${cx} ${peak} L${cx} ${y} L${x + w + 6} ${eave - 26} Z" fill="${roof}" stroke="${darker(roof)}" stroke-width="1.5" stroke-linejoin="round"/>
@@ -753,7 +1080,7 @@ function homeExterior(p, tier) {
   const shadow = `<ellipse cx="${cx}" cy="${base}" rx="${w / 2 + 6}" ry="6" fill="rgba(90,60,40,.12)"/>`;
   const door = (dx, dh = 30) => `<path d="M${dx - 12} ${base - 6} V${base - dh} a12 12 0 0 1 24 0 V${base - 6} Z" fill="#e64980" stroke="#c2255c" stroke-width="1.2"/>
     <circle cx="${dx + 6}" cy="${base - dh / 2 - 4}" r="1.8" fill="#fff3bf"/>`;
-  const win = (wx, wy, s = 18) => `<rect x="${wx}" y="${wy}" width="${s}" height="${s}" rx="5" fill="#fff3bf" stroke="#e599b4" stroke-width="1.2" class="homewin"/>
+  const win = (wx, wy, s = 18) => (CITY_LIGHTS.home.push([wx, wy, s, s]), '') + `<rect x="${wx}" y="${wy}" width="${s}" height="${s}" rx="5" fill="#fff3bf" stroke="#e599b4" stroke-width="1.2" class="homewin"/>
     <path d="M${wx + s / 2} ${wy} V${wy + s} M${wx} ${wy + s / 2} H${wx + s}" stroke="#e599b4" stroke-width="1"/>`;
   const chimney = (cxx, cy) => `<rect x="${cxx}" y="${cy}" width="12" height="22" fill="#ffa8a8" stroke="#e599b4"/>
     <circle class="puff" cx="${cxx + 6}" cy="${cy - 8}" r="5"/><circle class="puff" cx="${cxx + 10}" cy="${cy - 16}" r="4" style="animation-delay:-1.6s"/>`;
@@ -811,12 +1138,121 @@ const DONATION_ART = {
     ${[...Array(8)].map((_, i) => { const a = (i / 8) * Math.PI * 2; return `<path d="M${x} ${y - 70} L${x + Math.cos(a) * 58} ${y - 70 + Math.sin(a) * 58}" stroke="#faa2c1" stroke-width="2"/>
       <circle cx="${x + Math.cos(a) * 58}" cy="${y - 70 + Math.sin(a) * 58}" r="9" fill="${['#ff8787', '#ffd43b', '#74c0fc', '#b197fc'][i % 4]}" stroke="#fff" stroke-width="2"/>`; }).join('')}</g>
     <circle cx="${x}" cy="${y - 70}" r="6" fill="#e64980"/>`,
+  // a little roller coaster: a wavy track on stilts, a cart on the first hill, flags at the gate
+  park: ({ x, y }) => {
+    const track = `M${x - 110} ${y - 20} C${x - 80} ${y - 110} ${x - 50} ${y - 110} ${x - 30} ${y - 50} S${x + 10} ${y - 10} ${x + 30} ${y - 70} S${x + 80} ${y - 100} ${x + 110} ${y - 20}`;
+    const legs = [-100, -75, -50, -25, 0, 25, 50, 75, 100].map((dx) => `<path d="M${x + dx} ${y} v-${[20, 80, 90, 50, 25, 55, 85, 70, 20][(dx + 100) / 25]}" stroke="#adb5bd" stroke-width="3"/>`).join('');
+    return `<ellipse cx="${x}" cy="${y + 4}" rx="125" ry="16" fill="#d3f9d8" opacity=".8"/>${legs}
+      <path d="${track}" fill="none" stroke="#e64980" stroke-width="7" stroke-linecap="round"/>
+      <path d="${track}" fill="none" stroke="#ffd43b" stroke-width="2" stroke-dasharray="6 6"/>
+      <rect x="${x - 74}" y="${y - 108}" width="26" height="14" rx="4" fill="#74c0fc" stroke="#1c7ed6" stroke-width="1.5" transform="rotate(-25 ${x - 61} ${y - 101})"/>
+      ${[-120, 120].map((dx) => `<path d="M${x + dx} ${y} v-46" stroke="#868e96" stroke-width="2.5"/><path d="M${x + dx} ${y - 46} l18 6 -18 6 Z" fill="${dx < 0 ? '#ff8787' : '#b197fc'}"/>`).join('')}`;
+  },
+  // the rocket on its launch pad, ready for the stars
+  rocket: ({ x, y }) => `<rect x="${x - 50}" y="${y - 8}" width="100" height="12" rx="3" fill="#868e96"/>
+    <path d="M${x + 34} ${y - 8} V${y - 150} M${x + 34} ${y - 60} H${x + 14} M${x + 34} ${y - 110} H${x + 14}" stroke="#ced4da" stroke-width="5" fill="none"/>
+    <path d="M${x - 16} ${y - 20} V${y - 120} Q${x} ${y - 165} ${x + 16} ${y - 120} V${y - 20} Z" fill="#f8f9fa" stroke="#adb5bd" stroke-width="2"/>
+    <path d="M${x - 16} ${y - 120} Q${x} ${y - 165} ${x + 16} ${y - 120} Z" fill="#e64980"/>
+    <circle cx="${x}" cy="${y - 95}" r="8" fill="#74c0fc" stroke="#495057" stroke-width="2"/>
+    <path d="M${x - 16} ${y - 50} l-16 32 h16 Z M${x + 16} ${y - 50} l16 32 h-16 Z" fill="#e64980"/>
+    <g class="spray"><path d="M${x - 9} ${y - 18} q9 22 18 0" fill="#ffd43b" stroke="#ff922b" stroke-width="2"/></g>`,
   bridge: ({ x, y }) => `<path d="M${x - 90} ${y} Q${x} ${y - 70} ${x + 90} ${y}" fill="none" stroke="#ff8787" stroke-width="7"/>
     <path d="M${x - 82} ${y} Q${x} ${y - 60} ${x + 82} ${y}" fill="none" stroke="#ffd43b" stroke-width="7"/>
     <path d="M${x - 74} ${y} Q${x} ${y - 50} ${x + 74} ${y}" fill="none" stroke="#8ce99a" stroke-width="7"/>
     <path d="M${x - 66} ${y} Q${x} ${y - 40} ${x + 66} ${y}" fill="none" stroke="#74c0fc" stroke-width="7"/>
     <path d="M${x - 58} ${y} Q${x} ${y - 30} ${x + 58} ${y}" fill="none" stroke="#b197fc" stroke-width="7"/>`,
 };
+
+// ---------- festivals ----------
+// The town dressed up for the day (FESTIVALS): red lanterns along the streets for 春节 and 元宵,
+// a ring of coloured lanterns in the square for 元宵, dragon boats on the lake for 端午, little
+// lanterns floating on it for 中秋, a big tree in the square for 圣诞
+
+// (glow: lit up after dark; not for one that drifts, whose light would stay behind)
+const lantern = (x, y, k = 1, c = '#fa5252', glow = true) => {
+  if (glow) CITY_LIGHTS.lamps.push([x, y]);
+  return `<g><path d="M${x} ${y - 13 * k} V${y - 18 * k}" stroke="#495057" stroke-width="${1.5 * k}"/>
+    <rect x="${x - 6 * k}" y="${y - 13 * k}" width="${12 * k}" height="${3 * k}" rx="1" fill="#fcc419"/>
+    <ellipse cx="${x}" cy="${y}" rx="${11 * k}" ry="${10 * k}" fill="${c}" stroke="${darker(c, 0.3)}" stroke-width="${1.2 * k}"/>
+    <path d="M${x} ${y - 10 * k} V${y + 10 * k} M${x - 6 * k} ${y - 8 * k} q${-4 * k} ${8 * k} 0 ${16 * k} M${x + 6 * k} ${y - 8 * k} q${4 * k} ${8 * k} 0 ${16 * k}" stroke="${darker(c, 0.25)}" stroke-width="${0.8 * k}" fill="none"/>
+    <rect x="${x - 6 * k}" y="${y + 9 * k}" width="${12 * k}" height="${3 * k}" rx="1" fill="#fcc419"/>
+    <path d="M${x} ${y + 12 * k} v${8 * k}" stroke="#fcc419" stroke-width="${2 * k}"/></g>`;
+};
+// a lantern on its own little red post
+const lanternPost = (x, y, c) => `<rect x="${x - 2}" y="${y - 40}" width="4" height="40" rx="2" fill="#c92a2a"/><path d="M${x} ${y - 40} h14" stroke="#c92a2a" stroke-width="3" stroke-linecap="round"/>${lantern(x + 14, y - 22, 0.9, c)}`;
+
+function festiveSvg(fest) {
+  if (!fest) return '';
+  const plaza = PLACE_BY_ID.plaza;
+  const pcx = plaza.x + plaza.w / 2;
+  const pcy = plaza.y + plaza.h / 2 + 10;
+  const lake = PLACE_BY_ID.lake;
+  const lcx = lake.x + lake.w / 2;
+  const lcy = lake.y + lake.h / 2 + 6;
+  let svg = '';
+  if (fest === 'newyear' || fest === 'lantern') {
+    // red lanterns along the town's straight streets
+    for (const r of ROADS.filter((q) => q.stone)) {
+      const [[x1, y1], [x2, y2]] = r.pts;
+      if (y1 !== y2) continue;
+      for (let x = x1 + 30; x < x2 - 30; x += 240) svg += lanternPost(x, y1 + 40, '#fa5252');
+    }
+  }
+  if (fest === 'newyear') {
+    // couplets and big lanterns at the square's corners
+    for (const [x, y] of [[plaza.x + 30, plaza.y + 40], [plaza.x + plaza.w - 30, plaza.y + 40]]) svg += lantern(x, y, 1.8);
+    svg += `<rect x="${pcx - 40}" y="${plaza.y - 6}" width="80" height="26" rx="4" fill="#e03131" stroke="#fcc419" stroke-width="2"/>
+      <text class="boardtext" x="${pcx}" y="${plaza.y + 7.5}" fill="#fff3bf" style="fill:#fff3bf">新春快乐</text>`;
+  }
+  if (fest === 'lantern') {
+    // a ring of coloured lanterns round the square, riddles hanging under them
+    const colors = ['#fa5252', '#ffa94d', '#ffd43b', '#ff8787', '#da77f2', '#74c0fc'];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const x = pcx + Math.cos(a) * (plaza.w / 2 - 30);
+      const y = pcy + Math.sin(a) * (plaza.h / 2 - 26);
+      svg += `${lanternPost(x, y, colors[i % colors.length])}<rect x="${x + 10}" y="${y - 2}" width="9" height="13" fill="#fff9db" stroke="#e8590c" stroke-width=".8"/>`;
+    }
+  }
+  if (fest === 'dragon') {
+    // two dragon boats racing across the lake, paddles going
+    for (const [dx, dy, c] of [[-60, -30, '#e03131'], [40, 30, '#1c7ed6']]) {
+      const x = lcx + dx;
+      const y = lcy + dy;
+      svg += `<g class="boat-race"><path d="M${x - 70} ${y} Q${x} ${y + 16} ${x + 70} ${y} L${x + 60} ${y - 6} H${x - 62} Z" fill="${c}" stroke="${darker(c)}" stroke-width="2"/>
+        <path d="M${x - 64} ${y - 6} H${x + 60}" stroke="#fcc419" stroke-width="2" stroke-dasharray="6 4"/>
+        ${[-40, -20, 0, 20, 40].map((px) => `<path class="paddle-stroke" d="M${x + px} ${y - 4} l-8 14" stroke="#8c6239" stroke-width="2.5" stroke-linecap="round"/>`).join('')}
+        ${emo(x + 74, y - 10, 24, '🐲')}${emo(x - 60, y - 12, 14, '🥁')}</g>`;
+    }
+  }
+  if (fest === 'moon') {
+    // little lanterns floating on the lake, a ring of them round its shore
+    const rnd = seeded(31);
+    for (let i = 0; i < 9; i++) svg += `<g class="paddle" style="animation-delay:${-i * 0.7}s">${lantern(lcx - 150 + rnd() * 300, lcy - 70 + rnd() * 140, 0.7, '#ffa94d', false)}</g>`;
+    for (let i = 0; i < 10; i++) {
+      const a = Math.PI * (0.15 + (i / 9) * 0.7);
+      svg += lanternPost(lcx + Math.cos(a) * (lake.w / 2 + 20), lcy + Math.sin(a) * (lake.h / 2 + 4), '#ffd43b');
+    }
+  }
+  if (fest === 'xmas') {
+    // the big tree in the square: lights, presents, a star on top
+    const x = pcx - 60;
+    const y = pcy + 10;
+    svg += `<ellipse cx="${x}" cy="${y + 2}" rx="46" ry="10" fill="rgba(60,60,40,.18)"/><rect x="${x - 7}" y="${y - 22}" width="14" height="22" fill="#8c6239"/>
+      ${[[0, 60], [34, 50], [64, 40]].map(([up, half]) => `<path d="M${x - half} ${y - 18 - up} L${x} ${y - 78 - up} L${x + half} ${y - 18 - up} Z" fill="#2f9e44" stroke="#2b8a3e" stroke-width="2" stroke-linejoin="round"/>`).join('')}
+      ${emo(x, y - 150, 24, '⭐')}${emo(x - 36, y - 6, 18, '🎁')}${emo(x + 34, y - 4, 16, '🎁')}`;
+    const rnd = seeded(41);
+    const bulbs = ['#ffd43b', '#ff6b6b', '#74c0fc', '#fff'];
+    for (let i = 0; i < 18; i++) {
+      const up = rnd();
+      const bx = x + (rnd() - 0.5) * 90 * (1 - up * 0.75);
+      const by = y - 24 - up * 110;
+      svg += `<circle class="twinkle" style="animation-delay:${-i * 0.23}s" cx="${bx}" cy="${by}" r="3.5" fill="${bulbs[i % bulbs.length]}"/>`;
+    }
+    CITY_LIGHTS.lamps.push([x, y - 150]);
+  }
+  return svg;
+}
 
 // ---------- animal neighbours ----------
 
@@ -836,9 +1272,15 @@ const SPECIES = {
   hedgehog: { body: '#c08a5b', belly: '#ffe8cc', head: '#ffe8cc', ears: 'round', inner: '#e6c9a8', snout: 'small', spikes: true, acc: 'bow' },
   cow: { body: '#ffffff', line: '#ced4da', belly: '#fff', ears: 'floppy', inner: '#ffc9de', snout: 'cow', cowSpots: true, horns: true },
   bunny: { body: '#ffffff', line: '#dee2e6', belly: '#fff', ears: 'long', inner: '#ffc9c9', snout: 'bunny' },
+  // visitors passing through town: kinds no neighbour is
+  chick: { body: '#ffe066', line: '#f0b429', belly: '#fff3bf', ears: 'none', snout: 'beak', tuft: true, feet: '#ff922b' },
+  alpaca: { body: '#f3e3c9', line: '#d2b48c', belly: '#fff8ec', ears: 'alpaca', inner: '#e8c9a0', snout: 'alpaca', wool: true, fringe: true, acc: 'scarf' },
+  penguin: { body: '#3d4b6b', line: '#26304a', belly: '#ffffff', ears: 'none', snout: 'beak', mask: 'penguin', feet: '#ff922b' },
+  frog: { body: '#8ce99a', line: '#40c057', belly: '#ebfbee', ears: 'none', snout: 'frog', eyesUp: true },
 };
 
-function animalSvg(species) {
+// eyes: how they look (normal, happy, closed, surprised, love; see eyeSvg)
+function animalSvg(species, eyes = 'normal') {
   const sp = SPECIES[species];
   const line = sp.line || darker(sp.body, 0.25);
   const head = sp.head || sp.body;
@@ -872,26 +1314,42 @@ function animalSvg(species) {
     case 'owl':
       ears = `<path d="M40 40 L36 10 L60 28 Z M120 40 L124 10 L100 28 Z" fill="${darker(sp.body, 0.1)}" ${O}/>`;
       break;
+    case 'alpaca':
+      // short banana ears, tipped outwards
+      ears = `${earL('M42 40 C30 30 28 16 32 10 C40 14 48 26 54 34 Z')}${earL('M118 40 C130 30 132 16 128 10 C120 14 112 26 106 34 Z')}
+        <path d="M42 34 C36 28 34 20 35 16 C40 20 44 26 48 32 Z M118 34 C124 28 126 20 125 16 C120 20 116 26 112 32 Z" fill="${sp.inner}"/>`;
+      break;
   }
   const body = sp.shell
     ? `<ellipse cx="80" cy="114" rx="40" ry="28" fill="#94d82d" stroke="#5c940d" stroke-width="2"/>
        <path d="M62 100 l18 -10 l18 10 l0 18 l-18 10 l-18 -10 Z" fill="#a9e34b" stroke="#5c940d" stroke-width="1.5"/>
        <path d="M44 110 l18 -10 M98 100 l18 10 M62 118 l-18 6 M98 118 l18 6" stroke="#5c940d" stroke-width="1.5"/>`
     : `<ellipse cx="80" cy="116" rx="35" ry="25" fill="${sp.body}" ${O}/><ellipse cx="80" cy="122" rx="18" ry="11" fill="${sp.belly}" opacity=".9"/>`;
+  const fleece = sp.body === '#ffffff' ? '#fff' : lighter(sp.body, 0.25);
   const wool = sp.wool
-    ? [...Array(10)].map((_, i) => { const a = Math.PI + (i / 9) * Math.PI; return `<circle cx="${80 + Math.cos(a) * 40}" cy="${116 + Math.sin(a) * 22}" r="9" fill="#fff" ${O}/>`; }).join('') +
-      `<circle cx="66" cy="28" r="10" fill="#fff" ${O}/><circle cx="80" cy="22" r="11" fill="#fff" ${O}/><circle cx="94" cy="28" r="10" fill="#fff" ${O}/>`
+    ? [...Array(10)].map((_, i) => { const a = Math.PI + (i / 9) * Math.PI; return `<circle cx="${80 + Math.cos(a) * 40}" cy="${116 + Math.sin(a) * 22}" r="9" fill="${fleece}" ${O}/>`; }).join('') +
+      `<circle cx="66" cy="28" r="10" fill="${fleece}" ${O}/><circle cx="80" cy="22" r="11" fill="${fleece}" ${O}/><circle cx="94" cy="28" r="10" fill="${fleece}" ${O}/>`
     : '';
-  const limbs = `<ellipse cx="63" cy="137" rx="9.5" ry="7" fill="${sp.shell ? sp.body : darker(sp.body, 0.06)}" ${O}/>
-    <ellipse cx="97" cy="137" rx="9.5" ry="7" fill="${sp.shell ? sp.body : darker(sp.body, 0.06)}" ${O}/>
+  const tuft = sp.tuft ? `<path d="M76 26 Q70 8 78 4 Q80 14 82 24 M82 26 Q88 10 96 12 Q88 18 84 28" fill="${sp.body}" ${O}/>` : '';
+  const foot = sp.feet || (sp.shell ? sp.body : darker(sp.body, 0.06));
+  const limbs = `<ellipse cx="63" cy="137" rx="9.5" ry="7" fill="${foot}" ${sp.feet ? `stroke="${darker(sp.feet, 0.2)}" stroke-width="1.6"` : O}/>
+    <ellipse cx="97" cy="137" rx="9.5" ry="7" fill="${foot}" ${sp.feet ? `stroke="${darker(sp.feet, 0.2)}" stroke-width="1.6"` : O}/>
     <ellipse cx="46" cy="114" rx="7" ry="9" fill="${sp.limbs || sp.body}" ${O}/><ellipse cx="114" cy="114" rx="7" ry="9" fill="${sp.limbs || sp.body}" ${O}/>`;
   let face = '';
   if (sp.cowSpots) face += '<ellipse cx="46" cy="50" rx="12" ry="9" fill="#343a40"/><ellipse cx="114" cy="44" rx="9" ry="7" fill="#343a40"/>';
   if (sp.horns) face += '<path d="M52 30 q-10 -14 -2 -22 M108 30 q10 -14 2 -22" stroke="#e9c46a" stroke-width="7" fill="none" stroke-linecap="round"/>';
   if (sp.patches) face += `<ellipse cx="58" cy="66" rx="14" ry="17" transform="rotate(-20 58 66)" fill="#343a40"/><ellipse cx="102" cy="66" rx="14" ry="17" transform="rotate(20 102 66)" fill="#343a40"/>`;
-  if (sp.mask) face += `<path d="M30 62 Q58 40 80 58 Q102 40 130 62 Q120 82 100 74 Q80 66 60 74 Q40 82 30 62 Z" fill="#495057"/>`;
+  if (sp.mask === true) face += `<path d="M30 62 Q58 40 80 58 Q102 40 130 62 Q120 82 100 74 Q80 66 60 74 Q40 82 30 62 Z" fill="#495057"/>`;
+  // a penguin's white face, so the eyes show
+  if (sp.mask === 'penguin') face += `<path d="M80 52 C70 38 36 42 38 70 C40 96 62 106 80 104 C98 106 120 96 122 70 C124 42 90 38 80 52 Z" fill="#fff"/>`;
   if (sp.discs) face += `<circle cx="58" cy="64" r="19" fill="${sp.belly}"/><circle cx="102" cy="64" r="19" fill="${sp.belly}"/>`;
-  face += eyeSvg(58, 64, 'normal') + eyeSvg(102, 64, 'normal');
+  // an alpaca's big fluffy fringe
+  if (sp.fringe) face += [[60, 34, 11], [70, 25, 12], [84, 22, 13], [98, 27, 12], [104, 37, 10], [80, 38, 11]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fleece}" ${O}/>`).join('')
+    + `<path d="M64 38 Q80 50 100 40" stroke="${fleece}" stroke-width="8" fill="none" stroke-linecap="round"/>`;
+  // a frog's eyes sit up on top of its head
+  if (sp.eyesUp) face += `<circle cx="56" cy="34" r="17" fill="${head}" ${O}/><circle cx="104" cy="34" r="17" fill="${head}" ${O}/>` + eyeSvg(56, 34, eyes) + eyeSvg(104, 34, eyes);
+  // drawn lines (smiling, shut) show in white over a panda's dark patches
+  else face += (eyeSvg(58, 64, eyes) + eyeSvg(102, 64, eyes)).replace(/class="line"/g, sp.patches ? 'class="line" style="stroke:#fff"' : 'class="line"');
   face += `<ellipse cx="42" cy="84" rx="10" ry="6" fill="#ff8fab" opacity=".45"/><ellipse cx="118" cy="84" rx="10" ry="6" fill="#ff8fab" opacity=".45"/>`;
   switch (sp.snout) {
     case 'muzzle':
@@ -911,6 +1369,14 @@ function animalSvg(species) {
       break;
     case 'beak':
       face += `<path d="M72 80 L88 80 L80 96 Z" fill="#ff922b" stroke="#e8590c" stroke-width="1.2" stroke-linejoin="round"/>`;
+      break;
+    case 'alpaca':
+      face += `<ellipse cx="80" cy="88" rx="17" ry="13" fill="${sp.belly}" ${O}/><path d="M75 81 Q80 85 85 81" stroke="#4a2c38" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <path class="line thin" d="M80 84 V91 M73 93 Q76.5 97 80 91 Q83.5 97 87 93"/>`;
+      break;
+    case 'frog':
+      face += `<circle cx="72" cy="66" r="1.8" fill="${darker(sp.body, 0.4)}"/><circle cx="88" cy="66" r="1.8" fill="${darker(sp.body, 0.4)}"/>
+        <path d="M50 78 Q80 102 110 78" stroke="${darker(sp.body, 0.45)}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
       break;
     case 'bill':
       face += `<ellipse cx="80" cy="88" rx="20" ry="9" fill="#ff922b" stroke="#e8590c" stroke-width="1.2"/><path d="M64 88 Q80 93 96 88" stroke="#e8590c" stroke-width="1.2" fill="none"/>`;
@@ -941,6 +1407,10 @@ function animalSvg(species) {
     case 'specs':
       acc = `<g fill="none" stroke="#4a2c38" stroke-width="2"><circle cx="58" cy="64" r="13"/><circle cx="102" cy="64" r="13"/><path d="M71 62 Q80 58 89 62"/></g>`;
       break;
+    case 'scarf':
+      acc = `<path d="M50 100 Q80 114 110 100 L110 110 Q80 124 50 110 Z" fill="#ff8787" stroke="#e03131" stroke-width="1.2"/>
+        <path d="M60 104 v9 M72 107 v9 M84 108 v9 M96 106 v9" stroke="#ffd43b" stroke-width="3"/><path d="M98 108 l6 22 l8 -2 l-4 -20 Z" fill="#ff8787" stroke="#e03131" stroke-width="1.2"/>`;
+      break;
     case 'chef':
       acc = `<rect x="58" y="22" width="44" height="14" rx="3" fill="#fff" stroke="#dee2e6" stroke-width="1.5"/>
         <circle cx="64" cy="14" r="11" fill="#fff" stroke="#dee2e6" stroke-width="1.5"/><circle cx="80" cy="8" r="13" fill="#fff" stroke="#dee2e6" stroke-width="1.5"/><circle cx="96" cy="14" r="11" fill="#fff" stroke="#dee2e6" stroke-width="1.5"/>
@@ -948,12 +1418,19 @@ function animalSvg(species) {
       break;
   }
   return `<svg viewBox="-4 -26 168 178" width="168" height="178"><ellipse cx="80" cy="146" rx="34" ry="5" fill="rgba(90,60,40,.16)"/>
-    <g class="breathe">${back}${wool}${body}${limbs}${ears}<ellipse cx="80" cy="66" rx="48" ry="42" fill="${head}" ${O}/>${face}${acc}</g></svg>`;
+    <g class="breathe">${back}${wool}${body}${limbs}${ears}${tuft}<ellipse cx="80" cy="66" rx="48" ry="42" fill="${head}" ${O}/>${face}${acc}</g></svg>`;
 }
 
 // ---------- room interiors (cut-away bubbles, 220×140) ----------
 // items: [emoji, x, y, size]; pig: where the pig stands; pose: its pose class there.
 // draw(ctx) adds anything that changes with progress.
+
+// Whoever came along with the pig, at (left, top) in a room bubble
+function roomMate(snap, left, top) {
+  const mate = NPC_BY_ID[snap.s.activity?.with];
+  if (!mate) return '';
+  return `<div class="rm-npc" style="left:${left}px;top:${top + (mate.small ? 12 : 0)}px;width:${mate.small ? 40 : 50}px">${animalSvg(mate.species, 'happy')}</div>`;
+}
 
 const ROOMS = {
   class: {
@@ -969,7 +1446,13 @@ const ROOMS = {
   canteen: {
     wall: '#fff4e6', floor: '#e9c99b', pose: 'dining', pig: { x: 80, y: 128 },
     items: [['🍱', 112, 112, 22], ['🥢', 130, 104, 14]],
-    draw: () => `<div class="rm-counter"></div><div class="rm-npc" style="left:156px;top:46px">${animalSvg('duck')}</div><div class="rm-steam"></div>`,
+    draw: ({ snap }) => {
+      const mate = NPC_BY_ID[snap.s.activity?.with];
+      // eating with a friend: they sit across the table (the cook comes out of the kitchen to join)
+      const seat = mate ? `<div class="rm-npc" style="left:140px;top:${mate.small ? 82 : 70}px;width:${mate.small ? 40 : 50}px">${animalSvg(mate.species, 'happy')}</div>` : '';
+      const cook = mate?.id === 'duck' ? '' : `<div class="rm-npc" style="left:${mate ? 178 : 156}px;top:${mate ? 40 : 46}px;${mate ? 'width:40px' : ''}">${animalSvg('duck')}</div>`;
+      return `<div class="rm-counter"></div>${cook}<div class="rm-steam"></div>${seat}`;
+    },
     fx: ['😋', '♨️'],
   },
   clinic: {
@@ -1016,6 +1499,29 @@ const ROOMS = {
     wall: '#fff0f6', floor: '#fcc2d7', pose: 'studying', pig: { x: 80, y: 128 },
     items: [['🖼️', 140, 84, 40], ['🎨', 180, 110, 22], ['🐰', 30, 120, 18]],
     fx: ['🖍️', '✨'],
+  },
+  // the dark cinema: today's film lit up on the screen, a row of red seats, popcorn; a friend who
+  // came along in the next seat
+  cinema: {
+    wall: '#2b2d54', floor: '#4a2c38', pose: 'studying', pig: { x: 100, y: 128 },
+    items: [['🍿', 132, 116, 20]],
+    draw: ({ snap }) => `<div class="rm-film"><span>${esc(filmToday())}</span></div>
+      ${[24, 58, 150, 184].map((x) => `<div class="rm-seat" style="left:${x}px"></div>`).join('')}${roomMate(snap, 160, 72)}`,
+    fx: ['😆', '🍿', '😮', '🥹'],
+  },
+  // a café table by the window, a cup each
+  cafe: {
+    wall: '#f8f0e3', floor: '#e9c99b', pose: 'dining', pig: { x: 74, y: 128 },
+    items: [['☕', 104, 104, 18], ['🧁', 128, 104, 16]],
+    draw: ({ snap }) => `<div class="rm-window"></div><div class="rm-table" style="left:96px;width:64px"></div>${roomMate(snap, 160, 70)}`,
+    fx: ['☕', '😊', '💬'],
+  },
+  // a corner of the bookshop: shelves, a book open on the pig's lap
+  books: {
+    wall: '#fff4e6', floor: '#e9c99b', pose: 'studying', pig: { x: 84, y: 128 },
+    items: [['📖', 108, 110, 18], ['📚', 30, 40, 20], ['📕', 54, 42, 16], ['📗', 176, 40, 18]],
+    draw: ({ snap }) => `<div class="rm-shelf"></div>${roomMate(snap, 140, 72)}`,
+    fx: ['📖', '💡', '😮'],
   },
   tutor: {
     wall: '#fff9db', floor: '#ffe8cc', pose: 'studying', pig: { x: 80, y: 128 },
@@ -1094,6 +1600,27 @@ const ROOMS = {
     draw: () => '<div class="rm-board wide">E=mc²</div>',
     fx: ['💡', '📖'],
   },
+  // the theme park's rides. Up in the ferris wheel's cabin: sky all round, the town far below
+  ferris: {
+    wall: '#a5d8ff', floor: '#a5d8ff', window: false, pig: { x: 96, y: 112 },
+    draw: ({ snap, progress }) => `<div class="rm-sky" style="--up:${Math.sin(progress * Math.PI).toFixed(2)}"><i class="cloud" style="left:20px;top:22px"></i><i class="cloud" style="left:150px;top:40px"></i>
+      <div class="rm-roofs"></div></div><div class="rm-cabin"></div>${roomMate(snap, 116, 64)}`,
+    fx: ['✨', '😆', '☁️'],
+  },
+  // round and round on the carousel, the horses going up and down
+  carousel: {
+    wall: '#fff3bf', floor: '#ffd8a8', pose: 'riding', pig: { x: 86, y: 116 },
+    draw: ({ snap }) => `<div class="rm-tent"></div><div class="rm-horse" style="left:56px">🎠</div>
+      <div class="rm-horse late" style="left:${snap.s.activity?.with ? 132 : 150}px">🎠</div>${roomMate(snap, 136, 52)}`,
+    fx: ['🎵', '✨', '😄'],
+  },
+  // a dark corridor in the haunted house: cobwebs, a candle, friendly ghosts popping out
+  haunted: {
+    wall: '#2b1f47', floor: '#3b2a5c', window: false, pose: 'working', pig: { x: 90, y: 128 },
+    items: [['🕯️', 30, 104, 18], ['🕸️', 22, 22, 22], ['🕸️', 200, 18, 18], ['🚪', 186, 88, 34]],
+    draw: ({ snap }) => `<div class="rm-ghost" style="left:44px;top:30px">👻</div><div class="rm-ghost late" style="left:140px;top:16px">👻</div>${roomMate(snap, 124, 72)}`,
+    fx: ['😱', '👻', '💦'],
+  },
   // at home
   sleep: { wall: '#e5dbff', floor: '#d0bfff', pig: { x: 110, y: 130 }, items: [['🌙', 180, 28, 20], ['⭐', 40, 26, 12]], draw: () => '<div class="rm-bed wide"></div>', fx: ['💤'] },
   bath: { wall: '#e3fafc', floor: '#99e9f2', pig: { x: 110, y: 120 }, draw: () => '<div class="rm-tub"></div>', items: [['🧴', 34, 104, 18], ['🦆', 160, 104, 16]], fx: ['🫧', '✨'] },
@@ -1103,7 +1630,7 @@ ROOMS.paint = ROOMS.easel;
 function roomHtml(kind, ctx) {
   const r = ROOMS[kind];
   const items = (r.items || []).map(([ch, x, y, size]) => `<span class="rm-item" style="left:${x}px;top:${y}px;font-size:${size}px">${ch}</span>`).join('');
-  return `<div class="rm" style="--wall:${r.wall};--floor:${r.floor}"><div class="rm-window"></div>${r.draw ? r.draw(ctx) : ''}${items}</div>`;
+  return `<div class="rm" style="--wall:${r.wall};--floor:${r.floor}">${r.window === false ? '' : '<div class="rm-window"></div>'}${r.draw ? r.draw(ctx) : ''}${items}</div>`;
 }
 
 // ---------- vehicles under the pig on a delivery round ----------

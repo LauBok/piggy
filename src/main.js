@@ -240,6 +240,36 @@ ipcMain.on('save:write', (e, data) => {
   e.returnValue = true;
 });
 
+// Pigs from before (each grew up, drank the rejuvenation potion and was kept): one file each in
+// the "pigs" folder beside the save, named by the pig's id
+const pigsDir = () => path.join(app.getPath('userData'), 'pigs');
+const pigPath = (id) => path.join(pigsDir(), `${String(id).replace(/[^\w-]/g, '')}.json`);
+
+ipcMain.on('pigs:keep', (e, data) => {
+  fs.mkdirSync(pigsDir(), { recursive: true });
+  fs.writeFileSync(pigPath(data.pigId), JSON.stringify(data, null, 2));
+  e.returnValue = true;
+});
+
+ipcMain.handle('pigs:list', () => {
+  try {
+    return fs.readdirSync(pigsDir()).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(fs.readFileSync(path.join(pigsDir(), f), 'utf8')));
+  } catch {
+    return [];
+  }
+});
+
+// Take a kept pig back out to play with again (its file goes: it's the save now)
+ipcMain.on('pigs:take', (e, id) => {
+  try {
+    const data = JSON.parse(fs.readFileSync(pigPath(id), 'utf8'));
+    fs.unlinkSync(pigPath(id));
+    e.returnValue = data;
+  } catch {
+    e.returnValue = null;
+  }
+});
+
 ipcMain.handle('win:getBounds', () => win.getBounds());
 
 ipcMain.handle('screen:workArea', () => {

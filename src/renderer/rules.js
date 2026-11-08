@@ -11,6 +11,27 @@ function fmtTime(sec) {
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }
 
+// Lessons of a course done (a finished course counts all of them)
+// A furniture bonus as a label: 睡觉回体力 +25%, 心情下降 −15%, 能在家弹琴
+function bonusText(k, v) {
+  if (v === 1) return BONUS_UNLOCK[k] || BONUS_NAME[k];
+  const pct = Math.round((v - 1) * 100);
+  return `${BONUS_NAME[k]} ${pct > 0 ? '+' : '−'}${Math.abs(pct)}%`;
+}
+
+// A lesson's number as shown: I, II, III …
+const lessonNum = (k) => ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][k - 1] || String(k);
+
+// A lesson's name in text. At school a lesson is a grade: 三年级语文, 初二物理, 高三数学.
+// At university: 数据结构 III (a one-lesson course is just its name).
+const GRADE_NAME = { primary: (g) => `${'一二三四五六'[g - 1]}年级`, middle: (g) => `初${'一二三'[g - 1]}`, high: (g) => `高${'一二三'[g - 1]}` };
+function lessonName(c, k) {
+  const grade = GRADE_NAME[c.stage];
+  if (grade) return `${grade(GRADES[c.stage] - c.lessons + k)}${c.name}`;
+  return c.lessons > 1 ? `${c.fullName} ${lessonNum(k)}` : c.fullName;
+}
+const lessonsDone = (s, c) => (s.courses[c.id] ? c.lessons : s.lessons?.[c.id] || 0);
+
 // Credits earned toward a major's degree at a university stage: its own courses and general electives
 const stageCredits = (s, stageId, majorId) =>
   COURSES.filter((c) => c.stage === stageId && (c.major === majorId || c.general) && s.courses[c.id]).reduce((n, c) => n + c.credits, 0);
@@ -24,8 +45,8 @@ function stageDone(s, stageId, majorId) {
   return required && (!st.credits || stageCredits(s, stageId, majorId) >= st.credits);
 }
 
-// How far an elective subject was studied: 0 (not at all) to 3 (high school)
-const subjectLevel = (s, subject) => COURSES.filter((c) => c.subject === subject && s.courses[c.id]).length;
+// How far an elective subject was studied: 0 (not at all) to 3 (into high school)
+const subjectLevel = (s, subject) => COURSES.filter((c) => c.subject === subject && lessonsDone(s, c) > 0).length;
 
 // Combined furniture bonus for one effect (sleep, bath, study, moodDrain, piano, paint):
 // the best item owned in each furniture group counts, and groups multiply
@@ -57,12 +78,14 @@ function hobbyEffects(s, hobby) {
   return Object.fromEntries(Object.entries(hobby.effects).map(([key, v]) => [key, v > 0 ? Math.round(v * k) : v]));
 }
 
+// token: a course id, "course@n" (at least n of its lessons), or a degree "deg:<stage>[:<major>]"
 function reqMet(s, token) {
   if (token.startsWith('deg:')) {
     const [, stageId, majorId] = token.split(':');
     return stageDone(s, stageId, majorId);
   }
-  return !!s.courses[token];
+  const [id, n] = token.split('@');
+  return n ? lessonsDone(s, COURSE_BY_ID[id]) >= +n : !!s.courses[id];
 }
 
 function reqName(token) {
@@ -71,15 +94,25 @@ function reqName(token) {
     const stage = STAGE_BY_ID[stageId];
     return majorId ? `${MAJOR_BY_ID[majorId].name}${stage.degree}` : stage.degree;
   }
-  return COURSE_BY_ID[token].fullName;
+  const [id, n] = token.split('@');
+  return n ? lessonName(COURSE_BY_ID[id], +n) : COURSE_BY_ID[id].fullName;
 }
 
-// Everything a course needs, as [{ text, ok }]
+// Everything the next lesson of a course needs, as [{ text, ok }]. A prerequisite in the same
+// stage is needed up to the same lesson; one from an earlier stage must be finished.
 function courseReqs(s, c) {
   const stage = STAGE_BY_ID[c.stage];
-  const reqs = [{ text: `Lv.${stage.minLevel}`, ok: s.level >= stage.minLevel }];
+  const k = Math.min(c.lessons, lessonsDone(s, c) + 1);
+  const lv = lessonLevel(c, k);
+  const reqs = [{ text: `Lv.${lv}`, ok: s.level >= lv }];
   if (stage.needs) reqs.push({ text: STAGE_BY_ID[stage.needs].degree, ok: stageDone(s, stage.needs) });
-  for (const t of c.prereq) reqs.push({ text: reqName(t), ok: reqMet(s, t) });
+  for (const t of c.prereq) {
+    const p = COURSE_BY_ID[t];
+    if (p && p.stage === c.stage && p.lessons > 1) {
+      const n = Math.min(k, p.lessons);
+      reqs.push({ text: n < p.lessons ? lessonName(p, n) : p.fullName, ok: lessonsDone(s, p) >= n });
+    } else reqs.push({ text: reqName(t), ok: reqMet(s, t) });
+  }
   return reqs;
 }
 
@@ -104,6 +137,27 @@ function toyBoredom(s, id) {
 
 const dayKey = () => new Date().toDateString();
 
+// ---------- the town's clock ----------
+// Each window points TOWN_SAVE at the save it reads (the pet window its own, the home window the
+// latest snapshot's). Town time is where the clock was last set plus the time since, at today's
+// speed: real time while the pig is busy or asleep, TOWN_SPEED times faster while he's free.
+let TOWN_SAVE = null;
+const townRate = (s) => (s.activity ? 1 : TOWN_SPEED);
+function townNow() {
+  const c = TOWN_SAVE?.clock;
+  return c ? c.t + (Date.now() - c.at) * townRate(TOWN_SAVE) : Date.now();
+}
+const townDate = () => new Date(townNow());
+// The real moment that a town moment was (or will be), at the speed now
+const realOf = (t) => Date.now() - (townNow() - t) / (TOWN_SAVE ? townRate(TOWN_SAVE) : 1);
+
+// Drawn icons for buttons, where the game fonts have no such character (styled by .ic)
+const ICON = {
+  close: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+  min: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9"/></svg>',
+  back: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 2.5 7 6 10.5M3 7h7.5a3 3 0 0 1 0 6H8"/></svg>',
+};
+
 function hashStr(str) {
   let h = 2166136261;
   for (const ch of str) {
@@ -113,9 +167,213 @@ function hashStr(str) {
   return h >>> 0;
 }
 
-const hearts = (s, id) => s.npc?.[id]?.h || 0;
+// Points needed in all for h hearts (500 for 5♥, 1500 for 10♥)
+const pointsFor = (h) => 40 * h + 10 * h * (h + 1);
+const npcPoints = (s, id) => s.npc?.[id]?.p || 0;
+function hearts(s, id) {
+  const p = npcPoints(s, id);
+  let h = 0;
+  while (h < NPC_MAX_HEARTS && p >= pointsFor(h + 1)) h++;
+  return h;
+}
+// How far into the next heart: { h, frac } (frac 0–1; 0 at the max)
+function heartProgress(s, id) {
+  const h = hearts(s, id);
+  if (h >= NPC_MAX_HEARTS) return { h, frac: 0 };
+  return { h, frac: (npcPoints(s, id) - pointsFor(h)) / heartCost(h + 1) };
+}
 const greetedToday = (s, id) => s.npc?.[id]?.hi === dayKey();
 const wishDone = (s, id) => s.npc?.[id]?.wish === dayKey();
+// One present a day each (today's wish counts as it)
+const giftedToday = (s, id) => s.npc?.[id]?.gift === dayKey() || wishDone(s, id);
+const togetherToday = (s, id) => s.npc?.[id]?.tog === dayKey();
+
+function isBirthday(id, d = new Date()) {
+  return NPC_BY_ID[id].birthday === `${d.getMonth() + 1}-${d.getDate()}`;
+}
+const npcDailyCap = (id) => (isBirthday(id) ? NPC_BIRTHDAY_DAILY : NPC_DAILY);
+
+// How a neighbour takes a present: wish, love, like, dislike or plain
+function giftTier(s, id, itemId) {
+  const n = NPC_BY_ID[id];
+  if (itemId === npcWish(id) && !wishDone(s, id)) return 'wish';
+  if (n.loves.includes(itemId)) return 'love';
+  if (n.likes.includes(itemId)) return 'like';
+  if (n.dislike === itemId) return 'dislike';
+  return 'plain';
+}
+// What the pig could give: things to eat, toys and medicine in the bag; the wish first
+function giftable(s, id) {
+  const wish = wishDone(s, id) ? null : npcWish(id);
+  const list = ITEMS.filter((it) => (GIFT_CATS.includes(it.cat) || it.id === wish) && s.inventory[it.id] > 0);
+  return [...list.filter((it) => it.id === wish), ...list.filter((it) => it.id !== wish)];
+}
+
+// ---------- where everyone is ----------
+// Worked out from the clock every time, never stored: what someone is doing now is the entry of
+// their day (NPC_DAYS) that started last.
+
+const npcDayList = (id, d) => {
+  const days = NPC_DAYS[id];
+  const w = d.getDay();
+  return days[`d${w}`] || ((w === 0 || w === 6) && days.weekend) || days.week;
+};
+
+// One day's entries as { at (ms), where, act }, with each start nudged 0–15 minutes on some days
+function npcDay(id, d) {
+  const day = d.toDateString();
+  const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return npcDayList(id, d).map((e, i) => {
+    const [h, m] = e[0].split(':').map(Number);
+    const jitter = i ? hashStr(`${day}${id}${i}`) % 16 : 0;
+    let [where, act] = [e[1], e[2]];
+    if (Array.isArray(where)) [where, act] = where[hashStr(day + id) % where.length];
+    return { at: midnight + (h * 60 + m + jitter) * 60000, where, act };
+  });
+}
+
+// What someone is doing now: { at, end, where, act, prev } (prev: the entry before, where they
+// came from). key names the entry, for anything that should happen once per stretch.
+function npcPlan(id, now = townNow()) {
+  const d = new Date(now);
+  const list = npcDay(id, d);
+  let i = list.length - 1;
+  while (i > 0 && list[i].at > now) i--;
+  const cur = list[i];
+  const prev = i ? list[i - 1] : npcDay(id, new Date(cur.at - 1)).pop();
+  const next = list[i + 1]?.at ?? cur.at + DAY_MS;
+  return { ...cur, end: next, prev, key: `${id}:${cur.at}` };
+}
+const npcInside = (plan) => NPC_INSIDE.includes(plan.act);
+const npcAsleep = (plan) => NPC_ASLEEP.includes(plan.act);
+// A shop keeper behind their own counter
+const npcAtWork = (id, now) => {
+  const plan = npcPlan(id, now);
+  return plan.act === 'work' && plan.where === NPC_BY_ID[id].place;
+};
+
+// Time of day for small talk: morn, noon, eve, night, or '' in the afternoon
+function dayPart(d = townDate()) {
+  const h = d.getHours();
+  if (h >= 5 && h < 11) return 'morn';
+  if (h >= 11 && h < 14) return 'noon';
+  if (h >= 17 && h < 20) return 'eve';
+  if (h >= 20 || h < 5) return 'night';
+  return '';
+}
+
+// Eating together is offered around lunch and supper
+const mealTime = (d = townDate()) => {
+  const m = d.getHours() * 60 + d.getMinutes();
+  return MEAL_HOURS.some(([a, b]) => m >= a && m < b);
+};
+
+// The heart story someone has to tell next, if they're where it happens: its hearts, or null
+function storyDue(s, id, now = townNow()) {
+  const rec = s.npc?.[id] || {};
+  const h = hearts(s, id);
+  const k = Object.keys(NPC_STORIES[id] || {}).map(Number).sort((a, b) => a - b).find((x) => x <= h && !(rec.ev || []).includes(x));
+  if (k == null) return null;
+  const st = NPC_STORIES[id][k];
+  const plan = npcPlan(id, now);
+  if (st.at && !st.at.includes(plan.act)) return null;
+  if (st.with && npcPlan(st.with, now).where !== plan.where) return null;
+  return k;
+}
+
+// ---------- festivals, the theme park, the seasons ----------
+
+// A festival's day in a year, as 'month-day', or null if it isn't known for that year
+function festivalDate(f, year) {
+  if (f.date) return f.date;
+  if (f.after) {
+    const [id, days] = f.after;
+    const base = festivalDate(FESTIVAL_BY_ID[id], year);
+    if (!base) return null;
+    const [m, dd] = base.split('-').map(Number);
+    const d = new Date(year, m - 1, dd + days);
+    return `${d.getMonth() + 1}-${d.getDate()}`;
+  }
+  return f.dates[year] || null;
+}
+// The festival on a (real) day, or null
+function festivalOn(d = new Date()) {
+  const md = `${d.getMonth() + 1}-${d.getDate()}`;
+  return FESTIVALS.find((f) => festivalDate(f, d.getFullYear()) === md) || null;
+}
+// A festival coming up in the next few days (not today): { f, days }, or null
+function festivalSoon(d = new Date()) {
+  for (let i = 1; i <= FESTIVAL_INVITE_DAYS; i++) {
+    const f = festivalOn(new Date(d.getFullYear(), d.getMonth(), d.getDate() + i));
+    if (f) return { f, days: i };
+  }
+  return null;
+}
+// spring, summer, autumn or winter, by the real month
+const SEASONS = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'];
+const seasonOf = (d = new Date()) => SEASONS[d.getMonth()];
+
+const minuteOf = (d) => d.getHours() * 60 + d.getMinutes();
+const parkOpen = (d = townDate()) => minuteOf(d) >= PARK_HOURS[0] && minuteOf(d) < PARK_HOURS[1];
+// Fireworks over the theme park: weekend nights, and the night of 春节
+function fireworksOn(d = townDate()) {
+  const w = d.getDay();
+  if (!(w === 0 || w === 6 || festivalOn()?.id === 'newyear')) return false;
+  return minuteOf(d) >= FIREWORKS_HOURS[0] && minuteOf(d) < FIREWORKS_HOURS[1];
+}
+
+// ---------- going somewhere together ----------
+
+// Whether an outing is on offer at all just now: its hours, a meal at mealtimes, football once
+// the pig can play it, the garden while something grows in it, a festival on its day
+function outingOn(s, o, d = townDate()) {
+  const m = d.getHours() * 60 + d.getMinutes();
+  if (o.hours && !(m >= o.hours[0] && m < o.hours[1])) return false;
+  if (o.festival && festivalOn()?.id !== o.festival) return false;
+  if (o.fireworks && !fireworksOn(d)) return false;
+  if (o.meal && !mealTime(d)) return false;
+  if (o.hobby && hobbyLock(s, HOBBY_BY_ID[o.hobby])) return false;
+  if (o.id === 'garden' && !(s.farm || []).some((p) => p && plotProgress(p) < 1)) return false;
+  return true;
+}
+// Why the pig can't go on it right now ('' if he can): busy, full, tired, broke, or done lately
+function outingWhy(s, o, busy) {
+  if (busy) return busy;
+  if (o.hobby) return minutesLeft(s.hobbyReady[o.hobby]) > 0 ? '刚玩过' : '';
+  const h = FREE_HELP_BY_ID[o.help];
+  if (o.help === 'meal' && s.hunger >= 95) return '吃不下了';
+  if (o.help === 'soak' && s.energy >= 95) return '精神很好';
+  if (h.fee && s.money < h.fee * 2) return '金币不够';
+  if (minutesLeft(s.helpReady[o.help]) > 0) return '刚去过';
+  return '';
+}
+// What they say about it: the old lines for a meal, the outings' own lines otherwise
+const outingTalk = (id, kind) => (kind === 'eat' ? NPC_TALK[id].eat : NPC_OUTINGS_TALK[id][kind]);
+
+// ---------- the cinema and the barn ----------
+
+// Today's film
+const filmToday = (d = new Date()) => FILMS[Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / DAY_MS) % FILMS.length];
+// What the barn will buy: whatever the vegetable patch grows, and what it pays for one
+// (and fish, at what they're worth)
+const barnGoods = () => ITEMS.filter((it) => it.cat === 'fish' || ITEMS.some((seed) => seed.crop === it.id));
+const barnPrice = (it) => (it.cat === 'fish' ? it.price : Math.max(1, Math.round(it.price * BARN_RATE)));
+
+// ---------- visiting ----------
+
+// Whether someone's door is open to the pig: 'open'; 'closed' (in, but he hasn't been asked in
+// yet); 'asleep'; or 'away'. Home is anywhere about their own house, in or out of it.
+function visitDoor(s, id, now = townNow()) {
+  const v = NPC_VISITS[id];
+  const plan = npcPlan(id, now);
+  if (!v || plan.where !== NPC_BY_ID[id].home) return 'away';
+  if (npcAsleep(plan)) return 'asleep';
+  return asked(s, id) ? 'open' : 'closed';
+}
+// Asked in: their story at that many hearts has been told
+const asked = (s, id) => !!s.npc?.[id]?.ev?.includes(NPC_VISITS[id].hearts);
+// Others round at someone's house just now (the rabbit at the hedgehog's, the turtle for tea)
+const guestsAt = (where, now = townNow()) => NPCS.filter((n) => n.home !== where && npcPlan(n.id, now).where === where);
 
 // The value of a neighbour's perk once they like the pig enough, or `base`
 function npcPerk(s, key, base) {
@@ -133,14 +391,41 @@ function shopDiscount(s, placeId) {
   return (SHOP_DISCOUNTS.find(([h]) => hearts(s, k.id) >= h) || [0, 1])[1];
 }
 
+// What 跑腿 can bring: the supermarket's everyday goods
+const deliveryItems = () => ITEMS.filter((it) => DELIVERY.cats.includes(it.cat) && !it.npc && shopsOf(it).includes(DELIVERY.shop));
+
 // What an item costs this pig in a shop
 const priceOf = (s, it, placeId) => (placeId ? Math.round(it.price * shopDiscount(s, placeId)) : it.price);
+
+// A 跑腿 basket { id: count }: the goods, the delivery fee and the total
+function deliveryBill(cart) {
+  const goods = Object.entries(cart).reduce((n, [id, k]) => n + ITEM_BY_ID[id].price * k, 0);
+  const fee = goods ? Math.max(DELIVERY.minFee, Math.ceil(goods * DELIVERY.fee)) : 0;
+  return { goods, fee, total: goods + fee };
+}
 
 // Hearts a hidden item needs before it's sold (0: not hidden)
 const heartsNeeded = (it) => (it.npc ? it.hearts || NPC_MAX_HEARTS : 0);
 const hiddenLocked = (s, it) => !!it.npc && hearts(s, it.npc) < heartsNeeded(it);
 
-const payOf = (s, job) => Math.round(job.pay * npcPerk(s, 'pay', 1));
+// Career seniority (工龄): the rank from every shift the pig has worked, and the shifts the next rank needs
+function careerRank(s) {
+  let r = 0;
+  while (r < MAX_RANK && (s.shifts || 0) >= rankShifts(r + 1)) r++;
+  return r;
+}
+const rankBonus = (r) => RANK_PAY ** r;
+// A good mood pays a little more, a bad one less
+const moodPay = (s) => (s.mood >= MOOD_PAY.high ? MOOD_PAY.highK : s.mood < MOOD_PAY.low ? MOOD_PAY.lowK : 1);
+const payOf = (s, job) => Math.round(job.pay * rankBonus(careerRank(s)) * npcPerk(s, 'pay', 1) * moodPay(s));
+
+// ---------- businesses ----------
+
+const bizOwned = (s, id) => s.biz?.owned?.[id] || 0;
+// The next share of a business: dearer for every one already owned
+const bizPrice = (s, b) => Math.round(b.price * BUSINESS_STEP ** bizOwned(s, b.id));
+// Everything the businesses pay in a day
+const bizIncome = (s) => BUSINESSES.reduce((n, b) => n + b.income * bizOwned(s, b.id), 0);
 const playCap = (s) => PLAY_EXP_DAILY + npcPerk(s, 'playCap', 0);
 
 // The item a neighbour wishes for today, or null. A few neighbours a day each want one cheap
@@ -149,7 +434,7 @@ function npcWish(id, day = dayKey()) {
   const wishers = [...NPCS].sort((a, b) => hashStr(day + a.id) - hashStr(day + b.id)).slice(0, NPC_WISHES_PER_DAY);
   if (!wishers.some((n) => n.id === id)) return null;
   const own = NPC_BY_ID[id].perk?.cats || [];
-  const pool = ITEMS.filter((it) => WISH_CATS.includes(it.cat) && !it.npc && it.price <= WISH_MAX_PRICE && !own.includes(it.cat));
+  const pool = ITEMS.filter((it) => WISH_CATS.includes(it.cat) && !it.npc && shopsOf(it).length && it.price <= WISH_MAX_PRICE && !own.includes(it.cat));
   return pool[hashStr(id + day) % pool.length].id;
 }
 
@@ -157,7 +442,9 @@ function npcWish(id, day = dayKey()) {
 
 // The best house owned: 0 小猪窝 (the one every pig starts with) … 3 城堡
 const homeTier = (s) => Math.max(0, ...ITEMS.filter((it) => it.tier && s.inventory[it.id]).map((it) => it.tier));
-const ownedDecor = (s) => ITEMS.filter((it) => it.cat === 'decor' && s.inventory[it.id]);
+const ownedDecor = (s) => ITEMS.filter((it) => it.cat === 'decor' && !it.gift && s.inventory[it.id]);
+// what friends gave him to keep at home
+const keepsakes = (s) => ITEMS.filter((it) => it.gift && s.inventory[it.id]);
 const decorSlots = (s) => DECOR_SLOTS[homeTier(s)];
 const HOUSE_NAMES = ['小猪窝', '温馨公寓', '花园别墅', '猪猪城堡'];
 
@@ -184,19 +471,6 @@ function drainRates(drain = {}) {
 function projected(drain, minutes) {
   const rates = drainRates(drain);
   return Object.fromEntries(Object.entries(rates).map(([k, v]) => [k, Math.round(v * minutes)]));
-}
-
-// Highest education reached: a finished degree, or the stage currently being studied
-function educationTitle(s) {
-  let title = s.level < STAGES[0].minLevel ? '学龄前' : '待入学';
-  for (const st of STAGES) {
-    const courses = COURSES.filter((c) => c.stage === st.id);
-    const started = courses.some((c) => s.courses[c.id]);
-    const finished = st.byMajor ? MAJORS.some((m) => stageDone(s, st.id, m.id)) : stageDone(s, st.id);
-    if (finished) title = st.degree;
-    else if (started) title = st.student;
-  }
-  return title;
 }
 
 // Degrees earned, for display

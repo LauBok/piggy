@@ -15,14 +15,20 @@ const LINES = {
 const BUSY_FX = { study: ['💡', '✏️', '❓', '📝', '💡'], work: ['💦', '💪', '💦', '😤'] };
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
-function needLine() {
+// The most urgent stat the pig needs help with, or null
+function needStat() {
   const s = Game.s;
-  if (s.health < 40) return pick(LINES.health);
-  if (s.hunger < 30) return pick(LINES.hunger);
-  if (s.energy < 20) return pick(LINES.energy);
-  if (s.clean < 30) return pick(LINES.clean);
-  if (s.mood < 30) return pick(LINES.mood);
+  if (s.health < 40) return 'health';
+  if (s.hunger < 30) return 'hunger';
+  if (s.energy < 20) return 'energy';
+  if (s.clean < 30) return 'clean';
+  if (s.mood < 30) return 'mood';
   return null;
+}
+
+function needLine() {
+  const k = needStat();
+  return k ? pick(LINES[k]) : null;
 }
 
 const App = {
@@ -64,7 +70,7 @@ const App = {
 
     if (done) this.report(done);
     else if (fedWhileAway) this.report(fedWhileAway);
-    else UI.say(Game.isNew ? '你好呀！右键点我打开小窝~' : `${Game.s.name}回来啦~`);
+    else UI.say(Game.isNew ? '你好呀！右键点我去猪猪城~' : `${Game.s.name}回来啦~`);
   },
 
   get hovered() {
@@ -72,7 +78,7 @@ const App = {
   },
 
   canWander() {
-    return !Game.busy && !Game.sleeping && !this.hovered && Game.s.health >= 20 && Date.now() > this.holdUntil;
+    return !Game.busy && !Game.sleeping && !this.hovered && !UI.qbOpen && Game.s.health >= 20 && Date.now() > this.holdUntil;
   },
 
   hold(ms) {
@@ -93,6 +99,7 @@ const App = {
       label: Game.activityLabel(),
       progress: Game.progress(),
       remain: Game.remaining(),
+      pigs: Game.pigs,
     });
   },
 
@@ -100,10 +107,9 @@ const App = {
   report(res) {
     if (!res) return;
     if (res.ok === false) PetView.flash('sad', 1200);
-    if (res.msg) {
-      UI.say(res.msg);
-      window.pet.toast({ msg: res.msg, ok: res.ok !== false });
-    }
+    if (res.msg) UI.say(res.msg);
+    // what a neighbour said goes along too, to show over their head in town
+    if (res.msg || res.talk) window.pet.toast({ msg: res.msg || '', ok: res.ok !== false, fx: res.fx, talk: res.talk });
     if (res.fx) PetView.fx(res.fx);
     PetView.update(Game);
     UI.refresh();
@@ -114,6 +120,9 @@ const App = {
   act(action, id) {
     let res;
     switch (action) {
+      case 'order':
+        res = Game.order(id);
+        break;
       case 'use': {
         const it = ITEM_BY_ID[id];
         res = Game.use(id);
@@ -156,6 +165,15 @@ const App = {
         res = Game.plant(Number(plot), seed);
         break;
       }
+      case 'invest':
+        res = Game.invest(id);
+        break;
+      case 'deposit':
+        res = Game.deposit(id);
+        break;
+      case 'withdraw':
+        res = Game.withdraw(id);
+        break;
       case 'restyle':
         res = Game.restyle(id);
         break;
@@ -165,9 +183,51 @@ const App = {
       case 'greet':
         res = Game.greet(id);
         break;
+      case 'meet':
+        res = Game.meet(id);
+        break;
+      case 'chat':
+        res = Game.chat(id);
+        break;
+      case 'answer':
+        res = Game.answer(id);
+        break;
+      case 'remember':
+        res = Game.remember(id);
+        break;
       case 'give':
         res = Game.give(id);
         break;
+      case 'gift':
+        res = Game.gift(id);
+        break;
+      case 'together':
+        res = Game.together(id);
+        break;
+      case 'sell':
+        res = Game.sell(id);
+        break;
+      case 'tea':
+        res = Game.tea(id);
+        break;
+      case 'snapPhoto':
+        res = Game.snapPhoto(id);
+        break;
+      case 'fish':
+        res = Game.fish(id);
+        if (res.ok) PetView.flash('happy', 1500);
+        break;
+      case 'farewell':
+        res = Game.farewell(id);
+        break;
+      case 'duel': {
+        res = Game.duel(id);
+        if (!res.ok) break;
+        PetView.flash(res.result === 'win' ? 'sad' : 'happy', 1800);
+        if (res.result !== 'win') this.pose('jump', 1400);
+        this.hold(2500);
+        break;
+      }
       case 'study':
         res = Game.startStudy(id);
         break;
@@ -205,11 +265,20 @@ const App = {
         res = { msg: `以后叫我「${name}」吧！` };
         break;
       }
+      case 'rejuvenate':
+      case 'switchPig':
+        res = action === 'rejuvenate' ? Game.rejuvenate() : Game.switchPig(id);
+        if (res.ok) {
+          Game.loadPigs().then(() => this.push());
+          PetView.flash('happy', 2000);
+        }
+        break;
       case 'reset':
         Game.reset();
         res = { msg: '一只新的小猪诞生啦！' };
         break;
       case 'mini':
+        UI.closeQuick();
         this.setMini(!Game.s.mini);
         return;
       case 'quit':
@@ -266,10 +335,10 @@ const App = {
     PetView.fx('❤️');
     this.pose('hop', 450);
     this.hold(3000);
-    // petting cheers it up, but not faster than once every few seconds
-    if (now - this.lastPetMood > 4000) {
+    // petting cheers it up a little, now and then: toys and hobbies do the real cheering up
+    if (now - this.lastPetMood > PET_MOOD.everyMs && Game.s.mood < PET_MOOD.upTo) {
       this.lastPetMood = now;
-      Game.apply({ mood: 3 });
+      Game.apply({ mood: PET_MOOD.mood });
     }
     if (Math.random() < 0.5) UI.say(needLine() || pick(LINES.happy));
     UI.refresh();
@@ -399,6 +468,10 @@ const App = {
       this.nextIdleCheck = now + 30000;
       window.pet.idleSeconds().then((sec) => this.onIdle(sec));
     }
+    const pocket = Game.takeAllowance();
+    if (pocket) this.report(pocket);
+    const interest = Game.takeInterest();
+    if (interest) this.report(interest);
     const up = Game.takeLevelUp();
     if (up) {
       this.pose('jump', 1400);
@@ -420,8 +493,12 @@ const App = {
       if (line && !Game.busy && !Game.sleeping) UI.say(line);
     }
 
-    if (!this.hovered) document.body.classList.remove('hover');
-    document.body.classList.toggle('needy', !!needLine());
+    if (!this.hovered && !UI.qbOpen) document.body.classList.remove('hover');
+    const need = needStat();
+    document.body.classList.toggle('needy', !!need);
+    this.needDot ||= document.getElementById('needDot');
+    const needIcon = need ? STATS.find((st) => st.key === need).icon : '';
+    if (this.needDot.textContent !== needIcon) this.needDot.textContent = needIcon;
     PetView.update(Game);
     UI.refresh();
     this.push();

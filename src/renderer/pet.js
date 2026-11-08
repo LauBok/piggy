@@ -110,6 +110,13 @@ const WEAR_SVG = {
       <rect x="59" y="16" width="42" height="7" fill="#e64980"/>
       <ellipse cx="80" cy="26" rx="36" ry="7" fill="#212529"/>
       <path d="M64 -2 L64 14" stroke="#fff" stroke-width="2.5" opacity=".15" stroke-linecap="round"/></g>`,
+  // the Lv.29 prize: a top hat in gold, a pink band and a little star on it
+  goldhat: `<g>
+      <rect x="59" y="-6" width="42" height="32" rx="4" fill="#ffd43b" stroke="#f59f00" stroke-width="1.5"/>
+      <rect x="59" y="16" width="42" height="7" fill="#f06595"/>
+      <ellipse cx="80" cy="26" rx="36" ry="7" fill="#fcc419" stroke="#f59f00" stroke-width="1.5"/>
+      <path d="M64 -2 L64 14" stroke="#fff" stroke-width="2.5" opacity=".55" stroke-linecap="round"/>
+      <path d="M90 4 l1.6 3.4 l3.6 .4 l-2.7 2.4 l.8 3.6 l-3.3 -1.9 l-3.3 1.9 l.8 -3.6 l-2.7 -2.4 l3.6 -.4 z" fill="#fff" opacity=".9"/></g>`,
   cap: `<g>
       <path d="M48 36 Q50 6 80 6 Q110 6 112 36 Z" fill="#ff922b" stroke="#e8590c" stroke-width="1.5"/>
       <path d="M104 33 Q130 30 138 39 Q120 42 100 38 Z" fill="#e8590c"/>

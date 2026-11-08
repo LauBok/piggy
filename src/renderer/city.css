@@ -9,260 +9,7 @@ body.paused * {
   animation-play-state: paused !important;
 }
 
-/* ---------- top bar ---------- */
-
-#hud {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 52px;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 10px 0 8px;
-  box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.93);
-  border-bottom: 1px solid var(--pink-line);
-  -webkit-app-region: drag;
-}
-
-#hud button {
-  -webkit-app-region: no-drag;
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-}
-
-.hud-pig {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-}
-
-.hud-pig > svg {
-  position: absolute;
-  inset: 0;
-}
-
-#hudAvatar {
-  position: absolute;
-  inset: 5px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: radial-gradient(circle at 50% 40%, #fff, #ffe9f0);
-}
-
-#hudAvatar svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.hud-lv {
-  position: absolute;
-  right: -4px;
-  bottom: -2px;
-  min-width: 16px;
-  padding: 0 4px;
-  border-radius: 9px;
-  background: var(--grad);
-  color: #fff;
-  font-size: 10.5px;
-  font-weight: bold;
-  line-height: 16px;
-  text-align: center;
-  box-shadow: 0 0 0 2px #fff;
-}
-
-.hud-pig .track,
-.hstat .track {
-  fill: none;
-  stroke: #f7e8ee;
-  stroke-width: 4;
-}
-
-.hud-pig .val,
-.hstat .val {
-  fill: none;
-  stroke-width: 4;
-  stroke-linecap: round;
-  transition: stroke-dasharray 0.5s;
-}
-
-.hud-name {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-  min-width: 64px;
-}
-
-.hud-name b {
-  font-size: 14px;
-}
-
-.hud-name small {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.hud-stats {
-  display: flex;
-  gap: 3px;
-}
-
-.hstat {
-  position: relative;
-  width: 36px;
-  height: 36px;
-}
-
-.hstat svg {
-  position: absolute;
-  inset: 0;
-}
-
-.hstat span {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
-.hstat em {
-  position: absolute;
-  left: 50%;
-  top: 38px;
-  transform: translateX(-50%);
-  padding: 0 6px;
-  border-radius: 8px;
-  background: var(--ink);
-  color: #fff;
-  font: bold 11px/17px 'PigRound', system-ui;
-  font-style: normal;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s;
-}
-
-.hstat:hover em {
-  opacity: 1;
-}
-
-.hstat.warn span {
-  animation: pulse 0.9s ease-in-out infinite;
-}
-
-.hud-act {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
-  padding: 0 4px 0 10px;
-  border-radius: 17px;
-  background: var(--pink-soft);
-  -webkit-app-region: no-drag;
-  animation: pop-in 0.25s ease-out;
-}
-
-.hud-act.on {
-  display: flex;
-}
-
-.ha-ic {
-  font-size: 18px;
-  cursor: pointer;
-}
-
-.ha-main {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  cursor: pointer;
-}
-
-.ha-main b {
-  font-size: 12px;
-  line-height: 1.1;
-  white-space: nowrap;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ha-bar {
-  display: block;
-  width: 96px;
-  height: 4px;
-  border-radius: 2px;
-  background: #ffd6e2;
-  overflow: hidden;
-}
-
-.ha-bar i {
-  display: block;
-  height: 100%;
-  width: 0;
-  background: var(--grad);
-  transition: width 1s linear;
-}
-
-.ha-time {
-  font-size: 12px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.hud-act button {
-  width: 26px;
-  height: 26px;
-  border-radius: 50% !important;
-  background: #fff !important;
-  color: #e64980;
-  font-size: 12px;
-}
-
-.hud-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.coins {
-  padding: 4px 12px;
-  border-radius: 14px;
-  background: #fff9db;
-  color: #e67700;
-  white-space: nowrap;
-}
-
-.coins b {
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-}
-
-.hbtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50% !important;
-  background: var(--pink-soft) !important;
-  font-size: 15px;
-}
-
-.hbtn:hover {
-  background: #ffdce7 !important;
-}
-
-.hbtn.win {
-  color: #c2577a;
-  font-size: 13px;
-}
+/* the top bar, the status pill, toasts, the bag drawer, the maps and the interior chrome are in hud.css */
 
 @keyframes pop-in {
   from { transform: scale(0.85); opacity: 0; }
@@ -296,9 +43,49 @@ body.paused * {
   display: block;
 }
 
-#cityBase text {
-  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+/* day and night: a wash of colour over the town, warm light on top of it */
+#nightTint,
+#cityLights {
+  position: absolute;
+  left: 0;
+  top: 0;
   pointer-events: none;
+  transition: opacity 3s, background-color 3s;
+}
+
+#nightTint {
+  mix-blend-mode: multiply;
+  opacity: 0;
+}
+
+#cityLights {
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+
+#cityLights rect {
+  opacity: 0.85;
+}
+
+/* the small hours: half the windows have gone dark */
+#cityLights.late rect.late {
+  opacity: 0;
+}
+
+/* the people dim only a little, so they still read at night; what they say stays bright */
+#npcLayer .a-face,
+#pigActor .a-face,
+#walkers .a-sprite {
+  filter: brightness(var(--dim, 1));
+}
+
+#cityBase text {
+  font-family: 'PigRound', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+  pointer-events: none;
+}
+
+#cityBase text.e {
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
 }
 
 .pl {
@@ -307,6 +94,20 @@ body.paused * {
 
 .pl-hit {
   fill: transparent;
+}
+
+/* a home to visit: lifts a little under the mouse, like a place */
+.visit {
+  cursor: pointer;
+  transition: transform 0.18s ease-out;
+}
+
+.visit:hover {
+  transform: translateY(-3px);
+}
+
+.pl[data-place='neighbors']:hover .pl-art {
+  transform: none;
 }
 
 .pl-art {
@@ -646,6 +447,24 @@ body.paused * {
   animation: say 2.6s ease-out forwards;
 }
 
+/* through a shut door: over the house, a little longer than a passing word */
+.door-say {
+  z-index: 5;
+}
+
+.door-say .npc-say {
+  width: max-content;
+  max-width: 200px;
+  white-space: normal;
+  text-wrap: balance;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.door-say .npc-say.on {
+  animation-duration: 3.6s;
+}
+
 @keyframes say {
   0% { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.9); }
   10%, 85% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
@@ -674,6 +493,99 @@ body.paused * {
 
 .tip-hearts {
   color: #ff8fab;
+}
+
+/* the season falling over the view: snow, petals, leaves */
+#weather {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#weather i {
+  position: absolute;
+  left: var(--x);
+  top: -20px;
+  animation: weather-fall var(--d) linear var(--t) infinite;
+  scale: var(--s);
+}
+
+#weather.snow i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 3px rgba(150, 170, 200, 0.6);
+}
+
+#weather.petal i {
+  width: 10px;
+  height: 7px;
+  border-radius: 60% 0 60% 0;
+  background: #ffc2d6;
+}
+
+#weather.leaf i {
+  width: 12px;
+  height: 8px;
+  border-radius: 70% 0 70% 0;
+  background: #ff922b;
+}
+
+#weather.leaf i:nth-child(3n) {
+  background: #fcc419;
+}
+
+@keyframes weather-fall {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(var(--sway), 50vh) rotate(180deg); }
+  100% { transform: translate(0, calc(100vh + 40px)) rotate(360deg); }
+}
+
+body.paused #weather i {
+  animation-play-state: paused;
+}
+
+/* fireworks over the theme park: sparks flying out and fading */
+.firework {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.firework i {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 8px var(--c);
+  animation: spark 1.6s ease-out forwards;
+}
+
+@keyframes spark {
+  0% { transform: rotate(var(--a)) translateX(0); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: rotate(var(--a)) translateX(var(--r)) translateY(14px); opacity: 0; }
+}
+
+/* 端午: the dragon boats' paddles */
+.boat-race {
+  animation: paddle 6s ease-in-out infinite;
+}
+
+.paddle-stroke {
+  animation: stroke 0.6s ease-in-out infinite alternate;
+  transform-box: fill-box;
+  transform-origin: top;
+}
+
+@keyframes stroke {
+  to { transform: rotate(-35deg); }
 }
 
 .city-fx {
@@ -1007,6 +919,141 @@ body.paused * {
   background: #c08a5b;
 }
 
+/* the cinema: a glowing screen with the film's name, red seats in a row */
+.rm-film {
+  position: absolute;
+  left: 30px;
+  top: 14px;
+  width: 160px;
+  height: 66px;
+  border-radius: 4px;
+  background: linear-gradient(#fff9db, #ffe8a3);
+  box-shadow: 0 0 18px rgba(255, 236, 153, 0.6);
+  display: grid;
+  place-items: center;
+}
+
+.rm-film span {
+  color: #5c4a9e;
+  font: 13px/1.2 var(--f-title);
+}
+
+.rm-seat {
+  position: absolute;
+  top: 104px;
+  width: 26px;
+  height: 22px;
+  border-radius: 8px 8px 3px 3px;
+  background: #e03131;
+  box-shadow: inset 0 -6px 0 #a51111;
+}
+
+/* the theme park. The ferris wheel's cabin: open sky, the town's roofs sinking away as it rises */
+.rm-sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#74c0fc, #d0ebff);
+}
+
+.rm-sky .cloud {
+  position: absolute;
+  width: 46px;
+  height: 16px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 12px -8px 0 2px #fff;
+  animation: cloud-drift 9s linear infinite alternate;
+}
+
+@keyframes cloud-drift {
+  to { transform: translateX(22px); }
+}
+
+.rm-roofs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(-30px * var(--up));
+  height: 46px;
+  background:
+    linear-gradient(135deg, transparent 50%, #ff8787 50%) 0 0 / 28px 16px repeat-x,
+    linear-gradient(225deg, transparent 50%, #ff8787 50%) 0 0 / 28px 16px repeat-x,
+    linear-gradient(#ffe8cc 0 0) 0 16px / 100% 30px no-repeat;
+  opacity: 0.9;
+}
+
+.rm-cabin {
+  position: absolute;
+  left: 48px;
+  top: 20px;
+  width: 124px;
+  height: 108px;
+  border-radius: 22px 22px 16px 16px;
+  border: 6px solid #f783ac;
+  border-bottom-width: 26px;
+  background: rgba(255, 255, 255, 0.25);
+  animation: cabin-sway 3s ease-in-out infinite alternate;
+  transform-origin: 50% -20px;
+}
+
+.rm-cabin::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -26px;
+  width: 6px;
+  height: 20px;
+  margin-left: -3px;
+  background: #adb5bd;
+}
+
+@keyframes cabin-sway {
+  from { transform: rotate(-2deg); }
+  to { transform: rotate(2deg); }
+}
+
+/* the carousel: a striped canopy, horses bobbing */
+.rm-tent {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 30px;
+  background: repeating-linear-gradient(90deg, #ff6b6b 0 22px, #fff 22px 44px);
+  border-bottom: 4px solid #e03131;
+  border-radius: 0 0 50% 50% / 0 0 10px 10px;
+}
+
+.rm-horse {
+  position: absolute;
+  top: 44px;
+  font-size: 56px;
+  line-height: 1;
+  animation: horse-bob 1.6s ease-in-out infinite alternate;
+}
+
+.rm-horse.late,
+.rm-ghost.late {
+  animation-delay: -0.8s;
+}
+
+@keyframes horse-bob {
+  to { transform: translateY(-10px); }
+}
+
+/* the haunted house: ghosts drifting about */
+.rm-ghost {
+  position: absolute;
+  font-size: 26px;
+  opacity: 0.9;
+  animation: ghost-float 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes ghost-float {
+  from { transform: translate(0, 0) rotate(-6deg); }
+  to { transform: translate(14px, -8px) rotate(6deg); }
+}
+
 .rm-table {
   position: absolute;
   left: 110px;
@@ -1107,227 +1154,9 @@ body.paused * {
   transform: none;
 }
 
-#sheet.wide {
-  left: 10px;
-  width: auto;
-}
-
-.sh-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 14px 8px 20px;
-}
-
-.sh-head b {
-  font-size: 17px;
-}
-
-.sh-x {
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: 50%;
-  background: var(--pink-soft);
-  color: #c2577a;
-  cursor: pointer;
-}
-
-.sh-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 16px 18px;
-}
-
-.sh-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sh-body::-webkit-scrollbar-thumb {
-  background: #ffcadb;
-  border-radius: 3px;
-}
-
-.sh-body h3:first-child {
-  margin-top: 4px;
-}
-
-#sheet.narrow .grid {
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.tiles {
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 10px;
-  margin: 0 0 6px;
-}
-
-#sheet.narrow .job {
-  flex-wrap: wrap;
-  padding: 12px;
-}
-
-#sheet.narrow .job-ic {
-  width: 42px;
-  height: 42px;
-  font-size: 22px;
-}
-
-#sheet.narrow .job-side {
-  width: 100%;
-  justify-content: flex-end;
-}
-
-.job-where {
-  margin-left: 8px;
-  padding: 1px 8px;
-  border-radius: 10px;
-  background: #f1f3f5;
-  color: #868e96;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.job-where:hover {
-  background: #e7f5ff;
-  color: #1c7ed6;
-}
-
-.btn s {
-  opacity: 0.7;
-  font-weight: normal;
-  font-size: 11px;
-}
-
-.badge.star {
-  left: 10px;
-  right: auto;
-  background: #ffd43b;
-  color: #fff;
-}
-
-.goods.special {
-  background: linear-gradient(160deg, #fff, #fff9db);
-}
-
-.note {
-  margin: -4px 0 10px;
-  color: var(--muted);
-}
-
-/* a neighbour */
-.npc-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  margin-bottom: 14px;
-}
-
-.npc-av {
-  width: 60px;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.npc-av svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.npc-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.npc-main b {
-  font-size: 14px;
-}
-
-.hearts {
-  display: flex;
-  gap: 2px;
-  margin: 3px 0;
-}
-
-.hearts i::before {
-  content: '♥';
-  font-style: normal;
-  font-size: 12px;
-  color: #f1dfe6;
-}
-
-.hearts i.on::before {
-  color: #ff6b9d;
-}
-
-.hearts i.mark {
-  margin-right: 4px;
-}
-
-.perk {
-  color: #b3a2a8;
-  font-size: 11.5px;
-}
-
-.perk.on {
-  color: #099268;
-}
-
-.npc-acts {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.wish {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 5px 8px;
-  border: none;
-  border-radius: 14px;
-  background: #f8f9fa;
-  color: #868e96;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.wish span {
-  font-size: 20px;
-}
-
-.wish.have {
-  background: #fff9db;
-  color: #e67700;
-  box-shadow: 0 0 0 2px #ffd43b;
-  font-weight: bold;
-}
-
-.wish.done {
-  font-size: 18px;
-  background: none;
-}
-
-.btn.hi {
-  padding: 7px 10px;
-}
+/* everything inside a sheet is in sheets.css */
 
 /* the pig's home */
-.home-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.home-top b {
-  font-size: 15px;
-}
-
 .dollhouse {
   position: relative;
   width: min(100%, 680px);
@@ -1375,118 +1204,6 @@ body.paused * {
   height: auto;
 }
 
-.wardrobe,
-.furn-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.wear-btn {
-  width: 46px;
-  height: 46px;
-  border: 1px solid var(--pink-line);
-  border-radius: 14px;
-  background: #fff;
-  font-size: 22px;
-  cursor: pointer;
-}
-
-.wear-btn.on {
-  background: var(--grad);
-  border-color: transparent;
-}
-
-.furn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 10px;
-  border-radius: 14px;
-  background: #fff;
-  border: 1px solid var(--pink-line);
-  font-size: 24px;
-}
-
-.furn small .eff {
-  font-size: 10px;
-}
-
-.furn.idle {
-  opacity: 0.4;
-}
-
-/* ---------- the bag ---------- */
-
-#drawer {
-  position: absolute;
-  left: 50%;
-  bottom: 14px;
-  z-index: 5;
-  max-width: 820px;
-  padding: 10px 12px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 10px 30px rgba(140, 60, 90, 0.25);
-  transform: translate(-50%, 150%);
-  transition: transform 0.25s ease-out;
-}
-
-#drawer.on {
-  transform: translate(-50%, 0);
-}
-
-.dr-row {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-}
-
-.dr-item {
-  position: relative;
-  flex-shrink: 0;
-  width: 54px;
-  height: 58px;
-  border: 1px solid var(--pink-line);
-  border-radius: 16px;
-  background: #fff;
-  cursor: pointer;
-  transition: transform 0.12s;
-}
-
-.dr-item:hover {
-  transform: translateY(-2px);
-}
-
-.dr-item:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.dr-item span {
-  display: block;
-  font-size: 26px;
-  line-height: 1.3;
-}
-
-.dr-item small {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.dr-empty {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 2px 6px;
-  color: var(--muted);
-}
-
-#toast {
-  z-index: 8;
-}
-
 .a-hold > .basket {
   display: flex;
   animation: none;
@@ -1507,166 +1224,11 @@ body.paused * {
   50% { transform: rotate(8deg) translateY(4px); }
 }
 
-/* university: required courses and credits toward the viewed major's degree */
-.credit-line {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin: -6px 0 12px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.credit-line b {
-  color: var(--ink);
-  font-size: 14px;
-}
-
-.credit-line .pbar {
-  width: 180px;
-  margin: 0;
-}
-
 /* neighbourhood names painted on the ground */
 #cityBase text.district {
   font: 34px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
   fill: rgba(74, 44, 56, 0.2);
   letter-spacing: 10px;
-}
-
-/* the little map in the corner */
-#minimap {
-  position: absolute;
-  right: 14px;
-  bottom: 14px;
-  z-index: 4;
-  width: 168px;
-  height: 121px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #dcefc8;
-  box-shadow: 0 4px 14px rgba(90, 60, 70, 0.25), 0 0 0 3px #fff;
-  cursor: pointer;
-}
-
-#minimap svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-#mmView {
-  transition: none;
-}
-
-/* the big map */
-#mapView {
-  position: absolute;
-  top: 62px;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
-  z-index: 6;
-  display: none;
-  flex-direction: column;
-  border-radius: 20px;
-  background: #fffafc;
-  box-shadow: 0 10px 30px rgba(140, 60, 90, 0.25);
-  overflow: hidden;
-}
-
-#mapView.on {
-  display: flex;
-  transform-origin: calc(100% - 84px) calc(100% - 60px);
-  animation: map-grow 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
-}
-
-@keyframes map-grow {
-  from { transform: scale(0.2); opacity: 0.3; border-radius: 40px; }
-}
-
-.mv-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px 6px 20px;
-}
-
-.mv-head b {
-  font-size: 17px;
-}
-
-.mv-box {
-  flex: 1;
-  min-height: 0;
-  margin: 0 12px 12px;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #d3ebb6;
-  cursor: grab;
-  touch-action: none;
-}
-
-.mv-box.dragging {
-  cursor: grabbing;
-}
-
-.mv-box svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.mp {
-  cursor: pointer;
-}
-
-.mp:hover rect {
-  opacity: 1;
-  stroke: #e64980;
-  stroke-width: 8;
-}
-
-.mp.locked {
-  filter: grayscale(0.9);
-  opacity: 0.6;
-}
-
-.mp-ic {
-  font-size: 52px;
-  text-anchor: middle;
-  dominant-baseline: central;
-  pointer-events: none;
-}
-
-.mp-name {
-  font: 34px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
-  fill: #4a2c38;
-  text-anchor: middle;
-  dominant-baseline: central;
-  paint-order: stroke;
-  stroke: #fff;
-  stroke-width: 8px;
-  pointer-events: none;
-}
-
-.mp-district {
-  font: 60px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
-  fill: rgba(74, 44, 56, 0.28);
-  letter-spacing: 16px;
-  text-anchor: middle;
-  dominant-baseline: central;
-  pointer-events: none;
-}
-
-.mv-pig {
-  fill: #fff;
-  stroke: #ff6b9d;
-  stroke-width: 10;
-  animation: pulse 1.2s ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
 }
 
 #cityBase text.signtext {
@@ -1707,17 +1269,8 @@ body.paused * {
 }
 
 /* titles and names in the playful title face; everything else in the rounded one */
-.sh-head b,
 .mv-head b,
 .hud-name b,
-.home-top b,
-.npc-main b,
-.game-head b,
-.sh-body h3,
-.fcenter > b,
-.goods > b,
-.job-main > b,
-.tile b,
 .coins b,
 #placeTip,
 .npc-say {
@@ -1726,7 +1279,6 @@ body.paused * {
   letter-spacing: 0.5px;
 }
 
-.sh-head b,
 .mv-head b {
   font-size: 21px;
 }
@@ -1819,96 +1371,7 @@ input {
   dominant-baseline: central;
 }
 
-/* ---------- a place's banner: its colours, name, a line about it, and who works there ---------- */
-.sh-banner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-height: 92px;
-  margin: 10px 10px 4px;
-  padding: 12px 64px 12px 18px;
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 92% -20%, rgba(255, 255, 255, 0.55) 0 22%, transparent 23%),
-    radial-gradient(circle at 8% 130%, rgba(255, 255, 255, 0.35) 0 18%, transparent 19%),
-    linear-gradient(120deg, color-mix(in srgb, var(--b1) 85%, white), color-mix(in srgb, var(--b2) 55%, white));
-  box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--b2) 35%, transparent);
-  overflow: hidden;
-}
-
-/* scalloped awning edge along the top */
-.sh-banner::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 10px;
-  background: radial-gradient(circle at 10px 0, color-mix(in srgb, var(--b2) 70%, white) 9px, transparent 10px) 0 0 / 20px 10px repeat-x;
-}
-
-.sb-ic {
-  flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 12px rgba(90, 50, 60, 0.15);
-  font-size: 36px;
-}
-
-.sb-title {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.sb-title b {
-  font: 26px 'PigTitle', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
-  color: #4a2c38;
-  letter-spacing: 1px;
-}
-
-.sb-title small {
-  color: color-mix(in srgb, var(--b2) 50%, #4a2c38);
-  font-size: 13px;
-}
-
-.sh-banner .sh-x {
-  position: absolute;
-  right: 14px;
-  top: 14px;
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.sh-banner .npc-card {
-  margin: 0 0 0 auto;
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.82);
-  border-color: transparent;
-  box-shadow: none;
-}
-
-.sh-banner .npc-av {
-  width: 52px;
-}
-
-.sh-head {
-  margin: 4px 10px 0;
-}
-
 /* ---------- the vegetable patch ---------- */
-.garden-top {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
-}
-
 .plots {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1995,14 +1458,6 @@ input {
   background: #e9fac8;
 }
 
-.goods.mystery {
-  background: repeating-linear-gradient(135deg, #fff 0 12px, #fff5f9 12px 24px);
-}
-
-.goods.mystery .goods-ic {
-  background: #f3f0ff;
-}
-
 /* ---------- inside the pig's home ---------- */
 #interior {
   position: absolute;
@@ -2013,7 +1468,7 @@ input {
   z-index: 3;
   display: none;
   overflow: hidden;
-  background: #3b2a20;
+  background: radial-gradient(ellipse at 50% 40%, #8c6d62, #5e463e);
 }
 
 #interior.on {
@@ -2054,48 +1509,22 @@ body.indoors #minimap {
   top: 0;
 }
 
-#iprompt {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3000;
-  padding: 4px 12px;
-  border-radius: 12px;
-  background: rgba(74, 44, 56, 0.9);
-  color: #fff;
-  font: 14px 'PigTitle', 'PigRound', sans-serif;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
+/* the one character on the panda's scroll, brushed big */
+#interior text.i-scroll {
+  font: 34px 'PigTitle', 'PigRound', serif;
+  fill: #212529;
+  text-anchor: middle;
+  dominant-baseline: central;
 }
 
-#iprompt.on {
-  opacity: 1;
+/* the turtle's clock: its pendulum takes its time */
+.slowswing {
+  animation: slowswing 4s ease-in-out infinite;
 }
 
-.i-room {
-  position: absolute;
-  left: 14px;
-  top: 12px;
-  padding: 4px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.9);
-  font: 16px 'PigTitle', 'PigRound', sans-serif;
-  color: #4a2c38;
-}
-
-.i-hint {
-  position: absolute;
-  left: 50%;
-  bottom: 12px;
-  transform: translateX(-50%);
-  padding: 4px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.82);
-  color: var(--muted);
-  font-size: 12px;
-  white-space: nowrap;
+@keyframes slowswing {
+  0%, 100% { transform: rotate(-9deg); }
+  50% { transform: rotate(9deg); }
 }
 
 #ibase text.i-label {
@@ -2163,11 +1592,6 @@ body.indoors #minimap {
   display: block;
   width: 100%;
   height: 100%;
-}
-
-.goods.current {
-  border-color: #f783ac;
-  box-shadow: 0 0 0 3px #ffdeeb;
 }
 
 .pole-stripes path {
@@ -2255,3 +1679,4 @@ body.indoors #minimap {
   font-size: 8px;
   fill: #b07a45;
 }
+

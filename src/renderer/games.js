@@ -4,13 +4,38 @@
 
 const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
 
+// Mood the pig gets from a game, by result (mirrors Game.minigame in state.js)
+const GAME_MOOD = { win: 8, draw: 10, lose: 14 };
+
+// Exp this result will give, after today's cap (snap is the home window's latest state)
+function gameExp(gameId, result) {
+  const base = PLAY_EXP[gameId]?.[result] || 0;
+  const s = typeof snap !== 'undefined' && snap ? snap.s : null;
+  if (!s) return base;
+  const got = s.playDay?.date === dayKey() ? s.playDay.got : 0;
+  return Math.max(0, Math.min(base, playCap(s) - got));
+}
+
+// The bar over every game: you on the left (pink), the pig on the right (lilac), a status pill between
+function scoreBar({ you = '', pig = '', youSub = '', pigSub = '', status = '', mood = '', turn = '' }) {
+  return `<div class="gbar">
+    <div class="gside you ${turn === 'you' ? 'turn' : ''}"><span class="gav">你</span><div class="gnum"><b>${you}</b>${youSub}</div></div>
+    <div class="gstatus ${mood}">${status}</div>
+    <div class="gside pig ${turn === 'pig' ? 'turn' : ''}"><div class="gnum"><b>${pig}</b>${pigSub}</div><span class="gav">🐷</span></div>
+  </div>`;
+}
+
+const pips = (n, of) => `<span class="gpips">${Array.from({ length: of }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+
 function resultView(gameId, result, detail) {
   const face = { win: '🎉', lose: '🐷', draw: '🤝' }[result];
   const text = { win: '你赢了！', lose: '小猪赢了', draw: '平局' }[result];
-  return `<div class="g-result"><div class="g-result-ic">${face}</div><b>${text}</b>
-    ${detail ? `<span>${detail}</span>` : ''}
+  const exp = gameExp(gameId, result);
+  return `<div class="g-result ${result}"><div class="g-result-ic">${face}</div><h2>${text}</h2>
+    ${detail ? `<div class="g-result-score">${detail}</div>` : ''}
+    <div class="g-gains">${exp ? `<span class="gain exp">⭐ +${exp}</span>` : ''}<span class="gain mood" title="小猪的心情">😊 +${GAME_MOOD[result]}</span></div>
     <div class="g-result-btns">
-      <button class="btn" data-action="game" data-id="${gameId}">再来</button>
+      <button class="btn" data-action="game" data-id="${gameId}">再来一局</button>
       <button class="btn ghost" data-action="games">返回</button>
     </div></div>`;
 }
@@ -31,15 +56,15 @@ const RPS = {
     let locked = false;
 
     const render = () => {
+      const won = last && last.who;
       el.innerHTML = `<div class="rps">
-        <div class="score"><span>你 <b>${you}</b></span><span><b>${pig}</b> 🐷</span></div>
+        ${scoreBar({ you, pig, youSub: pips(you, 2), pigSub: pips(pig, 2), status: last ? last.text : '出拳！', mood: won === 'pig' ? 'pig' : won === 'you' ? 'good' : '' })}
         <div class="rps-hands">
-          <div class="rps-hand ${last ? 'show' : ''}">${last ? last.you.icon : '❔'}</div>
+          <div class="rps-hand ${last ? 'show' : ''} ${won === 'you' ? 'won' : ''}"><span>${last ? last.you.icon : '❔'}</span></div>
           <div class="rps-vs">VS</div>
-          <div class="rps-hand pig ${last ? 'show' : ''}">${last ? last.pig.icon : '❔'}</div>
+          <div class="rps-hand pig ${last ? 'show mirror' : ''} ${won === 'pig' ? 'won' : ''}"><span>${last ? last.pig.icon : '❔'}</span></div>
         </div>
-        <div class="g-msg">${last ? last.text : '出拳！'}</div>
-        <div class="g-choices">${RPS_HANDS.map((h) => `<button class="g-choice" data-g="${h.id}">${h.icon}<small>${h.name}</small></button>`).join('')}</div>
+        <div class="g-choices">${RPS_HANDS.map((h) => `<button class="g-choice ${last && last.you.id === h.id ? 'picked' : ''}" data-g="${h.id}">${h.icon}<small>${h.name}</small></button>`).join('')}</div>
       </div>`;
     };
 
@@ -49,14 +74,17 @@ const RPS = {
       const mine = RPS_HANDS.find((h) => h.id === b.dataset.g);
       const theirs = pickOne(RPS_HANDS);
       let text = '平手';
+      let who = '';
       if (mine.beats === theirs.id) {
         you++;
-        text = '+1';
+        text = '这局你赢';
+        who = 'you';
       } else if (theirs.beats === mine.id) {
         pig++;
-        text = '🐷 +1';
+        text = '这局小猪赢';
+        who = 'pig';
       }
-      last = { you: mine, pig: theirs, text };
+      last = { you: mine, pig: theirs, text, who };
       render();
       if (you === 2 || pig === 2) {
         locked = true;
@@ -104,18 +132,19 @@ const TTT = {
     let turn = 'X';
     let over = false;
 
-    const render = (msg) => {
+    const render = (msg, mood = '') => {
+      const mine = turn === 'X' && !over;
       el.innerHTML = `<div class="ttt">
-        <div class="g-msg">${msg}</div>
-        <div class="ttt-board">${b.map((v, i) => `<button class="ttt-cell ${v ? 'filled' : ''} ${i === fresh ? 'fresh' : ''} ${i === pigLast ? 'last' : ''}"
-          data-g="${i}">${v === 'X' ? '❌' : v === 'O' ? '🐷' : ''}</button>`).join('')}</div>
+        ${scoreBar({ status: msg, mood, turn: over ? '' : turn === 'X' ? 'you' : 'pig' })}
+        <div class="ttt-board ${mine ? 'mine' : ''}">${b.map((v, i) => `<button class="ttt-cell ${v ? 'filled' : ''} ${v === 'O' ? 'o' : ''} ${i === fresh ? 'fresh' : ''} ${i === pigLast ? 'last' : ''}"
+          data-g="${i}">${v === 'X' ? '<i class="xmark"></i>' : v === 'O' ? '🐷' : ''}</button>`).join('')}</div>
       </div>`;
     };
 
     const finish = (w) => {
       over = true;
       const result = w === 'X' ? 'win' : w === 'O' ? 'lose' : 'draw';
-      render({ win: '🎉', lose: '🐷', draw: '🤝' }[result]);
+      render({ win: '连成一线！', lose: '小猪连成一线', draw: '平局' }[result], { win: 'good', lose: 'pig', draw: '' }[result]);
       setTimeout(() => {
         el.innerHTML = resultView('ttt', result);
         done(result);
@@ -132,7 +161,7 @@ const TTT = {
       let w = tttWinner(b);
       if (w) return finish(w);
       turn = 'O';
-      render('🐷 🤔');
+      render('小猪在想…', 'pig');
       setTimeout(() => {
         pigLast = tttPigMove(b);
         b[pigLast] = 'O';
@@ -155,19 +184,22 @@ const DIRS = [
   { id: 2, name: '右' },
 ];
 
+const ARROWS = ['M19 12H5M11 6l-6 6 6 6', 'M12 19V5M6 11l6-6 6 6', 'M5 12h14M13 6l6 6-6 6'];
+
 const PENALTY = {
   start(el, done) {
     const kicks = { you: [], pig: [] };
     let phase = 'shoot'; // player shoots, then player keeps
     let busy = false;
     let msg = '射门！';
+    let msgMood = '';
 
     const goals = (side) => kicks[side].filter(Boolean).length;
     const dots = (side) => {
       const n = Math.max(5, kicks.you.length, kicks.pig.length);
       return Array.from({ length: n }, (_, i) => {
         const k = kicks[side][i];
-        return `<i class="${k === undefined ? '' : k ? 'goal' : 'miss'}">${k === undefined ? '' : k ? '⚽' : '✕'}</i>`;
+        return `<i class="${k === undefined ? '' : k ? 'goal' : 'miss'}">${k === undefined ? '' : '⚽'}</i>`;
       }).join('');
     };
 
@@ -192,18 +224,16 @@ const PENALTY = {
     const render = (anim) => {
       const shooting = phase === 'shoot';
       el.innerHTML = `<div class="pen">
-        <div class="pen-score">
-          <div><span>你</span><div class="pen-dots">${dots('you')}</div><b>${goals('you')}</b></div>
-          <div><span>🐷</span><div class="pen-dots">${dots('pig')}</div><b>${goals('pig')}</b></div>
-        </div>
-        <div class="pen-field">
+        ${scoreBar({ you: goals('you'), pig: goals('pig'), youSub: `<span class="pen-dots">${dots('you')}</span>`, pigSub: `<span class="pen-dots">${dots('pig')}</span>`, status: msg, mood: msgMood, turn: busy ? '' : shooting ? 'you' : 'pig' })}
+        <div class="pen-field ${shooting ? 'shoot' : 'keep'}">
           <div class="pen-goal"><div class="pen-net"></div></div>
+          <div class="pen-box"></div>
+          <div class="pen-spot"></div>
           <div class="pen-keeper ${anim ? `dive-${anim.keeper}` : ''}">${shooting ? '🐷' : '🧤'}</div>
           <div class="pen-ball ${anim ? `to-${anim.ball}` : ''}">⚽</div>
         </div>
-        <div class="g-msg">${msg}</div>
         <div class="g-choices">${DIRS.map((d) => `<button class="g-choice small" data-g="${d.id}" ${busy ? 'disabled' : ''}>
-          ${['⬅️', '⬆️', '➡️'][d.id]}<small>${d.name}</small></button>`).join('')}</div>
+          <svg viewBox="0 0 24 24"><path d="${ARROWS[d.id]}"/></svg><small>${d.name}</small></button>`).join('')}</div>
       </div>`;
     };
 
@@ -217,12 +247,14 @@ const PENALTY = {
       if (phase === 'shoot') {
         scored = mine !== theirs;
         kicks.you.push(scored);
-        msg = scored ? '球进啦！⚽' : '被扑出！';
+        msg = scored ? '球进啦！' : '被扑出！';
+        msgMood = scored ? 'good' : 'pig';
         render({ ball: mine, keeper: theirs });
       } else {
         scored = mine !== theirs;
         kicks.pig.push(scored);
-        msg = scored ? '🐷 进球' : '扑住了！🧤';
+        msg = scored ? '小猪进球' : '扑住了！';
+        msgMood = scored ? 'pig' : 'good';
         render({ ball: theirs, keeper: mine });
       }
       setTimeout(() => {
@@ -234,6 +266,7 @@ const PENALTY = {
         }
         phase = phase === 'shoot' ? 'keep' : 'shoot';
         msg = phase === 'shoot' ? '射门！' : '扑救！';
+        msgMood = '';
         busy = false;
         render();
       }, 1300);
@@ -454,24 +487,35 @@ const CHESS = {
     let lastMove = null;
     let over = false;
     let msg = '你执白';
+    let endMood = '';
+
+    const lost = { w: [], b: [] }; // pieces each side has lost
+    const glyph = (p) => `<span class="pc ${p === p.toUpperCase() ? 'pw' : 'pb'}">${CHESS_GLYPH[p.toLowerCase()]}&#xFE0E;</span>`;
+    const ORDER = 'qrbnp';
+    const lostRow = (side) => lost[side].slice().sort((a, b) => ORDER.indexOf(a.toLowerCase()) - ORDER.indexOf(b.toLowerCase())).map(glyph).join('');
 
     const render = () => {
       const cells = st.b.map((p, i) => {
-        const dark = ((i >> 3) + (i & 7)) % 2 === 1;
+        const r = i >> 3;
+        const c = i & 7;
+        const dark = (r + c) % 2 === 1;
         const cls = [
           'sq', dark ? 'dark' : 'light',
           i === sel ? 'sel' : '',
           targets.some((m) => m.to === i) ? (p ? 'cap' : 'dot') : '',
           lastMove && (lastMove.from === i || lastMove.to === i) ? 'last' : '',
         ].join(' ');
-        const piece = p ? `<span class="pc ${p === p.toUpperCase() ? 'pw' : 'pb'}">${CHESS_GLYPH[p.toLowerCase()]}&#xFE0E;</span>` : '';
-        return `<button class="${cls}" data-g="${i}">${piece}</button>`;
+        const co = (r === 7 ? `<i class="co f">${'abcdefgh'[c]}</i>` : '') + (c === 0 ? `<i class="co r">${8 - r}</i>` : '');
+        return `<button class="${cls}" data-g="${i}">${p ? glyph(p) : ''}${co}</button>`;
       }).join('');
+      const mood = over ? endMood : msg === '小猪在想…' ? 'pig' : msg === '将军！' ? 'warn' : '';
       el.innerHTML = `<div class="chess">
         <div class="chess-board">${cells}</div>
         <div class="chess-side">
-          <div class="g-msg">${msg}</div>
-          ${over ? '' : '<button class="btn ghost" data-g="resign">认输</button>'}
+          <div class="cside pig ${!over && st.turn === 'b' ? 'turn' : ''}"><span class="gav">🐷</span><div><small>小猪 <span class="pc pb">♚&#xFE0E;</span></small><div class="caps">${lostRow('w')}</div></div></div>
+          <div class="gstatus ${mood}">${msg}</div>
+          <div class="cside you ${!over && st.turn === 'w' ? 'turn' : ''}"><span class="gav">你</span><div><small>你 <span class="pc pw">♔&#xFE0E;</span></small><div class="caps">${lostRow('b')}</div></div></div>
+          ${over ? '' : '<button class="btn ghost g-resign" data-g="resign">认输</button>'}
         </div>
       </div>`;
     };
@@ -479,6 +523,7 @@ const CHESS = {
     const end = (result, text) => {
       over = true;
       msg = text;
+      endMood = { win: 'good', lose: 'pig', draw: '' }[result];
       render();
       setTimeout(() => {
         el.innerHTML = resultView('chess', result, text);
@@ -496,10 +541,11 @@ const CHESS = {
     };
 
     const pigTurn = () => {
-      msg = '🐷 🤔';
+      msg = '小猪在想…';
       render();
       setTimeout(() => {
         const m = ChessRules.bestMove(st);
+        if (st.b[m.to]) lost.w.push(st.b[m.to]);
         st = ChessRules.makeMove(st, m);
         lastMove = m;
         if (checkEnd()) return;
@@ -515,6 +561,7 @@ const CHESS = {
       const i = +btn.dataset.g;
       const move = targets.find((m) => m.to === i);
       if (move) {
+        if (st.b[move.to]) lost.b.push(st.b[move.to]);
         st = ChessRules.makeMove(st, move);
         lastMove = move;
         sel = -1;
@@ -537,7 +584,7 @@ const CHESS = {
   },
 };
 
-// ---------- banqi (hidden pieces) ----------
+// ---------- 战棋 (banqi: hidden pieces) ----------
 
 // Sides: 'p' = player (pink), 'b' = pig (blue). Board index = row * 6 + col.
 const BanqiRules = (() => {
@@ -546,7 +593,7 @@ const BanqiRules = (() => {
     { rank: 1, name: '刺客', icon: '🗡️', count: 6 },
     { rank: 2, name: '士兵', icon: '🛡️', count: 4 },
     { rank: 3, name: '骑士', icon: '🐎', count: 4 },
-    { rank: 4, name: '将军', icon: '⚔️', count: 2 },
+    { rank: 4, name: '将军', icon: '🪖', count: 2 },
     { rank: 5, name: '元帅', icon: '🎖️', count: 1 },
     { rank: 6, name: '国王', icon: '👑', count: 1 },
   ];
@@ -733,6 +780,24 @@ const BANQI = {
     let last = []; // the latest move: [from, to] or [flipped cell]
     let fresh = -1; // cell that just changed; only it animates, and only on the next render
     let over = false;
+    let rulesOpen = false;
+    const rules = MINIGAMES.find((g) => g.id === 'banqi').rules || [];
+    const order = [...BanqiRules.RANKS].reverse();
+    const rulesHtml = () => `<div class="bq-rules" role="dialog">
+      <div class="bq-rules-head"><b>规则</b><button class="bq-x" data-g="rules" title="Esc">${ICON.close}</button></div>
+      <div class="bq-order">${order.map((r) => `<span class="ro"><i>${r.icon}</i><small>${r.name}</small></span>`).join('<span class="gt">›</span>')}</div>
+      <div class="bq-order ex"><span class="ro"><i>${order[5].icon}</i><small>${order[5].name}</small></span><span class="gt">吃</span><span class="ro"><i>${order[0].icon}</i><small>${order[0].name}</small></span></div>
+      <ol>${rules.map((r) => `<li>${r}</li>`).join('')}</ol>
+    </div>`;
+    const onKey = (e) => {
+      if (!el.isConnected) return document.removeEventListener('keydown', onKey);
+      if (e.key === 'Escape' && rulesOpen) {
+        e.stopPropagation();
+        rulesOpen = false;
+        render();
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
 
     const render = () => {
       const cells = st.b.map((p, i) => {
@@ -746,7 +811,7 @@ const BANQI = {
           last.length === 2 && i === last[0] ? 'from' : '',
           i === fresh ? 'fresh' : '',
         ].join(' ');
-        const face = p && p.up ? `<span>${BANQI_ICON[p.rank]}</span><small>${p.rank}</small>` : '';
+        const face = p && p.up ? `<span class="tok" title="${BanqiRules.RANKS[p.rank - 1].name}">${BANQI_ICON[p.rank]}<small>${p.rank}</small></span>` : '';
         return `<button class="${cls}" data-g="${i}">${face}</button>`;
       }).join('');
       // pieces of each rank still on the board per side (public: it's 18 minus what was captured)
@@ -755,20 +820,21 @@ const BANQI = {
         const n = left(side, rank);
         return `<b class="${side === 'p' ? 'mine' : 'pig'} ${n ? '' : 'zero'}">${n}</b>`;
       };
-      const tally = [...BanqiRules.RANKS].reverse().map((r) => `<div class="bq-row" title="${r.name}">
-        <span>${r.icon}</span>${num('p', r.rank)}${num('b', r.rank)}</div>`).join('');
+      const tally = [...BanqiRules.RANKS].reverse().map((r) => `${num('p', r.rank)}<span class="bq-rk"><i>${r.icon}</i>${r.name}</span>
+        ${num('b', r.rank)}`).join('');
+      const quietLeft = BanqiRules.QUIET_LIMIT - st.quiet;
+      const status = over ? '' : st.turn === 'p' ? '轮到你' : '小猪在想…';
       el.innerHTML = `<div class="bq">
         <div class="bq-board">${cells}</div>
         <div class="chess-side">
-          <div class="bq-tally">
-            <div class="bq-row head"><span></span>
-              <b class="mine ${!over && st.turn === 'p' ? 'turn' : ''}">你</b><b class="pig ${!over && st.turn === 'b' ? 'turn' : ''}">🐷</b></div>
-            ${tally}
-            <div class="bq-row total"><span>Σ</span><b class="mine">${BanqiRules.count(st, 'p')}</b><b class="pig">${BanqiRules.count(st, 'b')}</b></div>
-          </div>
-          <div class="bq-quiet">⏳ ${BanqiRules.QUIET_LIMIT - st.quiet}</div>
-          ${over ? '' : '<button class="btn ghost" data-g="resign">认输</button>'}
+          ${scoreBar({ you: BanqiRules.count(st, 'p'), pig: BanqiRules.count(st, 'b'), status, mood: st.turn === 'b' && !over ? 'pig' : '', turn: over ? '' : st.turn === 'p' ? 'you' : 'pig' })}
+          <div class="bq-tally">${tally}</div>
+          <div class="bq-quiet ${quietLeft <= 8 ? 'near' : ''}" title="${BanqiRules.QUIET_LIMIT} 步没人吃子就和棋"><span>⏳️</span>
+            <div class="meter"><i style="width:${(st.quiet / BanqiRules.QUIET_LIMIT) * 100}%"></i></div><b>${st.quiet}/${BanqiRules.QUIET_LIMIT}</b></div>
+          <div class="g-btns">${rules.length ? '<button class="btn ghost" data-g="rules">规则</button>' : ''}
+            ${over ? '' : '<button class="btn ghost g-resign" data-g="resign">认输</button>'}</div>
         </div>
+        ${rulesOpen ? rulesHtml() : ''}
       </div>`;
       fresh = -1;
     };
@@ -788,7 +854,7 @@ const BANQI = {
       const s = BanqiRules.status(st);
       if (!s) return false;
       const score = `${BanqiRules.count(st, 'p')} : ${BanqiRules.count(st, 'b')}`;
-      if (s === 'draw') end('draw', `⏳ ${score}`);
+      if (s === 'draw') end('draw', score);
       else end(s === 'p' ? 'win' : 'lose', score);
       return true;
     };
@@ -813,7 +879,12 @@ const BANQI = {
 
     el.onclick = (e) => {
       const btn = e.target.closest('[data-g]');
-      if (!btn || over || st.turn !== 'p') return;
+      if (btn && btn.dataset.g === 'rules') {
+        rulesOpen = !rulesOpen;
+        render();
+        return;
+      }
+      if (!btn || over || st.turn !== 'p' || rulesOpen) return;
       if (btn.dataset.g === 'resign') return end('lose', '认输');
       const i = +btn.dataset.g;
       const p = st.b[i];
@@ -839,4 +910,324 @@ const BANQI = {
   },
 };
 
-const MiniGames = { rps: RPS, ttt: TTT, penalty: PENALTY, chess: CHESS, banqi: BANQI };
+// ---------- bumper cars (at the theme park, first to 3 bumps) ----------
+// Your car follows the mouse (or the arrow keys); the pig chases you. A bump counts for whoever
+// drove into the other harder. Whoever has more when the minute is up wins, if nobody got to 3.
+
+const BUMP = { R: 24, ACC: 520, MAX: 250, WIN: 3, SECONDS: 60, HARD: 80 };
+
+const BUMPER = {
+  start(el, done) {
+    const W = 560;
+    const H = 320;
+    el.innerHTML = `<div class="bump"><div class="bump-bar"></div><canvas class="bump-floor" width="${W}" height="${H}"></canvas></div>`;
+    const cv = el.querySelector('canvas');
+    const ctx = cv.getContext('2d');
+    const car = (x, color, label) => ({ x, y: H / 2, vx: 0, vy: 0, color, label, flash: 0 });
+    const you = car(110, '#ff6b6b', '你');
+    const pig = car(W - 110, '#b197fc', '🐷');
+    const score = { you: 0, pig: 0 };
+    const t0 = performance.now();
+    let last = t0;
+    let mouse = null;
+    const keys = new Set();
+    let calm = 0; // the pig backs off for a moment after a bump
+    let pigAim = { x: you.x, y: you.y };
+    let cool = 0;
+    let msg = '开撞！';
+    let msgMood = '';
+    let over = false;
+
+    const bar = () => {
+      const left = Math.max(0, Math.ceil(BUMP.SECONDS - (performance.now() - t0) / 1000));
+      el.querySelector('.bump-bar').innerHTML = scoreBar({ you: score.you, pig: score.pig, youSub: pips(score.you, BUMP.WIN), pigSub: pips(score.pig, BUMP.WIN),
+        status: msg || `⏱️ ${left}`, mood: msgMood });
+    };
+    cv.onpointermove = (e) => {
+      const r = cv.getBoundingClientRect();
+      mouse = { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H };
+    };
+    cv.onpointerleave = () => (mouse = null);
+    const onKey = (e) => {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      e.preventDefault();
+      if (e.type === 'keydown') keys.add(e.key);
+      else keys.delete(e.key);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+
+    // speed up toward a point (or in a direction), friction, the walls
+    const drive = (c, ax, ay, dt, max) => {
+      c.vx += ax * dt;
+      c.vy += ay * dt;
+      const f = Math.pow(0.35, dt);
+      c.vx *= f;
+      c.vy *= f;
+      const sp = Math.hypot(c.vx, c.vy);
+      if (sp > max) {
+        c.vx *= max / sp;
+        c.vy *= max / sp;
+      }
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+      const R = BUMP.R;
+      if (c.x < R) [c.x, c.vx] = [R, Math.abs(c.vx) * 0.8];
+      if (c.x > W - R) [c.x, c.vx] = [W - R, -Math.abs(c.vx) * 0.8];
+      if (c.y < R) [c.y, c.vy] = [R, Math.abs(c.vy) * 0.8];
+      if (c.y > H - R) [c.y, c.vy] = [H - R, -Math.abs(c.vy) * 0.8];
+    };
+    const toward = (c, tx, ty) => {
+      const dx = tx - c.x;
+      const dy = ty - c.y;
+      const d = Math.hypot(dx, dy);
+      return d < 12 ? [0, 0] : [(dx / d) * BUMP.ACC, (dy / d) * BUMP.ACC];
+    };
+
+    const finish = (result) => {
+      over = true;
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKey);
+      setTimeout(() => {
+        el.innerHTML = resultView('bumper', result, `${score.you} : ${score.pig}`);
+        done(result);
+      }, 900);
+    };
+
+    const step = (now) => {
+      if (over || !cv.isConnected) {
+        window.removeEventListener('keydown', onKey);
+        window.removeEventListener('keyup', onKey);
+        return;
+      }
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      // you: the keys, else toward the mouse
+      let [ax, ay] = [0, 0];
+      if (keys.size) {
+        ax = ((keys.has('ArrowRight') ? 1 : 0) - (keys.has('ArrowLeft') ? 1 : 0)) * BUMP.ACC;
+        ay = ((keys.has('ArrowDown') ? 1 : 0) - (keys.has('ArrowUp') ? 1 : 0)) * BUMP.ACC;
+      } else if (mouse) [ax, ay] = toward(you, mouse.x, mouse.y);
+      drive(you, ax, ay, dt, BUMP.MAX);
+      // the pig: after you, aiming a little ahead of you, or backing off to a corner for a moment
+      if (calm > 0) calm -= dt;
+      else pigAim = { x: you.x + you.vx * 0.35, y: you.y + you.vy * 0.35 };
+      drive(pig, ...toward(pig, pigAim.x, pigAim.y), dt, BUMP.MAX * 0.86);
+      // a bump: whoever was driving into the other harder scores
+      const dx = pig.x - you.x;
+      const dy = pig.y - you.y;
+      const d = Math.hypot(dx, dy);
+      cool = Math.max(0, cool - dt);
+      if (d < BUMP.R * 2 && d > 0) {
+        const nx = dx / d;
+        const ny = dy / d;
+        const a = you.vx * nx + you.vy * ny;
+        const b = -(pig.vx * nx + pig.vy * ny);
+        if (!cool && Math.max(a, b) > BUMP.HARD) {
+          const who = a >= b ? 'you' : 'pig';
+          score[who]++;
+          (who === 'you' ? pig : you).flash = 0.5;
+          msg = who === 'you' ? '砰！撞到小猪啦' : '砰！被小猪撞了';
+          msgMood = who === 'you' ? 'good' : 'pig';
+          cool = 0.8;
+          calm = 1.2;
+          pigAim = { x: Math.random() < 0.5 ? 60 : W - 60, y: Math.random() < 0.5 ? 60 : H - 60 };
+          setTimeout(() => {
+            msg = '';
+            msgMood = '';
+          }, 1000);
+        }
+        // bounce apart: the cars swap what they had along the line between them
+        const push = Math.max(a + b, 60) * 1.1;
+        you.vx -= nx * push;
+        you.vy -= ny * push;
+        pig.vx += nx * push;
+        pig.vy += ny * push;
+        const over2 = (BUMP.R * 2 - d) / 2;
+        you.x -= nx * over2;
+        you.y -= ny * over2;
+        pig.x += nx * over2;
+        pig.y += ny * over2;
+      }
+      draw(dt);
+      bar();
+      const timeUp = (now - t0) / 1000 >= BUMP.SECONDS;
+      if (score.you >= BUMP.WIN || score.pig >= BUMP.WIN || timeUp) {
+        return finish(score.you > score.pig ? 'win' : score.pig > score.you ? 'lose' : 'draw');
+      }
+      requestAnimationFrame(step);
+    };
+
+    const draw = (dt) => {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#495057';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(255,255,255,.07)';
+      ctx.lineWidth = 2;
+      for (let gx = 40; gx < W; gx += 40) {
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, H);
+        ctx.stroke();
+      }
+      for (let gy = 40; gy < H; gy += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(W, gy);
+        ctx.stroke();
+      }
+      for (const c of [you, pig]) {
+        c.flash = Math.max(0, c.flash - dt);
+        const shake = c.flash ? Math.sin(c.flash * 60) * 3 : 0;
+        ctx.save();
+        ctx.translate(c.x + shake, c.y);
+        ctx.fillStyle = 'rgba(0,0,0,.3)';
+        ctx.beginPath();
+        ctx.ellipse(0, 6, BUMP.R + 2, BUMP.R - 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // the rubber ring, the body, a pole up to the ceiling grid
+        ctx.fillStyle = '#212529';
+        ctx.beginPath();
+        ctx.arc(0, 0, BUMP.R, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c.flash ? '#fff3bf' : c.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, BUMP.R - 5, 0, Math.PI * 2);
+        ctx.fill();
+        // which way it's going
+        const sp = Math.hypot(c.vx, c.vy);
+        if (sp > 20) {
+          ctx.rotate(Math.atan2(c.vy, c.vx));
+          ctx.fillStyle = 'rgba(255,255,255,.8)';
+          ctx.beginPath();
+          ctx.moveTo(BUMP.R - 2, 0);
+          ctx.lineTo(BUMP.R - 10, -6);
+          ctx.lineTo(BUMP.R - 10, 6);
+          ctx.fill();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.translate(c.x + shake, c.y);
+        }
+        ctx.fillStyle = '#fff';
+        ctx.font = c.label === '你' ? 'bold 17px PigRound, "Microsoft YaHei UI", sans-serif' : '20px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(c.label, 0, 1);
+        ctx.restore();
+      }
+    };
+
+    bar();
+    draw(0);
+    requestAnimationFrame(step);
+  },
+};
+
+// ---------- fishing (at the lake, on your own) ----------
+// Cast, wait for a bite, and pull in while the float's under: a rare fish lets go sooner. Pull
+// too early and it's a wasted cast. done() gets what was caught, as "id,id,…".
+
+const FISHING = {
+  start(el, done) {
+    const caught = [];
+    let casts = 0;
+    let state = 'ready'; // ready, wait, bite, show
+    let timer = null;
+    let got = null; // the fish on the line, or that was just caught
+    let msg = '';
+
+    const night = () => {
+      const h = townDate().getHours();
+      return h >= 19 || h < 5;
+    };
+    const bite = () => {
+      const pool = FISH.filter((f) => !f.night || night());
+      let r = Math.random() * pool.reduce((n, f) => n + f.w, 0);
+      return pool.find((f) => (r -= f.w) <= 0) || pool[0];
+    };
+    const render = () => {
+      const pull = state === 'wait' || state === 'bite';
+      const fish = got && ITEM_BY_ID[got.id];
+      // the lake from the bank: the pig sits on the grass at the right, the rod over the water
+      const out = pull;
+      const dark = night();
+      el.innerHTML = `<div class="fishing">
+        <div class="fish-bar"><span class="fish-casts">${[...Array(FISH_CASTS)].map((_, i) => `<i class="${i < FISH_CASTS - casts ? 'on' : ''}"></i>`).join('')}</span>
+          <b class="fish-msg">${msg}</b><span class="fish-bucket">${caught.map((id) => ITEM_BY_ID[id].icon).join('')}</span></div>
+        <div class="fish-pond ${state}">
+          <svg viewBox="0 0 600 230">
+            <defs><linearGradient id="fishWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${dark ? '#3b5bdb' : '#a5d8ff'}"/><stop offset="1" stop-color="${dark ? '#1c3d8f' : '#4dabf7'}"/></linearGradient></defs>
+            <rect width="600" height="230" fill="url(#fishWater)"/>
+            ${dark ? '<circle cx="80" cy="34" r="16" fill="#fff3bf"/><circle cx="88" cy="28" r="14" fill="#3b5bdb"/>' : ''}
+            <path d="M40 70 q16 -6 32 0 M200 40 q16 -6 32 0 M150 140 q16 -6 32 0" stroke="#fff" stroke-width="2.5" fill="none" opacity=".55"/>
+            <ellipse cx="120" cy="110" rx="24" ry="9" fill="#69db7c"/><path d="M120 110 l18 -6" stroke="${dark ? '#1c3d8f' : '#74c0fc'}" stroke-width="4"/>
+            <ellipse cx="210" cy="170" rx="18" ry="7" fill="#51cf66"/>
+            <path d="M0 200 Q160 182 330 196 T600 186 V230 H0 Z" fill="#8ce99a"/><path d="M0 206 Q160 190 330 203 T600 194" stroke="#69db7c" stroke-width="4" fill="none"/>
+            ${[18, 30, 44, 56].map((x, i) => `<path d="M${x} 206 q${i % 2 ? 6 : -6} -40 ${i % 2 ? 2 : -2} -70" stroke="#40c057" stroke-width="4" fill="none" stroke-linecap="round"/>`).join('')}
+            <path d="M520 178 L${out ? 360 : 430} ${out ? 50 : 70}" stroke="#a9805b" stroke-width="5" stroke-linecap="round"/>
+            ${out ? '<path d="M360 50 Q330 70 300 128" stroke="#fff" stroke-width="1.5" fill="none" opacity=".9"/><ellipse class="fish-ring" cx="300" cy="134" rx="22" ry="6" fill="none" stroke="#fff" stroke-width="2"/><g class="fish-float"><circle cx="300" cy="130" r="8" fill="#fff"/><path d="M292 130 a8 8 0 0 1 16 0 Z" fill="#fa5252"/></g>' : ''}
+          </svg>
+          <div class="fish-pig"></div>
+          ${state === 'bite' ? '<b class="fish-bang">！</b>' : ''}
+          ${state === 'show' && fish ? `<div class="fish-up"><span>${fish.icon}</span><b>${fish.name}</b></div>` : ''}
+        </div>
+        <div class="g-choices"><button class="g-choice wide ${pull ? 'pull' : ''}" data-g="go" ${state === 'show' ? 'disabled' : ''}>${pull ? '收竿' : '抛竿'}</button></div>
+      </div>`;
+      if (typeof snap !== 'undefined' && snap) new PigSprite(el.querySelector('.fish-pig')).update(snap.s, false, 'cheerful');
+    };
+    const next = () => {
+      got = null;
+      if (casts >= FISH_CASTS) return end();
+      state = 'ready';
+      msg = '';
+      render();
+    };
+    const end = () => {
+      const n = {};
+      for (const id of caught) n[id] = (n[id] || 0) + 1;
+      el.innerHTML = `<div class="g-result ${caught.length ? 'win' : 'draw'}"><div class="g-result-ic">🎣</div><h2>${caught.length ? '钓到了' : '一条都没钓到'}</h2>
+        ${caught.length ? `<div class="fish-haul">${Object.entries(n).map(([id, k]) => `<span><i>${ITEM_BY_ID[id].icon}</i>${ITEM_BY_ID[id].name}${k > 1 ? ` ×${k}` : ''}</span>`).join('')}</div>` : ''}
+        <div class="g-result-btns"><button class="btn ghost" data-action="games">返回</button></div></div>`;
+      done(caught.join(','));
+    };
+
+    el.onclick = (e) => {
+      if (!e.target.closest('[data-g]')) return;
+      clearTimeout(timer);
+      if (state === 'ready') {
+        state = 'wait';
+        msg = '';
+        render();
+        timer = setTimeout(() => {
+          got = bite();
+          state = 'bite';
+          render();
+          // rarer fish let go sooner
+          timer = setTimeout(() => {
+            casts++;
+            state = 'show';
+            got = null;
+            msg = '跑掉了…';
+            render();
+            timer = setTimeout(next, 1100);
+          }, got.w <= 6 ? 600 : 900);
+        }, 1500 + Math.random() * 3500);
+      } else if (state === 'wait') {
+        casts++;
+        state = 'show';
+        msg = '太早了，鱼吓跑了';
+        render();
+        timer = setTimeout(next, 1100);
+      } else if (state === 'bite') {
+        casts++;
+        caught.push(got.id);
+        state = 'show';
+        msg = '';
+        render();
+        timer = setTimeout(next, 1400);
+      }
+    };
+    render();
+  },
+};
+
+const MiniGames = { rps: RPS, ttt: TTT, penalty: PENALTY, chess: CHESS, banqi: BANQI, bumper: BUMPER, fishing: FISHING };
