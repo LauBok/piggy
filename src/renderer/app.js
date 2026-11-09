@@ -284,11 +284,13 @@ const App = {
     this.report(res);
   },
 
-  // Sleep while nobody is at the computer, wake up when they're back
+  // Sleep while nobody is at the computer, wake up when they're back. Something he was doing gets
+  // finished first, and then he's free a while (AWAY_MINUTES) before he goes home to bed.
   onIdle(sec) {
     const away = sec >= AWAY_MINUTES * 60;
     const a = Game.s.activity;
-    if (away && !a) this.report(Game.sleep(true));
+    const freeLong = Date.now() - (this.freeAt || 0) >= AWAY_MINUTES * 60000;
+    if (away && !a && freeLong) this.report(Game.sleep(true));
     else if (!away && a?.type === 'sleep' && a.auto) {
       Game.wake(false);
       PetView.flash('happy', 2000);
@@ -452,7 +454,11 @@ const App = {
     Game.tick(minutes, minutes > 2);
 
     const done = Game.checkActivity();
-    if (done) this.report(done);
+    if (done) {
+      // free again: if nobody's at the computer he hangs about a while before going home to bed
+      this.freeAt = now;
+      this.report(done);
+    }
     const fed = Game.takeSelfCare();
     if (fed) {
       PetView.flash('eat', 1600);

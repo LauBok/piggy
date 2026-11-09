@@ -177,8 +177,9 @@ const SLEEP_SPEED = 60;
 // nap, until he's rested
 const WAKE_HOUR = 7;
 // Time alone grows the pig slowly (awake, asleep or closed); studying grows it fastest.
-// Little ones (below Lv.6) grow mostly at kindergarten and by playing, and get nothing from working.
-const EXP_PER_MIN = { alive: 0.1, kidAlive: 0.02, study: 1, work: 0.1 };
+// Little ones (below Lv.6) grow mostly at kindergarten and by playing. Work grows him at half the
+// rate of a lesson, at any age: once the lessons open at his level are done, it's how he keeps going.
+const EXP_PER_MIN = { alive: 0.1, kidAlive: 0.02, study: 1, work: 0.5 };
 const EXP_PER_SHIFT = 2;
 const EXP_PER_LESSON = 5;
 // Kindergarten, until primary school (below Lv.6): a short class of any of these, as often as he

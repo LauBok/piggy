@@ -236,7 +236,7 @@ const Game = {
     if (!a || a.type === 'bath') return { drain: {}, exp: 0 };
     if (a.type === 'study') return { drain: STUDY_DRAIN, exp: EXP_PER_MIN.study };
     if (a.type === 'kinder') return { drain: KINDER_DRAIN, exp: EXP_PER_MIN.study };
-    if (a.type === 'work') return { drain: JOB_BY_ID[a.id].drain, exp: this.s.level < 6 ? 0 : EXP_PER_MIN.work };
+    if (a.type === 'work') return { drain: JOB_BY_ID[a.id].drain, exp: EXP_PER_MIN.work };
     return { drain: {}, exp: 0 };
   },
 
@@ -514,7 +514,7 @@ const Game = {
       const pay = payOf(this.s, job);
       const rank = careerRank(this.s);
       this.apply({ money: pay });
-      if (this.s.level >= 6) this.addExp(EXP_PER_SHIFT);
+      this.addExp(EXP_PER_SHIFT);
       this.s.shifts = (this.s.shifts || 0) + 1;
       const r = careerRank(this.s);
       const up = r > rank ? ` 干得越来越熟练，工资涨了 ${Math.round((RANK_PAY - 1) * 100)}%！` : '';
