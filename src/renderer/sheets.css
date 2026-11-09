@@ -2263,7 +2263,7 @@
 }
 
 #sheet .cal-top > b {
-  font: 700 18px var(--f-title);
+  font: var(--fs-sec) var(--f-title);
   color: var(--ink);
 }
 
