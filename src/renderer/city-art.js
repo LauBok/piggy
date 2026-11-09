@@ -1388,7 +1388,8 @@ function festiveSvg(fest) {
 
 const SPECIES = {
   dog: { body: '#f2a65a', belly: '#fff4e6', ears: 'tri', inner: '#ffd8a8', snout: 'muzzle', tail: 'curl' },
-  rabbit: { body: '#f8f9fa', line: '#dee2e6', belly: '#ffffff', ears: 'long', inner: '#ffc9c9', snout: 'bunny', acc: 'apron' },
+  // pale: a face nearly white all over, outlined darker in the map's small faces so it doesn't wash out
+  rabbit: { body: '#f8f9fa', line: '#dee2e6', belly: '#ffffff', ears: 'long', inner: '#ffc9c9', snout: 'bunny', acc: 'apron', pale: true },
   raccoon: { body: '#adb5bd', belly: '#e9ecef', ears: 'round', inner: '#495057', snout: 'muzzle', mask: true, tail: 'stripe' },
   squirrel: { body: '#e8833a', belly: '#ffe8cc', ears: 'tuft', inner: '#ffc078', snout: 'small', tail: 'bushy' },
   cat: { body: '#b8c0d8', belly: '#f1f3f5', ears: 'tri', inner: '#ffc9de', snout: 'cat', acc: 'bell' },

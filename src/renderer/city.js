@@ -91,6 +91,14 @@ class PigSprite {
   }
 }
 
+// A neighbour's face for the map's little discs; a pale one gets a darker outline to show up
+function mapFace(species) {
+  const sp = SPECIES[species];
+  let svg = animalSvg(species).replace(/^<svg[^>]*>/, '<svg x="-15" y="-14" width="30" height="30" viewBox="10 -4 140 140">');
+  if (sp.pale) svg = svg.split(sp.line).join('#b9a3ad').replace(/stroke-width="1.6"/g, 'stroke-width="3"');
+  return svg;
+}
+
 // worn on their birthday
 const PARTY_HAT = '<svg viewBox="0 0 20 28"><path d="M10 3 L18 26 H2 Z" fill="#ff8fab" stroke="#e64980" stroke-width="1.2" stroke-linejoin="round"/><path d="M7.4 12 H12.6 M5.2 19 H14.8" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="10" cy="3.5" r="3.2" fill="#ffd43b"/></svg>';
 
@@ -1683,7 +1691,7 @@ const City = {
     const g = document.querySelector('#mapView .mv-npcs');
     if (!g) return;
     const head = (n, x, y, dx, cls = '') => `<g class="mp-lab mv-npc ${cls}" data-mnpc="${n.id}" style="--x:${Math.round(x)};--y:${Math.round(y)}"><title>${esc(n.name)}</title><g transform="translate(${dx} 0)">
-      <circle class="mv-npc-bg" r="14"/><g clip-path="url(#mvHead)">${animalSvg(n.species).replace(/^<svg[^>]*>/, '<svg x="-15" y="-14" width="30" height="30" viewBox="10 -4 140 140">')}</g><circle class="mv-npc-ring" r="14"/></g></g>`;
+      <circle class="mv-npc-bg" r="14"/><g clip-path="url(#mvHead)">${mapFace(n.species)}</g><circle class="mv-npc-ring" r="14"/></g></g>`;
     let html = '';
     const inside = {};
     for (const n of NPCS) {
@@ -1748,7 +1756,7 @@ function talkHtml(t, snap, { together = true, tea = false } = {}) {
   } else {
     acts = b('chat', '💬', '聊天')
       + b('rps', '✊', '切磋')
-      + (!giftedToday(s, t.id) && giftable(s, t.id).length ? b('gift', '🎁', '送礼') : '')
+      + (giftable(s, t.id).length ? b('gift', '🎁', '送礼') : '')
       + (tea ? b('tea', '☕', '坐下喝点') : '')
       + (together && h >= TOGETHER_HEARTS.walk ? b('together', '🤝', '一起') : '')
       + (h >= TOGETHER_HEARTS.walk ? b('snap', '📷', '合影', s.album.some((p) => p.k === 'snap' && p.w === t.id && p.d === dayKey())) : '');

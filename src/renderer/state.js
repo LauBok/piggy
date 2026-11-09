@@ -937,15 +937,16 @@ const Game = {
 
   // Friendship points, up to the day's cap. Past the cap they're just as glad and nothing says
   // so; the hearts only stop moving. up: the toast for a heart that unlocks something.
-  befriend(id, n) {
+  befriend(id, n, uncapped = false) {
     const rec = this.npcRec(id);
     const day = dayKey();
     if (rec.got?.d !== day) rec.got = { d: day, n: 0 };
-    const add = Math.max(0, Math.min(n, npcDailyCap(id) - rec.got.n, pointsFor(NPC_MAX_HEARTS) - (rec.p || 0)));
+    const room = uncapped ? n : npcDailyCap(id) - rec.got.n;
+    const add = Math.max(0, Math.min(n, room, pointsFor(NPC_MAX_HEARTS) - (rec.p || 0)));
     if (!add) return { gained: false, up: '' };
     const before = hearts(this.s, id);
     rec.p = (rec.p || 0) + add;
-    rec.got.n += add;
+    if (!uncapped) rec.got.n += add;
     const h = hearts(this.s, id);
     const npc = NPC_BY_ID[id];
     let up = '';
@@ -1135,19 +1136,21 @@ const Game = {
     // what they wished for can always be given, whatever it is
     const wished = itemId === npcWish(id) && !wishDone(s, id);
     if (!it || !(GIFT_CATS.includes(it.cat) || wished) || !s.inventory[itemId]) return fail(`背包里没有${it?.name || '这个'}了`);
-    if (giftedToday(s, id)) return fail(`${npc.name}今天已经收过礼物啦`);
+    // the wish is apart from the day's one present
+    if (!wished && giftedToday(s, id)) return fail(`${npc.name}今天已经收过礼物啦`);
     const tier = giftTier(s, id, itemId);
     if (--s.inventory[itemId] <= 0) delete s.inventory[itemId];
     const rec = this.npcRec(id);
     rec.seen ||= this.pigNow();
-    rec.gift = dayKey();
     if (tier === 'wish') rec.wish = dayKey();
+    else rec.gift = dayKey();
     if (npc.loves.includes(itemId) && !(rec.fav ||= []).includes(itemId)) rec.fav.push(itemId);
     (rec.gave ||= {})[itemId] = giftTaste(id, itemId);
     this.apply({ mood: tier === 'wish' ? 5 : 3 });
     // a favourite counts extra on their birthday, also when it was the wish
     const love = npc.loves.includes(itemId) ? (isBirthday(id) ? NPC_POINTS.birthdayLove : NPC_POINTS.love) : 0;
-    const gain = this.befriend(id, Math.max(NPC_POINTS[tier], love));
+    // a wish come true counts on top of the day's limit
+    const gain = this.befriend(id, Math.max(NPC_POINTS[tier], love), tier === 'wish');
     const say = NPC_TALK[id].gift;
     let line = say[tier] || say.plain;
     if (typeof line === 'object') line = line[itemId] || line._;

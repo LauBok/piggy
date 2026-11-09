@@ -194,8 +194,8 @@ function heartProgress(s, id) {
 }
 const greetedToday = (s, id) => s.npc?.[id]?.hi === dayKey();
 const wishDone = (s, id) => s.npc?.[id]?.wish === dayKey();
-// One present a day each (today's wish counts as it)
-const giftedToday = (s, id) => s.npc?.[id]?.gift === dayKey() || wishDone(s, id);
+// One present a day each; today's wish is apart from it (both can be given the same day)
+const giftedToday = (s, id) => s.npc?.[id]?.gift === dayKey();
 const togetherToday = (s, id) => s.npc?.[id]?.tog === dayKey();
 
 const isBirthday = (id, t = townNow()) => NPC_BY_ID[id].birthday === calOf(t).key;
@@ -223,10 +223,12 @@ function giftsGiven(s, id) {
   return Object.entries(gave).filter(([k]) => ITEM_BY_ID[k]).map(([k, taste]) => ({ id: k, taste }))
     .sort((a, b) => order.indexOf(a.taste) - order.indexOf(b.taste));
 }
-// What the pig could give: things to eat, toys and medicine in the bag; the wish first
+// What the pig could give now: things to eat, toys and medicine in the bag (unless today's
+// present is given), and today's wish if he has it; the wish first
 function giftable(s, id) {
   const wish = wishDone(s, id) ? null : npcWish(id);
-  const list = ITEMS.filter((it) => (GIFT_CATS.includes(it.cat) || it.id === wish) && s.inventory[it.id] > 0);
+  const gifted = giftedToday(s, id);
+  const list = ITEMS.filter((it) => (it.id === wish || (!gifted && GIFT_CATS.includes(it.cat))) && s.inventory[it.id] > 0);
   return [...list.filter((it) => it.id === wish), ...list.filter((it) => it.id !== wish)];
 }
 

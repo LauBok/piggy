@@ -342,7 +342,7 @@ function npcCard(snap, n, keeper = false) {
   let wishBtn = '';
   if (wish && !wishDone(s, n.id)) {
     const it = ITEM_BY_ID[wish];
-    const have = s.inventory[wish] > 0 && !giftedToday(s, n.id);
+    const have = s.inventory[wish] > 0;
     wishBtn = `<span class="npc-wish ${have ? 'have' : ''}" title="${esc(it.name)}">${it.icon}</span>`;
   }
   // on the friends page: whether today's hello and present are done (they're done in person)
