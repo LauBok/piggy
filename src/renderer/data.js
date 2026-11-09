@@ -98,7 +98,7 @@ const OUTINGS = [
   { id: 'xmas', name: '一起看圣诞树', icon: '🎄', help: 'xmas', festival: 'xmas', hours: [17 * 60, 24 * 60] },
 ];
 const OUTING_BY_ID = Object.fromEntries(OUTINGS.map((o) => [o.id, o]));
-const GARDEN_HELP_MIN = 30;
+const GARDEN_HELP_MIN = 180; // town minutes
 
 // The town's own calendar: four seasons of SEASON_DAYS days each, a year of 112 days, kept by the
 // town's clock (not the real date). Every season starts on a Monday. CAL_EPOCH: the town day that
@@ -675,11 +675,12 @@ const ITEMS = [
   { id: 'bunny', cat: 'wear', slot: 'head', festival: 'moon', shops: [], name: '玉兔耳朵', icon: '🐰', price: 0, effects: {} },
   { id: 'santa', cat: 'wear', slot: 'head', festival: 'xmas', shops: [], name: '圣诞帽', icon: '🎅', price: 0, effects: {} },
 
-  // seeds for the vegetable patch at home: grow: real minutes until ripe, yield: how many come up
-  { id: 'seed_carrot', cat: 'seed', shops: ['farm'], crop: 'carrot', name: '胡萝卜种子', icon: '🥕', price: 14, grow: 90, yield: 3, effects: {} },
-  { id: 'seed_strawberry', cat: 'seed', shops: ['farm'], crop: 'strawberry', name: '草莓种子', icon: '🍓', price: 15, grow: 150, yield: 3, effects: {} },
-  { id: 'seed_corn', cat: 'seed', shops: ['farm'], crop: 'corn', name: '玉米种子', icon: '🌽', price: 20, grow: 180, yield: 3, effects: {} },
-  { id: 'seed_pumpkin', cat: 'seed', shops: ['farm'], crop: 'pumpkin', name: '南瓜种子', icon: '🎃', price: 30, grow: 360, yield: 2, effects: {} },
+  // seeds for the vegetable patch at home: grow: town minutes until ripe (the town's clock, so
+  // a night asleep brings them on and nothing grows while the town stands still), yield: how many come up
+  { id: 'seed_carrot', cat: 'seed', shops: ['farm'], crop: 'carrot', name: '胡萝卜种子', icon: '🥕', price: 14, grow: 540, yield: 3, effects: {} },
+  { id: 'seed_strawberry', cat: 'seed', shops: ['farm'], crop: 'strawberry', name: '草莓种子', icon: '🍓', price: 15, grow: 900, yield: 3, effects: {} },
+  { id: 'seed_corn', cat: 'seed', shops: ['farm'], crop: 'corn', name: '玉米种子', icon: '🌽', price: 20, grow: 1080, yield: 3, effects: {} },
+  { id: 'seed_pumpkin', cat: 'seed', shops: ['farm'], crop: 'pumpkin', name: '南瓜种子', icon: '🎃', price: 30, grow: 2160, yield: 2, effects: {} },
 
   // furniture for the pig's home, bought once. Only the best item of each group counts.
   // bonus multiplies: sleep (energy regained asleep), bath (free bath), study (exp from classes),
@@ -740,7 +741,7 @@ const ITEMS = [
   { id: 'lozenge', cat: 'medicine', npc: 'sheep', hearts: 3, name: '润喉糖', icon: '🍬', price: 14, effects: { health: 14, mood: 2 } },
   { id: 'tonic', cat: 'medicine', npc: 'sheep', hearts: 6, name: '营养补剂', icon: '🧃', price: 55, effects: { health: 50 } },
   { id: 'freshmilk', cat: 'food', npc: 'cow', hearts: 3, shops: ['farm'], name: '新鲜牛奶', icon: '🍼', price: 10, effects: { hunger: 14, health: 3 } },
-  { id: 'seed_melon', cat: 'seed', npc: 'cow', hearts: 6, shops: ['farm'], crop: 'watermelon', name: '西瓜种子', icon: '🍉', price: 40, grow: 240, yield: 4, effects: {} },
+  { id: 'seed_melon', cat: 'seed', npc: 'cow', hearts: 6, shops: ['farm'], crop: 'watermelon', name: '西瓜种子', icon: '🍉', price: 40, grow: 1440, yield: 4, effects: {} },
   { id: 'watermelon', cat: 'food', shops: [], name: '西瓜', icon: '🍉', price: 30, effects: { hunger: 28, mood: 8 } },
 
   // sold only by a neighbour who loves the pig (npc: who, at NPC_MAX_HEARTS)

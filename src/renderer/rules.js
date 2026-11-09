@@ -537,5 +537,6 @@ const jobVerb = (job) => (job.doing ? job.name : `当${job.name}`);
 // ---------- the vegetable patch ----------
 
 // How far a planted plot has grown: 0 to 1 (ripe)
-const plotProgress = (p) => clamp((Date.now() - p.at) / 60000 / ITEM_BY_ID[p.seed].grow, 0, 1);
+// how far a plot has grown, by the town's clock (t: the town moment it was sown)
+const plotProgress = (p) => clamp((townNow() - p.t) / 60000 / ITEM_BY_ID[p.seed].grow, 0, 1);
 const fmtGrow = (min) => (min >= 60 ? `${+(min / 60).toFixed(1)} 小时` : `${min} 分钟`);

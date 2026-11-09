@@ -76,6 +76,10 @@ function migrate(saved) {
     }
     // the town's clock starts at the real time
     out.clock ||= { t: Date.now(), at: saved.lastTick || Date.now() };
+    // the garden used to grow by the real clock (at, real minutes): the same progress by the town's
+    for (const [i, p] of (out.farm || []).entries()) {
+      if (p && p.t == null && p.at != null) out.farm[i] = { seed: p.seed, t: out.clock.t - (Date.now() - p.at) * TOWN_SPEED };
+    }
     out.pigId ||= s.pigId;
     out.born ||= s.born;
     // keepsakes promised in a story told before they could be given
@@ -900,7 +904,7 @@ const Game = {
     if (s.farm[plot]) return fail('这块地已经种上了');
     if (!s.inventory[seedId]) return fail(`没有${seed.name}了，去农牧市场买吧`);
     if (--s.inventory[seedId] <= 0) delete s.inventory[seedId];
-    s.farm[plot] = { seed: seedId, at: Date.now() };
+    s.farm[plot] = { seed: seedId, t: townNow() };
     return { ok: true, msg: `种下了${seed.name}，${fmtGrow(seed.grow)}后就能收啦`, fx: '🌱' };
   },
 
@@ -1168,7 +1172,7 @@ const Game = {
       if (!r.ok) return r;
       s.activity.with = id;
       // a friend in the garden: everything growing comes on a little
-      if (kind === 'garden') for (const p of s.farm) if (p) p.at -= GARDEN_HELP_MIN * 60000;
+      if (kind === 'garden') for (const p of s.farm) if (p) p.t -= GARDEN_HELP_MIN * 60000;
       this.photo(kind, id);
     }
     const rec = this.npcRec(id);
