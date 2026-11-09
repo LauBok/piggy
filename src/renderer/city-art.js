@@ -1620,6 +1620,67 @@ const ROOMS = {
     draw: () => '<div class="rm-shelf"></div><div class="rm-counter low"></div>',
     fx: ['🪙', '🧾'],
   },
+  // shelves to fill at the supermarket: boxes on one side, tins and cartons going up
+  shelf: {
+    wall: '#fff9db', floor: '#ffec99', pose: 'working', pig: { x: 96, y: 128 },
+    items: [['🥫', 30, 34, 16], ['🧃', 54, 34, 16], ['🥛', 78, 34, 16], ['🍎', 102, 34, 16], ['📦', 172, 112, 26], ['📦', 190, 92, 20]],
+    draw: () => '<div class="rm-shelf"></div>',
+    fx: ['📦', '✔️'],
+  },
+  // a picture book open, the little ones sat round on the mat
+  story: {
+    wall: '#fff3bf', floor: '#ffd8a8', pose: 'studying', pig: { x: 110, y: 120 },
+    items: [['📖', 134, 104, 20], ['🐥', 50, 122, 20], ['🐰', 76, 130, 20], ['🐻', 160, 132, 20], ['🐱', 186, 120, 20], ['🧸', 30, 34, 16]],
+    fx: ['📖', '💗', '😮'],
+  },
+  // behind the bookshop counter, shelves behind
+  bookshop: {
+    wall: '#fff4e6', floor: '#e9c99b', pose: 'working', pig: { x: 80, y: 126 },
+    items: [['📚', 30, 40, 20], ['📕', 54, 42, 16], ['📗', 78, 42, 16], ['📘', 102, 42, 16], ['📖', 128, 98, 18], ['🐰', 180, 112, 22]],
+    draw: () => '<div class="rm-shelf"></div><div class="rm-counter low"></div>',
+    fx: ['📖', '🧾'],
+  },
+  // mending toys at a bench in the back of the toy shop
+  repair: {
+    wall: '#e7f5ff', floor: '#d0ebff', pose: 'working', pig: { x: 80, y: 128 },
+    items: [['🧸', 128, 98, 20], ['🔧', 150, 104, 16], ['🪛', 168, 104, 16], ['🤖', 190, 96, 20], ['🔩', 30, 112, 14]],
+    draw: () => '<div class="rm-table"></div>',
+    fx: ['🔧', '⚡', '✨'],
+  },
+  // mixing soap and bubble bath at the bubble shop
+  soap: {
+    wall: '#e3fafc', floor: '#c5f6fa', pose: 'working', pig: { x: 76, y: 128 },
+    items: [['🧴', 126, 96, 22], ['🧼', 150, 100, 18], ['🧪', 174, 96, 20], ['🫧', 40, 40, 18]],
+    draw: () => '<div class="rm-table"></div>',
+    fx: ['🫧', '✨'],
+  },
+  // two neighbours across a table, a cup of tea each, the pig in the middle
+  mediate: {
+    wall: '#fff0f6', floor: '#ffdeeb', pose: 'working', pig: { x: 110, y: 122 },
+    items: [['🐻', 50, 112, 26], ['🐰', 170, 112, 26], ['☕', 84, 104, 14], ['☕', 140, 104, 14]],
+    draw: () => '<div class="rm-table" style="left:70px;width:84px"></div>',
+    fx: ['💬', '🤝', '😊'],
+  },
+  // the books at the bank
+  ledger: {
+    wall: '#fff0f6', floor: '#ffdeeb', pose: 'studying', pig: { x: 84, y: 128 },
+    items: [['🧮', 128, 98, 22], ['📒', 154, 102, 18], ['🪙', 176, 104, 14], ['🐷', 186, 40, 28]],
+    draw: () => '<div class="rm-table"></div>',
+    fx: ['🧮', '🧾', '🪙'],
+  },
+  // translating at a desk in the office block
+  translate: {
+    wall: '#f1f3f5', floor: '#ced4da', pose: 'studying', pig: { x: 88, y: 128 },
+    items: [['📄', 126, 102, 18], ['📖', 150, 100, 20], ['🌐', 178, 96, 20], ['🪴', 30, 112, 22]],
+    draw: () => '<div class="rm-table"></div>',
+    fx: ['🔤', '💬', '💡'],
+  },
+  // the weather station at the science museum
+  weather: {
+    wall: '#e7f5ff', floor: '#a5d8ff', pose: 'working', pig: { x: 80, y: 128 },
+    items: [['🌡️', 140, 92, 28], ['🌤️', 36, 32, 22], ['🌧️', 186, 30, 20], ['🛰️', 110, 26, 18], ['📋', 170, 104, 18]],
+    fx: ['☀️', '🌧️', '💨'],
+  },
   piano: {
     wall: '#f8f0fc', floor: '#e5dbff', pose: 'studying', pig: { x: 80, y: 128 },
     items: [['🎹', 130, 100, 42], ['🐥', 186, 118, 18], ['🐱', 170, 122, 16]],

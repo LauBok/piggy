@@ -1353,6 +1353,7 @@ const City = {
         else if (scene.hold) hold(`<span>${scene.hold}</span>`);
         else if (scene.item) hold(`<span class="carry">${scene.item}</span>`);
         if (scene.followers) q('.a-follow').innerHTML = ['🐥', '🐰', '🐻'].map((c, i) => `<span style="--i:${i}">${c}</span>`).join('');
+        if (scene.follow) q('.a-follow').innerHTML = scene.follow.map((c, i) => `<span style="--i:${i}">${c}</span>`).join('');
         if (scene.ducklings) q('.a-follow').innerHTML = ['🦆', '🐤', '🐤'].map((c, i) => `<span style="--i:${i}">${c}</span>`).join('');
         break;
       }
