@@ -215,6 +215,7 @@ const EXP_PER_DAY = 200;
 const PLAY_EXP = {
   toy: 5,
   hobby: 4,
+  cook: 4,
   rps: { win: 3, draw: 2, lose: 1 },
   ttt: { win: 6, draw: 4, lose: 2 },
   penalty: { win: 10, draw: 6, lose: 3 },
@@ -223,6 +224,29 @@ const PLAY_EXP = {
   banqi: { win: 25, draw: 12, lose: 5 },
 };
 const PLAY_EXP_DAILY = 50;
+
+// ---------- cooking ----------
+// At home, once there's a kitchen (小厨房 or 大厨房; the big one cooks faster). needs: what goes
+// in; learn: what teaches it (a course, as a job's requirement is written, or a friend's hearts);
+// none for the few anyone can make. The dish comes out a little better than what went in, sells
+// for more at the restaurant, and some neighbours love one.
+const RECIPES = [
+  { id: 'grilledfish', needs: { crucian: 1, salt: 1 }, minutes: 15 },
+  { id: 'carrotegg', needs: { carrot: 1, egg: 1, oil: 1, salt: 1 }, minutes: 15 },
+  { id: 'porridge', needs: { pumpkin: 1, rice: 1, sugar: 1 }, minutes: 20 },
+  { id: 'fruitsalad', needs: { apple: 1, strawberry: 1, sugar: 1 }, minutes: 10, learn: 'primary_science@2' },
+  { id: 'cornsoup', needs: { corn: 1, milk: 1, salt: 1 }, minutes: 20, learn: 'primary_science@4' },
+  { id: 'shrimpegg', needs: { shrimp: 1, egg: 1, soy: 1 }, minutes: 20, learn: 'middle_biology@1' },
+  { id: 'crabcongee', needs: { crab: 1, rice: 1, salt: 1 }, minutes: 25, learn: 'middle_biology@3' },
+  { id: 'carrotcake', needs: { carrot: 2, egg: 1, milk: 1, sugar: 1, oil: 1 }, minutes: 40, learn: 'middle_chemistry' },
+  { id: 'braisedfish', needs: { puffer: 1, carrot: 1, soy: 1, sugar: 1 }, minutes: 30, learn: 'high_chemistry@2' },
+  { id: 'takoyaki', needs: { octopus: 1, egg: 1, bread: 1, oil: 1, soy: 1 }, minutes: 35, learn: 'college_gen_cook@2' },
+  { id: 'seafoodrice', needs: { tropical: 1, shrimp: 1, rice: 1, oil: 1, salt: 1 }, minutes: 40, learn: 'college_gen_cook@4' },
+  { id: 'pumpkincup', needs: { pumpkin: 1, corn: 1, sugar: 1 }, minutes: 30, learn: { npc: 'duck', hearts: 5 } },
+];
+const RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
+const BIG_KITCHEN_SPEED = 0.7; // the 大厨房 cooks in this share of the time
+const COOK_DRAIN = { hunger: 0.8, clean: 1.2, energy: 1.2 };
 
 // ---------- education ----------
 
@@ -599,6 +623,7 @@ const SHOP_CATS = [
   { id: 'wear', name: '装扮', icon: '🎀', desc: '买一次，可以随时戴上或摘下' },
   { id: 'seed', name: '种子', icon: '🌱', desc: '种在家门口的菜园里' },
   { id: 'fish', name: '鱼', icon: '🐟', desc: '在鸭鸭湖钓的' },
+  { id: 'seasoning', name: '调料', icon: '🧂', desc: '做菜时用' },
   { id: 'furniture', name: '家具', icon: '🛋️', desc: '摆在家里，一直有效' },
   { id: 'decor', name: '装饰', icon: '🪴', desc: '摆在家里，只是好看' },
   { id: 'city', name: '捐建', icon: '⛲', desc: '捐给猪猪城，地图上会出现' },
@@ -653,6 +678,23 @@ const ITEMS = [
   { id: 'tangyuan', cat: 'food', shops: [], name: '汤圆', icon: '🍡', price: 20, effects: { hunger: 18, mood: 8 } },
   { id: 'zongzi', cat: 'food', shops: [], name: '粽子', icon: '🍙', price: 22, effects: { hunger: 28, mood: 5 } },
   { id: 'mooncake', cat: 'food', shops: [], name: '月饼', icon: '🥮', price: 25, effects: { hunger: 20, mood: 8 } },
+  // seasonings: one goes into each dish that needs it (see RECIPES)
+  { id: 'salt', cat: 'seasoning', shops: ['supermarket', 'store'], name: '盐', icon: '🧂', price: 3, effects: {} },
+  { id: 'sugar', cat: 'seasoning', shops: ['supermarket', 'store'], name: '白糖', icon: '🥄', price: 4, effects: {} },
+  { id: 'soy', cat: 'seasoning', shops: ['supermarket'], name: '酱油', icon: '🍶', price: 5, effects: {} },
+  { id: 'oil', cat: 'seasoning', shops: ['supermarket'], name: '食用油', icon: '🫒', price: 6, effects: {} },
+  // dishes cooked at home (see RECIPES); not sold anywhere, the restaurant buys them
+  { id: 'grilledfish', cat: 'food', dish: true, shops: [], name: '烤鱼串', icon: '🍢', price: 16, effects: { hunger: 22, mood: 6 } },
+  { id: 'porridge', cat: 'food', dish: true, shops: [], name: '南瓜粥', icon: '🥣', price: 62, effects: { hunger: 75, health: 5, mood: 4 } },
+  { id: 'carrotegg', cat: 'food', dish: true, shops: [], name: '胡萝卜炒蛋', icon: '🍳', price: 30, effects: { hunger: 30, health: 3, mood: 3 } },
+  { id: 'fruitsalad', cat: 'food', dish: true, shops: [], name: '水果沙拉', icon: '🥗', price: 28, effects: { hunger: 20, mood: 14 } },
+  { id: 'cornsoup', cat: 'food', dish: true, shops: [], name: '玉米浓汤', icon: '🍵', price: 30, effects: { hunger: 36, health: 3, mood: 5 } },
+  { id: 'shrimpegg', cat: 'food', dish: true, shops: [], name: '鲜虾蒸蛋', icon: '🍮', price: 30, effects: { hunger: 32, health: 5, mood: 6 } },
+  { id: 'crabcongee', cat: 'food', dish: true, shops: [], name: '蟹肉粥', icon: '🥘', price: 64, effects: { hunger: 58, health: 4, mood: 9 } },
+  { id: 'braisedfish', cat: 'food', dish: true, shops: [], name: '红烧胖头鱼', icon: '🍛', price: 48, effects: { hunger: 45, mood: 10 } },
+  { id: 'takoyaki', cat: 'food', dish: true, shops: [], name: '章鱼小丸子', icon: '🧆', price: 110, effects: { hunger: 42, mood: 18 } },
+  { id: 'seafoodrice', cat: 'food', dish: true, shops: [], name: '彩虹海鲜饭', icon: '🍤', price: 120, effects: { hunger: 75, health: 5, mood: 20 } },
+  { id: 'pumpkincup', cat: 'food', dish: true, shops: [], name: '嘎嘎南瓜盅', icon: '🍲', price: 80, effects: { hunger: 70, health: 6, mood: 14 } },
   { id: 'gingerbread', cat: 'food', shops: [], name: '姜饼人', icon: '🍪', price: 15, effects: { hunger: 12, mood: 8 } },
   // what comes up when fishing (FISH); price: what the barn pays
   { id: 'crucian', cat: 'fish', shops: [], name: '小鲫鱼', icon: '🐟', price: 8, effects: {} },
@@ -805,7 +847,7 @@ const BONUS_UNLOCK = { piano: '能在家弹琴', paint: '能在家画画' };
 const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
 // Where things are sold, for items that don't list their own shops
-const SHOP_FOR_CAT = { food: ['bakery'], hygiene: ['bubble'], toy: ['toy'], medicine: ['clinic'], wear: ['clothes'], furniture: ['furniture'], decor: ['furniture'], city: ['cityhall'], seed: ['farm'] };
+const SHOP_FOR_CAT = { food: ['bakery'], hygiene: ['bubble'], toy: ['toy'], medicine: ['clinic'], wear: ['clothes'], furniture: ['furniture'], decor: ['furniture'], city: ['cityhall'], seed: ['farm'], seasoning: ['supermarket'] };
 const shopsOf = (it) => it.shops || SHOP_FOR_CAT[it.cat] || [];
 
 // The beauty parlour's fur colours and the barber's hairstyles: paid each visit, nothing kept
@@ -885,25 +927,25 @@ const MEAL_HOURS = [[11 * 60 + 30, 13 * 60 + 30], [17 * 60, 19 * 60]];
 // dislike: items, for presents; birthday: 'season-day' (the town's calendar); game: the mini game they play together;
 // fav: the place they love to stop at on a walk
 const NPCS = [
-  { id: 'dog', icon: '🐶', name: '柴柴', species: 'dog', place: 'tower', home: 'apt', loves: ['burger', 'ball'], likes: ['milk', 'dumpling'], birthday: 'summer-26', game: 'penalty', fav: 'field', perk: { key: 'pay', v: 1.05, text: '打工工资 +5%' } },
-  { id: 'fox', icon: '🦊', name: '狐狸阿姨', species: 'fox', place: 'bakery', home: 'bakery', loves: ['strawberry', 'egg'], likes: ['milk', 'apple'], dislike: 'bread', birthday: 'spring-4', game: 'rps', fav: 'plaza' },
-  { id: 'raccoon', icon: '🦝', name: '浣浣', species: 'raccoon', place: 'bubble', home: 'apt', loves: ['strawberry', 'apple'], likes: ['donut'], birthday: 'summer-1', game: 'ttt', fav: 'lake' },
-  { id: 'squirrel', icon: '🐿️', name: '栗栗', species: 'squirrel', place: 'toy', home: 'tree', loves: ['corn', 'kite'], likes: ['donut', 'apple'], birthday: 'autumn-19', game: 'ttt', fav: 'meadow', perk: { key: 'toyRecover', v: 2, text: '玩具恢复速度 ×2' } },
-  { id: 'cat', icon: '🐱', name: '咪咪', species: 'cat', place: 'clothes', home: 'apt', loves: ['milk', 'cake'], likes: ['croissant', 'crucian'], dislike: 'carrot', birthday: 'winter-21', game: 'rps', fav: 'plaza' },
-  { id: 'bear', icon: '🐻', name: '熊师傅', species: 'bear', place: 'furniture', home: 'woodshop', loves: ['honey', 'watermelon'], likes: ['pumpkin', 'dumpling'], birthday: 'winter-15', game: 'penalty', fav: 'site' },
-  { id: 'sheep', icon: '🐑', name: '绵绵医生', species: 'sheep', place: 'clinic', home: 'apt', loves: ['apple', 'corn'], likes: ['milk', 'pumpkin'], dislike: 'burger', birthday: 'spring-21', game: 'ttt', fav: 'lake', perk: { key: 'clinicCd', v: 0.5, text: '看病冷却 −50%' } },
-  { id: 'owl', icon: '🦉', name: '咕咕校长', species: 'owl', place: 'primary', home: 'middle', loves: ['puzzle', 'croissant'], likes: ['egg', 'milk'], birthday: 'autumn-1', game: 'chess', fav: 'museum', perk: { key: 'study', v: 1.05, text: '上课经验 +5%' } },
-  { id: 'turtle', icon: '🐢', name: '龟爷爷', species: 'turtle', place: 'chess', home: 'shell', loves: ['strawberry', 'watermelon'], likes: ['pumpkin', 'apple'], birthday: 'winter-4', game: 'chess', fav: 'lake', perk: { key: 'playCap', v: 10, text: '每日游戏经验上限 +10' } },
-  { id: 'duck', icon: '🦆', name: '嘎嘎大厨', species: 'duck', place: 'canteen', home: 'boat', loves: ['corn', 'pumpkin'], likes: ['carrot', 'rice'], dislike: 'egg', birthday: 'summer-14', game: 'rps', fav: 'lake', perk: { key: 'canteen', v: 10, text: '食堂饱食 +10' } },
+  { id: 'dog', icon: '🐶', name: '柴柴', species: 'dog', place: 'tower', home: 'apt', loves: ['burger', 'ball', 'braisedfish'], likes: ['milk', 'dumpling', 'crab'], birthday: 'summer-26', game: 'penalty', fav: 'field', perk: { key: 'pay', v: 1.05, text: '打工工资 +5%' } },
+  { id: 'fox', icon: '🦊', name: '狐狸阿姨', species: 'fox', place: 'bakery', home: 'bakery', loves: ['strawberry', 'egg', 'fruitsalad'], likes: ['milk', 'apple', 'crucian'], dislike: 'bread', birthday: 'spring-4', game: 'rps', fav: 'plaza' },
+  { id: 'raccoon', icon: '🦝', name: '浣浣', species: 'raccoon', place: 'bubble', home: 'apt', loves: ['strawberry', 'apple', 'crabcongee'], likes: ['donut', 'crab', 'shrimp'], birthday: 'summer-1', game: 'ttt', fav: 'lake' },
+  { id: 'squirrel', icon: '🐿️', name: '栗栗', species: 'squirrel', place: 'toy', home: 'tree', loves: ['corn', 'kite', 'cornsoup'], likes: ['donut', 'apple'], birthday: 'autumn-19', game: 'ttt', fav: 'meadow', perk: { key: 'toyRecover', v: 2, text: '玩具恢复速度 ×2' } },
+  { id: 'cat', icon: '🐱', name: '咪咪', species: 'cat', place: 'clothes', home: 'apt', loves: ['milk', 'cake', 'grilledfish'], likes: ['croissant', 'crucian', 'shrimp'], dislike: 'carrot', birthday: 'winter-21', game: 'rps', fav: 'plaza' },
+  { id: 'bear', icon: '🐻', name: '熊师傅', species: 'bear', place: 'furniture', home: 'woodshop', loves: ['honey', 'watermelon', 'seafoodrice'], likes: ['pumpkin', 'dumpling', 'crucian', 'puffer'], birthday: 'winter-15', game: 'penalty', fav: 'site' },
+  { id: 'sheep', icon: '🐑', name: '绵绵医生', species: 'sheep', place: 'clinic', home: 'apt', loves: ['apple', 'corn', 'carrotegg'], likes: ['milk', 'pumpkin'], dislike: 'burger', birthday: 'spring-21', game: 'ttt', fav: 'lake', perk: { key: 'clinicCd', v: 0.5, text: '看病冷却 −50%' } },
+  { id: 'owl', icon: '🦉', name: '咕咕校长', species: 'owl', place: 'primary', home: 'middle', loves: ['puzzle', 'croissant', 'takoyaki'], likes: ['egg', 'milk', 'crucian'], birthday: 'autumn-1', game: 'chess', fav: 'museum', perk: { key: 'study', v: 1.05, text: '上课经验 +5%' } },
+  { id: 'turtle', icon: '🐢', name: '龟爷爷', species: 'turtle', place: 'chess', home: 'shell', loves: ['strawberry', 'watermelon', 'shrimpegg'], likes: ['pumpkin', 'apple', 'shrimp'], birthday: 'winter-4', game: 'chess', fav: 'lake', perk: { key: 'playCap', v: 10, text: '每日游戏经验上限 +10' } },
+  { id: 'duck', icon: '🦆', name: '嘎嘎大厨', species: 'duck', place: 'canteen', home: 'boat', loves: ['corn', 'pumpkin', 'pumpkincup'], likes: ['carrot', 'rice', 'shrimp', 'octopus'], dislike: 'egg', birthday: 'summer-14', game: 'rps', fav: 'lake', perk: { key: 'canteen', v: 10, text: '食堂饱食 +10' } },
 ];
 // the farm market's keeper
-NPCS.push({ id: 'cow', icon: '🐮', name: '牛大叔', species: 'cow', place: 'farm', home: 'ranch', loves: ['donut', 'watermelon'], likes: ['bread', 'croissant'], birthday: 'summer-9', game: 'rps', fav: 'garden' });
+NPCS.push({ id: 'cow', icon: '🐮', name: '牛大叔', species: 'cow', place: 'farm', home: 'ranch', loves: ['donut', 'watermelon', 'cornsoup'], likes: ['bread', 'croissant'], birthday: 'summer-9', game: 'rps', fav: 'garden' });
 
 // the neighbours in the cottages next door (spot: which cottage); just friends, no perk
 NPCS.push(
   { id: 'rabbit', icon: '🐰', name: '小兔', species: 'bunny', place: 'neighbors', spot: 0, home: 'cottage0', small: true, loves: ['carrot', 'carrotcake', 'strawberry'], likes: ['ball', 'donut', 'bear'], birthday: 'spring-11', game: 'rps', fav: 'toy' },
-  { id: 'panda', icon: '🐼', name: '熊猫爷爷', species: 'panda', place: 'neighbors', spot: 1, home: 'cottage1', loves: ['bamboo', 'dumpling'], likes: ['apple', 'rice'], birthday: 'autumn-9', game: 'banqi', fav: 'lake' },
-  { id: 'hedgehog', icon: '🦔', name: '刺猬妹妹', species: 'hedgehog', place: 'neighbors', spot: 2, home: 'cottage2', loves: ['apple', 'strawberry'], likes: ['pumpkin', 'cake'], birthday: 'autumn-22', game: 'ttt', fav: 'meadow' },
+  { id: 'panda', icon: '🐼', name: '熊猫爷爷', species: 'panda', place: 'neighbors', spot: 1, home: 'cottage1', loves: ['bamboo', 'dumpling', 'porridge'], likes: ['apple', 'rice', 'koi'], birthday: 'autumn-9', game: 'banqi', fav: 'lake' },
+  { id: 'hedgehog', icon: '🦔', name: '刺猬妹妹', species: 'hedgehog', place: 'neighbors', spot: 2, home: 'cottage2', loves: ['apple', 'strawberry', 'fruitsalad'], likes: ['pumpkin', 'cake'], birthday: 'autumn-22', game: 'ttt', fav: 'meadow' },
 );
 const NPC_BY_ID = Object.fromEntries(NPCS.map((n) => [n.id, n]));
 

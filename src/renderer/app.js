@@ -12,7 +12,7 @@ const LINES = {
   sulk: ['哼！', '不理你了！', '还戳！', '哼哼！'],
 };
 // little symbols that pop up now and then while busy
-const BUSY_FX = { study: ['💡', '✏️', '❓', '📝', '💡'], work: ['💦', '💪', '💦', '😤'], kinder: ['🎵', '⭐', '😄', '🖍️'] };
+const BUSY_FX = { study: ['💡', '✏️', '❓', '📝', '💡'], work: ['💦', '💪', '💦', '😤'], kinder: ['🎵', '⭐', '😄', '🖍️'], cook: ['🔥', '🍳', '😋', '✨'] };
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
 // The most urgent stat the pig needs help with, or null
@@ -147,6 +147,9 @@ const App = {
         break;
       case 'hobby':
         res = Game.startHobby(id);
+        break;
+      case 'cook':
+        res = Game.startCook(id);
         break;
       case 'kinder':
         res = Game.startKinder(id);

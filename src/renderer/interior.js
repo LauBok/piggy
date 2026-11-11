@@ -483,7 +483,8 @@ const FURN_ART = {
         <rect x="${IX(fx + 0.12)}" y="${IY(1.0, 2.9)}" width="4" height="${0.6 * I_H}" rx="2" fill="#adb5bd"/><rect x="${IX(fx + 0.12)}" y="${IY(1.0, 1.85)}" width="4" height="${0.8 * I_H}" rx="2" fill="#adb5bd"/>
         <circle cx="${IX(fx + 0.7)}" cy="${IY(1.0, 2.6)}" r="5" fill="#ff8787"/><rect x="${IX(fx + 0.55)}" y="${IY(1.0, 1.6)}" width="14" height="10" rx="2" fill="#ffd43b" transform="rotate(-8 ${IX(fx + 0.6)} ${IY(1.0, 1.5)})"/>`;
     }
-    return { w, d, h: big ? 3.4 : 2.2, svg: s };
+    // the cook stands at the hob
+    return { w, d, h: big ? 3.4 : 2.2, svg: s, seat: [cw - 0.6, d + 0.3, 0] };
   },
 
   // a big cooking pot on its own little stove, steaming
@@ -814,7 +815,7 @@ const FURN_USE = {
   easel: { label: () => '画画', act: () => ['hobby', 'paint'] },
   wardrobe: { label: () => '换衣服', act: () => ['open', 'wardrobe'] },
   desk: { label: () => '看看学历', act: () => ['open', 'study'] },
-  kitchen: { label: () => '吃点东西', act: () => ['bag'] },
+  kitchen: { label: () => '做饭', act: () => ['open', 'kitchen'] },
 };
 
 // ---------- the houses ----------

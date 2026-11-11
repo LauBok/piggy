@@ -378,6 +378,25 @@ const filmToday = (d = townDate()) => FILMS[Math.floor(new Date(d.getFullYear(),
 // What the barn will buy: whatever the vegetable patch grows, and what it pays for one
 // (and fish, at what they're worth)
 const barnGoods = () => ITEMS.filter((it) => it.cat === 'fish' || ITEMS.some((seed) => seed.crop === it.id));
+// the restaurant buys home cooking, at what it's worth
+const dishGoods = () => ITEMS.filter((it) => it.dish || RECIPE_BY_ID[it.id]);
+
+// ---------- cooking ----------
+const kitchenOf = (s) => (s.inventory.kitchen2 ? 'kitchen2' : s.inventory.kitchen1 ? 'kitchen1' : null);
+const cookMinutes = (s, r) => Math.round(r.minutes * (kitchenOf(s) === 'kitchen2' ? BIG_KITCHEN_SPEED : 1));
+// What teaches a recipe, as a requirement chip's text and whether it's met; null if anyone can
+function recipeLearn(s, r) {
+  if (!r.learn) return null;
+  if (r.learn.npc) return { text: `${NPC_BY_ID[r.learn.npc].name} ${r.learn.hearts}♥`, ok: hearts(s, r.learn.npc) >= r.learn.hearts };
+  return { text: reqName(r.learn), ok: reqMet(s, r.learn) };
+}
+// Why a recipe can't be cooked now ('' if it can): not learned, or what's missing from the bag
+function recipeWhy(s, r) {
+  const learn = recipeLearn(s, r);
+  if (learn && !learn.ok) return `要学${learn.text}`;
+  const short = Object.entries(r.needs).find(([id, n]) => (s.inventory[id] || 0) < n);
+  return short ? `缺${ITEM_BY_ID[short[0]].name}` : '';
+}
 const barnPrice = (it) => (it.cat === 'fish' ? it.price : Math.max(1, Math.round(it.price * BARN_RATE)));
 
 // ---------- visiting ----------

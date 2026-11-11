@@ -1621,6 +1621,13 @@ const ROOMS = {
     draw: () => '<div class="rm-shelf"></div><div class="rm-counter low"></div>',
     fx: ['🪙', '🧾'],
   },
+  // cooking at home: the hob, a pan on it, what's being made
+  cook: {
+    wall: '#fff4e6', floor: '#ffe8cc', pose: 'working', pig: { x: 90, y: 128 },
+    items: [['🍳', 140, 96, 26], ['🔪', 170, 102, 16], ['🧂', 186, 100, 14], ['🥕', 30, 112, 18]],
+    draw: ({ snap }) => `<div class="rm-table"></div><div class="rm-dish">${ITEM_BY_ID[snap.s.activity?.id]?.icon || ''}</div>`,
+    fx: ['🔥', '😋', '✨'],
+  },
   // shelves to fill at the supermarket: boxes on one side, tins and cartons going up
   shelf: {
     wall: '#fff9db', floor: '#ffec99', pose: 'working', pig: { x: 96, y: 128 },
@@ -1880,7 +1887,7 @@ const DOLLHOUSE = [
 ];
 
 // Which spot the pig stands at for what it's doing at home
-const HOME_SPOT_FOR = { sleep: 'bed', bath: 'tub', piano: 'piano', paint: 'easel' };
+const HOME_SPOT_FOR = { sleep: 'bed', bath: 'tub', piano: 'piano', paint: 'easel', cook: 'kitchen' };
 // decorations that hang on a wall rather than stand on the floor
 const WALL_DECOR = ['painting', 'lamp', 'stars'];
 

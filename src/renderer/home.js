@@ -231,7 +231,7 @@ function renderSheet() {
 // 🛵 跑腿 (delivery from the supermarket) as the last group ----------
 
 // the bag's groups, named as the shops name them
-const BAG_CATS = ['food', 'hygiene', 'medicine', 'toy', 'fish'].map((id) => SHOP_CATS.find((c) => c.id === id));
+const BAG_CATS = ['food', 'hygiene', 'medicine', 'toy', 'seasoning', 'fish'].map((id) => SHOP_CATS.find((c) => c.id === id));
 const DELIVERY_SHOPS = ['supermarket', 'bakery', 'farm', 'restaurant', 'clinic'];
 SheetUI.bagCat = (() => {
   try {
@@ -273,7 +273,8 @@ function groupsHtml(list, tile) {
 
 // One thing in the bag: what it does to the pig now, and 使用 (or why not)
 function bagRow(s, it) {
-  const fish = it.cat === 'fish';
+  // fish and seasonings aren't used on their own: no 使用
+  const fish = ['fish', 'seasoning'].includes(it.cat);
   let fx = Object.fromEntries(effectsNow(it).map((e) => [e.k, e.d]));
   let why = snap.sleeping ? '在睡觉' : '';
   if (it.cat === 'toy') {

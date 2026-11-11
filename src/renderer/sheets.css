@@ -2367,3 +2367,57 @@
   height: auto;
   margin-top: 4px;
 }
+
+/* ---------- the kitchen ---------- */
+
+#sheet .ck-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+  padding: 10px 14px;
+}
+
+#sheet .ck-row.locked {
+  opacity: 0.6;
+}
+
+#sheet .ck-m {
+  flex: 1;
+  min-width: 0;
+}
+
+#sheet .ck-m > b {
+  font: var(--fs-name) var(--f-title);
+}
+
+#sheet .ck-needs {
+  display: flex;
+  gap: 6px;
+}
+
+#sheet .ck-need {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 30px;
+  padding: 0 9px 0 7px;
+  border-radius: var(--r-pill);
+  background: var(--sunken);
+  font-size: 16px;
+}
+
+#sheet .ck-need b {
+  color: var(--ink-2);
+  font: 700 12px var(--f-body);
+  font-variant-numeric: tabular-nums;
+}
+
+#sheet .ck-need.short {
+  background: #fff5f5;
+  box-shadow: inset 0 0 0 1.5px #ffc9c9;
+}
+
+#sheet .ck-need.short b {
+  color: #e03131;
+}

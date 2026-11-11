@@ -11,6 +11,7 @@ function busyIcon(a) {
   if (a.type === 'help') return FREE_HELP_BY_ID[a.id]?.icon || '🩺';
   if (a.type === 'hobby') return HOBBY_BY_ID[a.id]?.icon || '🎵';
   if (a.type === 'kinder') return KINDER_BY_ID[a.id]?.icon || '🧸';
+  if (a.type === 'cook') return ITEM_BY_ID[a.id]?.icon || '🍳';
   if (a.type === 'sleep') return '😴';
   return '🛁';
 }

@@ -569,6 +569,8 @@ function sceneOf(snap) {
       return a.id === 'soccer' ? { place: 'field', scene: SOCCER_SCENE } : { place: 'home', scene: { tpl: 'room', room: a.id } };
     case 'bath':
       return { place: 'home', scene: { tpl: 'room', room: 'bath' } };
+    case 'cook':
+      return { place: 'home', scene: { tpl: 'room', room: 'cook' } };
     default:
       return { place: 'home', scene: { tpl: 'room', room: 'sleep' } };
   }

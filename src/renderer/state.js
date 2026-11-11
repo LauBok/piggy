@@ -240,6 +240,7 @@ const Game = {
     if (!a || a.type === 'bath') return { drain: {}, exp: 0 };
     if (a.type === 'study') return { drain: STUDY_DRAIN, exp: EXP_PER_MIN.study };
     if (a.type === 'kinder') return { drain: KINDER_DRAIN, exp: EXP_PER_MIN.study };
+    if (a.type === 'cook') return { drain: COOK_DRAIN, exp: 0 };
     if (a.type === 'work') return { drain: JOB_BY_ID[a.id].drain, exp: EXP_PER_MIN.work };
     return { drain: {}, exp: 0 };
   },
@@ -390,6 +391,7 @@ const Game = {
     if (a.type === 'help') return FREE_HELP_BY_ID[a.id].label;
     if (a.type === 'hobby') return `在${HOBBY_BY_ID[a.id].name}`;
     if (a.type === 'kinder') return `在幼儿园${KINDER_BY_ID[a.id].name}`;
+    if (a.type === 'cook') return `在做${ITEM_BY_ID[a.id].name}`;
     return '在睡觉';
   },
 
@@ -408,6 +410,19 @@ const Game = {
     if (this.busy) return `正${this.activityLabel()}呢`;
     if (this.sleeping) return '在睡觉呢…zzz';
     return null;
+  },
+
+  // Cooking a dish at home: the kitchen, the recipe and what goes in it, all needed first
+  startCook(id) {
+    const r = RECIPE_BY_ID[id];
+    const s = this.s;
+    if (!r) return fail('');
+    if (!kitchenOf(s)) return fail('家里还没有厨房');
+    const why = this.blocked() || recipeWhy(s, r);
+    if (why) return fail(why);
+    for (const [it, n] of Object.entries(r.needs)) if ((s.inventory[it] -= n) <= 0) delete s.inventory[it];
+    this.begin('cook', id, cookMinutes(s, r));
+    return { ok: true, msg: `做${ITEM_BY_ID[id].name}，${cookMinutes(s, r)} 分钟就好`, fx: ITEM_BY_ID[id].icon };
   },
 
   // A class at kindergarten, while he's too little for school
@@ -533,6 +548,11 @@ const Game = {
         cafe: '喝得暖暖的~', read: '这本书真有意思！', ducks: '鸭子都吃饱啦！', garden: '菜园收拾好啦，菜长得更快了！', kite: '风筝飞得好高！', stars: '今晚的星星真亮！',
       }[a.id];
       return { ok: true, msg: done, fx: h.icon };
+    }
+    if (a.type === 'cook') {
+      const it = ITEM_BY_ID[a.id];
+      this.s.inventory[it.id] = (this.s.inventory[it.id] || 0) + 1;
+      return { ok: true, msg: `${it.name}做好啦！`, fx: `${it.icon}${this.playExp(PLAY_EXP.cook)}` };
     }
     if (a.type === 'kinder') {
       const k = KINDER_BY_ID[a.id];
@@ -724,6 +744,7 @@ const Game = {
 
     if (['furniture', 'decor'].includes(it.cat)) return fail(`${it.name}已经摆在家里啦`);
     if (it.cat === 'city') return fail(`${it.name}已经在城里啦`);
+    if (it.cat === 'seasoning') return fail('做菜时用');
     if (it.cat === 'fish') return fail(it.id === 'boot' ? '这个……不能吃吧' : `生的${it.name}可不能吃…`);
 
     // outfits: put on, or take off if already worn
@@ -766,7 +787,7 @@ const Game = {
     const [id, all] = String(arg).split(':');
     const it = ITEM_BY_ID[id];
     const s = this.s;
-    if (!it || !barnGoods().includes(it)) return fail('谷仓不收这个');
+    if (!it || !(barnGoods().includes(it) || dishGoods().includes(it))) return fail('这里不收这个');
     const have = s.inventory[id] || 0;
     if (!have) return fail(`没有${it.name}了`);
     const n = all ? have : 1;

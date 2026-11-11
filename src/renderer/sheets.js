@@ -38,6 +38,7 @@ function activityIcon(a) {
   if (a.type === 'help') return FREE_HELP_BY_ID[a.id].icon;
   if (a.type === 'hobby') return HOBBY_BY_ID[a.id].icon;
   if (a.type === 'kinder') return KINDER_BY_ID[a.id].icon;
+  if (a.type === 'cook') return ITEM_BY_ID[a.id].icon;
   if (a.type === 'sleep') return '😴';
   return '🛁';
 }
@@ -274,6 +275,47 @@ function goodsCard(snap, it, placeId) {
 
 const goodsGrid = (snap, items, placeId) => `<div class="grid">${items.map((it) => goodsCard(snap, it, placeId)).join('')}</div>`;
 
+// ---------- the kitchen ----------
+
+// Every recipe: the dish and what it gives, what goes in (and how many of each are in the bag),
+// and the button, or why not; the ones not learned yet after, with what teaches them
+function kitchenPage(snap) {
+  const s = snap.s;
+  if (!kitchenOf(s)) return '<div class="sheet-empty"><div class="empty-ic">🍳</div></div>';
+  const busy = busyWhy(snap);
+  const row = (r) => {
+    const it = ITEM_BY_ID[r.id];
+    const learn = recipeLearn(s, r);
+    const why = busy || recipeWhy(s, r);
+    const needs = Object.entries(r.needs).map(([id, n]) => {
+      const have = s.inventory[id] || 0;
+      return `<span class="ck-need ${have >= n ? '' : 'short'}" title="${esc(`${ITEM_BY_ID[id].name} 有 ${have}`)}">${ITEM_BY_ID[id].icon}<b>×${n}</b></span>`;
+    }).join('');
+    const lock = learn && !learn.ok;
+    return `<div class="card ck-row ${lock ? 'locked' : ''}"${lock ? '' : preview(it.effects)}>
+      <div class="hero-ic">${it.icon}</div>
+      <div class="ck-m"><b>${it.name}</b><div class="chips">${lock ? chip(`🔒 ${learn.text}`) : `${changes(s, it.effects)}${chip(`⏱️ ${cookMinutes(s, r)} 分`)}`}</div></div>
+      <div class="ck-needs">${needs}</div>
+      <div class="hero-act">${!lock && why ? `<small class="why">${why}</small>` : ''}<button class="btn primary" data-action="cook" data-id="${r.id}" ${why ? 'disabled' : ''}>做</button></div></div>`;
+  };
+  const known = RECIPES.filter((r) => !recipeLearn(s, r) || recipeLearn(s, r).ok);
+  const locked = RECIPES.filter((r) => !known.includes(r));
+  return sec('菜谱', known.map(row).join(''), { count: known.length })
+    + (locked.length ? sec('未学会', locked.map(row).join(''), { count: locked.length }) : '');
+}
+
+// Cards to sell things where they're bought (the barn, the restaurant): one at a time, or all
+function sellCards(s, items, price) {
+  return items.map((it) => {
+    const n = s.inventory[it.id] || 0;
+    const one = price(it);
+    return `<div class="card goods ${n ? '' : 'none'}">${n ? `<span class="corner">已有 ${n}</span>` : ''}
+        <div class="goods-ic">${it.icon}</div><b>${it.name}</b>
+        <div class="sell-row"><button class="btn primary" data-action="sell" data-id="${it.id}" ${n ? '' : 'disabled'}>卖 🪙${one}</button>
+          ${n > 1 ? `<button class="btn" data-action="sell" data-id="${it.id}:all">全卖 🪙${fmt(one * n)}</button>` : ''}</div></div>`;
+  }).join('');
+}
+
 // ---------- the calendar ----------
 
 // One season of the town's calendar: four weeks from a Monday, today marked, and on each day its
@@ -494,7 +536,13 @@ const SheetUI = {
 const SHEETS = {
   shop(snap, p) {
     const items = shopItems(p.id);
-    return sec('商品', goodsGrid(snap, items, p.id), { count: items.length }) + placeJobs(snap, p);
+    // the restaurant also buys home cooking: the dishes he has, or all of them if none
+    let buys = '';
+    if (p.id === 'restaurant') {
+      const have = dishGoods().filter((it) => snap.s.inventory[it.id]);
+      buys = sec('收菜品', `<div class="grid">${sellCards(snap.s, have.length ? have : dishGoods(), (it) => it.price)}</div>`);
+    }
+    return sec('商品', goodsGrid(snap, items, p.id), { count: items.length }) + buys + placeJobs(snap, p);
   },
 
   furniture(snap) {
@@ -604,14 +652,7 @@ const SHEETS = {
   // the barn buys the harvest and the fish: one at a time, or all of a kind
   barn(snap) {
     const s = snap.s;
-    const cards = (fish) => barnGoods().filter((it) => (it.cat === 'fish') === fish).map((it) => {
-      const n = s.inventory[it.id] || 0;
-      const one = barnPrice(it);
-      return `<div class="card goods ${n ? '' : 'none'}">${n ? `<span class="corner">已有 ${n}</span>` : ''}
-        <div class="goods-ic">${it.icon}</div><b>${it.name}</b>
-        <div class="sell-row"><button class="btn primary" data-action="sell" data-id="${it.id}" ${n ? '' : 'disabled'}>卖 🪙${one}</button>
-          ${n > 1 ? `<button class="btn" data-action="sell" data-id="${it.id}:all">全卖 🪙${fmt(one * n)}</button>` : ''}</div></div>`;
-    }).join('');
+    const cards = (fish) => sellCards(s, barnGoods().filter((it) => (it.cat === 'fish') === fish), barnPrice);
     return sec('收菜', `<div class="grid">${cards(false)}</div>`) + sec('收鱼', `<div class="grid">${cards(true)}</div>`);
   },
 
@@ -929,6 +970,7 @@ function sheetHtml(snap, id) {
   if (id === 'album') return { head: plainBanner('📷', '相册'), body: SHEETS.album(snap) };
   if (id === 'bag') return { head: plainBanner('🎒', '背包'), body: bagPage(snap) };
   if (id === 'calendar') return { head: plainBanner('📅', '日历'), body: calendarPage(snap) };
+  if (id === 'kitchen') return { head: plainBanner('🍳', '厨房'), body: kitchenPage(snap) };
   if (id === 'duel') return { head: duelBanner(), body: '<div class="card game-area" id="gameArea"></div>' };
   const p = PLACE_BY_ID[id];
   return { head: bannerHtml(snap, p), body: SHEETS[p.sheet](snap, p) };
