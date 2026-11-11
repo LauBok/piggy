@@ -759,6 +759,8 @@ const City = {
     const now = Date.now();
     const st = this.npcHold[id] || this.npcAt[id];
     this.npcHold[id] = { x: st.x, y: st.y, dir: st.dir || 1 };
+    // the way the pig has gone, for them to follow along it (newest last)
+    this.trail = [{ x: st.x, y: st.y }, { x: this.pos.x, y: this.pos.y }];
     this.buddy = { id, t0: now, key: this.planOf(id).key, next: now + 8000, said: new Set(), n: 0, to };
     if (line) this.npcSay(id, line);
   },
@@ -771,21 +773,59 @@ const City = {
     this.release(b.id);
   },
 
+  // They come along the way the pig went, a little way behind: never off to one side, through a
+  // wall or a fence
   followPig(dt) {
     const h = this.npcHold[this.buddy.id];
     if (!h) return (this.buddy = null);
-    const tx = this.pos.x - (this.pigDir || 1) * 58;
-    const ty = this.pos.y + 4;
-    const dx = tx - h.x;
-    const dy = ty - h.y;
+    const trail = (this.trail ||= [{ x: h.x, y: h.y }]);
+    const last = trail[trail.length - 1];
+    if (Math.hypot(this.pos.x - last.x, this.pos.y - last.y) >= 6) trail.push({ x: this.pos.x, y: this.pos.y });
+    // the point BUDDY_GAP back along the trail from the pig
+    let left = BUDDY_GAP;
+    let tx = this.pos.x;
+    let ty = this.pos.y;
+    let cut = 0;
+    for (let i = trail.length - 1; i >= 0; i--) {
+      const seg = Math.hypot(tx - trail[i].x, ty - trail[i].y);
+      if (seg >= left) {
+        const k = left / seg;
+        tx += (trail[i].x - tx) * k;
+        ty += (trail[i].y - ty) * k;
+        left = 0;
+        cut = i;
+        break;
+      }
+      left -= seg;
+      tx = trail[i].x;
+      ty = trail[i].y;
+    }
+    // stood close by already: stay put rather than step back onto the trail
+    if (left > 0 && Math.hypot(this.pos.x - h.x, this.pos.y - h.y) <= BUDDY_GAP + 4) {
+      h.moving = false;
+      return;
+    }
+    // they walk the trail in order: the next point of it ahead of them, not straight at the target
+    let goal = { x: tx, y: ty };
+    for (let i = 0; i < trail.length; i++) {
+      if (Math.hypot(trail[i].x - h.x, trail[i].y - h.y) < 8) continue;
+      if (i <= cut) goal = trail[i];
+      break;
+    }
+    if (trail.length > 400) trail.splice(0, trail.length - 400);
+    const dx = goal.x - h.x;
+    const dy = goal.y - h.y;
     const d = Math.hypot(dx, dy);
-    h.moving = d > 6;
-    if (d > 3) {
-      const step = Math.min(d, WALK_SPEED * (d > 90 ? 1.6 : 1.05) * dt);
+    h.moving = d > 3;
+    if (d > 0.5) {
+      const far = Math.hypot(this.pos.x - h.x, this.pos.y - h.y);
+      const step = Math.min(d, WALK_SPEED * (far > BUDDY_GAP * 2 ? 1.6 : 1.05) * dt);
       h.x += (dx / d) * step;
       h.y += (dy / d) * step;
     }
-    h.dir = Math.abs(dx) > 4 ? Math.sign(dx) : this.pigDir || 1;
+    // drop the trail they've walked past
+    while (trail.length > 2 && Math.hypot(trail[0].x - h.x, trail[0].y - h.y) < 8) trail.shift();
+    if (Math.abs(dx) > 2) h.dir = Math.sign(dx);
   },
 
   buddyTick(now) {
@@ -818,9 +858,21 @@ const City = {
   // Off to the canteen together; at the door they go in with the pig and sit across the table
   // Off somewhere together: they walk along beside the pig to it, and when he starts they stay
   // with him: indoors out of sight, outdoors standing beside him (OUTING_MATES)
+  // Where an outing happens: the pitch for football, else wherever that help is given
+  outingTarget(o) {
+    return o.hobby ? { place: 'field', scene: SOCCER_SCENE } : sceneOf({ s: { activity: { type: 'help', id: o.help } } });
+  },
+
+  // What can be done here with the one walking along (if they're friends enough): outings on now
+  matesOutings(placeId, id) {
+    const s = this.snap?.s;
+    if (!s || hearts(s, id) < TOGETHER_HEARTS.go) return [];
+    return OUTINGS.filter((o) => this.outingTarget(o).place === placeId && outingOn(s, o));
+  },
+
   goOuting(id, kind) {
     const o = OUTING_BY_ID[kind];
-    const target = o.hobby ? { place: 'field', scene: SOCCER_SCENE } : sceneOf({ s: { activity: { type: 'help', id: o.help } } });
+    const target = this.outingTarget(o);
     const e = this.entryOf(target);
     this.endTalk(false);
     this.startBuddy(id, outingTalk(id, kind).go, target.place);
@@ -1070,10 +1122,13 @@ const City = {
       this.keys.clear();
       this.endTalk();
     }
-    // coming back out of a building: the pig steps out of its door
+    // coming back out of a building: the pig steps out of its door; a friend who came in and
+    // didn't do anything with him gets on with their day
     if (!on && this.inside) {
       const p = PLACE_BY_ID[this.inside];
       this.inside = null;
+      if (this.mate && !this.mate.busy) this.release(this.mate.id);
+      this.mate = null;
       if (!this.at?.place && !this.route) {
         this.placePig(p.entry.x, p.entry.y);
         this.follow = true;
@@ -1081,11 +1136,29 @@ const City = {
     }
   },
 
-  // Go into a place (its sheet opens)
+  // Go into a place (its sheet opens). Someone walking along comes in too if there's something
+  // here to do together: the sheet offers to do it with them (see withMate)
   enter(id) {
     this.inside = id;
-    this.endBuddy();
+    const b = this.buddy;
+    if (b && this.matesOutings(id, b.id).length) {
+      this.buddy = null;
+      this.npcHold[b.id] = { ...this.npcHold[b.id], gone: true };
+      this.mate = { id: b.id, place: id };
+    } else this.endBuddy();
     this.cb.onEnter(id);
+  },
+
+  // A help or hobby started inside with the friend who came in: the outing that is, or null
+  withMate(kind, helpId) {
+    const m = this.mate;
+    if (!m || m.busy) return null;
+    const o = this.matesOutings(m.place, m.id).find((x) => (kind === 'hobby' ? x.hobby : x.help) === helpId);
+    if (!o) return null;
+    // they stay with the pig until it's done, then get on with their day
+    m.busy = true;
+    this.npcHold[m.id] = { ...this.npcHold[m.id], gone: true, untilFree: Date.now() };
+    return `${m.id}:${o.id}`;
   },
 
   // A place whose door is right in front of the pig
@@ -1253,6 +1326,11 @@ const City = {
     this.snap = snap;
     const s = snap.s;
     if (this.talk && (snap.busy || snap.sleeping)) this.endTalk();
+    // a friend who came in but whom the pig left out of it: off they go
+    if (this.mate && !this.mate.busy && (snap.busy || snap.sleeping)) {
+      this.release(this.mate.id);
+      this.mate = null;
+    }
     // back out of the canteen after eating together
     for (const [id, h] of Object.entries(this.npcHold)) if (h.untilFree && !snap.busy && Date.now() - h.untilFree > 4000) this.release(id);
     this.updateTown(s);

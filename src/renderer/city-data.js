@@ -651,6 +651,8 @@ const NPC_LOOPS = {
 const NPC_SPEED = { turtle: 16, rabbit: 46, _: 38 };
 // how far ahead (town time) a shop keeper may set off, to be behind the counter on the hour
 const KEEPER_LEAD = 45 * 60000;
+// how far behind the pig someone walking with him keeps, along the way he went
+const BUDDY_GAP = 56;
 // what they hold or do while at it
 const NPC_HOLD = { kite: '🪁', ducks: '🍞', stars: '🔭', wash: '🧸', swim: '💦', pine: '🌰', ball: '⚽', site: '🔨', flowers: '🌷', soak: '♨️', rest: '', cafe: '☕' };
 // the little faces that pop up between two who are there together

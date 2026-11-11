@@ -174,7 +174,7 @@ function structKey() {
   return JSON.stringify([
     sheet, SheetUI.bagCat, basket, s.inventory, Math.floor(s.money), s.level, s.courses, s.activity && [s.activity.type, s.activity.id],
     snap.sleeping, s.follow, s.mini, s.name, s.wear, s.npc, s.helpReady, s.hobbyReady, s.playDay, s.health >= MIN_HEALTH_TO_ACT, s.album.length, s.fishReady,
-    Math.floor(Date.now() / 60000), U.furnTab, U.calSeason, U.treeSel, U.schoolStage, U.schoolMajor, U.workFilter, U.armed, U.upd,
+    Math.floor(Date.now() / 60000), U.furnTab, U.calSeason, City.mate && [City.mate.id, !!City.mate.busy], U.treeSel, U.schoolStage, U.schoolMajor, U.workFilter, U.armed, U.upd,
     sheet === 'tower' ? [Math.round(s.hunger), Math.round(s.energy)] : 0, gameBlock(snap),
   ]);
 }
@@ -570,6 +570,11 @@ const LOCAL = {
   album: () => openSheet('album'),
   furnTab: (id) => { SheetUI.furnTab = id; update(); },
   calSeason: (id) => { SheetUI.calSeason = id; update(); },
+  // the friend who walked in with the pig comes along to it
+  helpWith: (id, ds) => {
+    const together = City.withMate(ds.kind, id);
+    if (together) window.home.act('together', together);
+  },
   calendar: () => {
     if (sheet === 'calendar') return closeAll();
     SheetUI.calSeason = null;

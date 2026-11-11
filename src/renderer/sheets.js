@@ -90,7 +90,7 @@ const preview = (effects) => {
 const hero = (h) => `<div class="card hero ${h.ok ? '' : 'off'}"${h.fx ? preview(h.fx) : ''}>
     <div class="hero-ic">${h.icon}</div>
     <div class="hero-m"><b>${h.name}</b><div class="chips">${h.meta}</div></div>
-    <div class="hero-act">${h.why ? `<small class="why">${h.why}</small>` : ''}
+    <div class="hero-act">${h.why ? `<small class="why">${h.why}</small>` : ''}${h.with || ''}
       <button class="btn primary" data-action="${h.action}" data-id="${h.id}" ${h.ok ? '' : 'disabled'}>${h.btn}</button></div></div>`;
 
 function helpHero(snap, id) {
@@ -119,7 +119,18 @@ function helpHero(snap, id) {
   let title = ['meal', 'clinic', 'soak'].includes(id) ? verb : h.name;
   if (id === 'movie') title = `《${esc(filmToday())}》`;
   if (fest) title = { newyear: '春节庙会', lantern: '元宵灯会', dragon: '端午龙舟', moon: '中秋赏月', xmas: '圣诞树' }[id];
-  return hero({ action: 'help', id, icon: h.icon, name: title, meta, ok: !why, why, btn: verb, fx });
+  return hero({ action: 'help', id, icon: h.icon, name: title, meta, ok: !why, why, btn: verb, fx, with: mateBtn(snap, 'help', id, !why) });
+}
+
+// A friend who walked in with the pig: a second button to do it with them (paying for two)
+function mateBtn(snap, kind, id, ok) {
+  const m = typeof City !== 'undefined' && City.mate;
+  if (!m || m.busy) return '';
+  const o = City.matesOutings(m.place, m.id).find((x) => (kind === 'hobby' ? x.hobby : x.help) === id);
+  if (!o) return '';
+  const fee = (FREE_HELP_BY_ID[id]?.fee || 0) * 2;
+  const can = ok && snap.s.money >= fee;
+  return `<button class="btn secondary" data-action="helpWith" data-kind="${kind}" data-id="${id}" title="${esc(o.name)}${fee ? ` 🪙${fee}` : ''}" ${can ? '' : 'disabled'}>和${NPC_BY_ID[m.id].name}一起</button>`;
 }
 
 const hhmm = (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
@@ -219,7 +230,7 @@ function hobbyTile(snap, h) {
 
 function hobbyHero(snap, h) {
   const { why, fx } = hobbyState(snap, h);
-  return hero({ action: 'hobby', id: h.id, icon: h.icon, name: h.name, meta: `${changes(snap.s, fx)}${chip(`⏱️ ${h.minutes} 分`)}`, ok: !why, why, btn: h.name, fx });
+  return hero({ action: 'hobby', id: h.id, icon: h.icon, name: h.name, meta: `${changes(snap.s, fx)}${chip(`⏱️ ${h.minutes} 分`)}`, ok: !why, why, btn: h.name, fx, with: mateBtn(snap, 'hobby', h.id, !why) });
 }
 
 // Kindergarten classes, while he's too little for primary school
