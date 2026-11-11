@@ -240,7 +240,18 @@ const RECIPES = [
   { id: 'crabcongee', needs: { crab: 1, rice: 1, salt: 1 }, minutes: 25, learn: 'middle_biology@3' },
   { id: 'carrotcake', needs: { carrot: 2, egg: 1, milk: 1, sugar: 1, oil: 1 }, minutes: 40, learn: 'middle_chemistry' },
   { id: 'braisedfish', needs: { puffer: 1, carrot: 1, soy: 1, sugar: 1 }, minutes: 30, learn: 'high_chemistry@2' },
+  // the university's 烹饪课: three dishes a lesson
+  { id: 'eggrice', needs: { rice: 1, egg: 1, oil: 1, salt: 1 }, minutes: 15, learn: 'college_gen_cook@1' },
+  { id: 'fishball', needs: { crucian: 2, salt: 1 }, minutes: 20, learn: 'college_gen_cook@1' },
+  { id: 'smoothie', needs: { strawberry: 1, milk: 1, sugar: 1 }, minutes: 10, learn: 'college_gen_cook@1' },
+  { id: 'slush', needs: { watermelon: 1, sugar: 1 }, minutes: 10, learn: 'college_gen_cook@2' },
+  { id: 'cornpancake', needs: { corn: 2, egg: 1, oil: 1, sugar: 1 }, minutes: 25, learn: 'college_gen_cook@2' },
   { id: 'takoyaki', needs: { octopus: 1, egg: 1, bread: 1, oil: 1, soy: 1 }, minutes: 35, learn: 'college_gen_cook@2' },
+  { id: 'berrypie', needs: { strawberry: 2, bread: 1, sugar: 1, oil: 1 }, minutes: 35, learn: 'college_gen_cook@3' },
+  { id: 'shrimpnoodle', needs: { shrimp: 1, egg: 1, bread: 1, soy: 1 }, minutes: 25, learn: 'college_gen_cook@3' },
+  { id: 'bento', needs: { bamboo: 1, rice: 1, egg: 1, soy: 1 }, minutes: 25, learn: 'college_gen_cook@3' },
+  { id: 'platter', needs: { crab: 1, shrimp: 1, octopus: 1, soy: 1 }, minutes: 30, learn: 'college_gen_cook@4' },
+  { id: 'hotpot', needs: { puffer: 1, carrot: 1, corn: 1, salt: 1, oil: 1 }, minutes: 40, learn: 'college_gen_cook@4' },
   { id: 'seafoodrice', needs: { tropical: 1, shrimp: 1, rice: 1, oil: 1, salt: 1 }, minutes: 40, learn: 'college_gen_cook@4' },
   { id: 'pumpkincup', needs: { pumpkin: 1, corn: 1, sugar: 1 }, minutes: 30, learn: { npc: 'duck', hearts: 5 } },
 ];
@@ -694,6 +705,17 @@ const ITEMS = [
   { id: 'braisedfish', cat: 'food', dish: true, shops: [], name: '红烧胖头鱼', icon: '🍛', price: 48, effects: { hunger: 45, mood: 10 } },
   { id: 'takoyaki', cat: 'food', dish: true, shops: [], name: '章鱼小丸子', icon: '🧆', price: 110, effects: { hunger: 42, mood: 18 } },
   { id: 'seafoodrice', cat: 'food', dish: true, shops: [], name: '彩虹海鲜饭', icon: '🍤', price: 120, effects: { hunger: 75, health: 5, mood: 20 } },
+  // what the university's 烹饪课 teaches, lesson by lesson
+  { id: 'eggrice', cat: 'food', dish: true, shops: [], name: '蛋炒饭', icon: '🥡', price: 40, effects: { hunger: 50, mood: 5 } },
+  { id: 'fishball', cat: 'food', dish: true, shops: [], name: '鱼丸汤', icon: '🍥', price: 30, effects: { hunger: 35, health: 3, mood: 5 } },
+  { id: 'smoothie', cat: 'food', dish: true, shops: [], name: '草莓奶昔', icon: '🥤', price: 34, effects: { hunger: 18, energy: 4, mood: 14 } },
+  { id: 'slush', cat: 'food', dish: true, shops: [], name: '西瓜冰沙', icon: '🍧', price: 45, effects: { hunger: 22, energy: 6, mood: 16 } },
+  { id: 'cornpancake', cat: 'food', dish: true, shops: [], name: '玉米烙', icon: '🫓', price: 40, effects: { hunger: 40, mood: 8 } },
+  { id: 'berrypie', cat: 'food', dish: true, shops: [], name: '草莓派', icon: '🥧', price: 55, effects: { hunger: 30, mood: 18 } },
+  { id: 'shrimpnoodle', cat: 'food', dish: true, shops: [], name: '鲜虾面', icon: '🍜', price: 45, effects: { hunger: 45, health: 3, mood: 8 } },
+  { id: 'bento', cat: 'food', dish: true, shops: [], name: '竹笋便当', icon: '🍱', price: 50, effects: { hunger: 60, health: 4, mood: 6 } },
+  { id: 'platter', cat: 'food', dish: true, shops: [], name: '海鲜拼盘', icon: '🦪', price: 140, effects: { hunger: 50, health: 4, mood: 22 } },
+  { id: 'hotpot', cat: 'food', dish: true, shops: [], name: '胖头鱼火锅', icon: '🫕', price: 70, effects: { hunger: 65, mood: 14 } },
   { id: 'pumpkincup', cat: 'food', dish: true, shops: [], name: '嘎嘎南瓜盅', icon: '🍲', price: 80, effects: { hunger: 70, health: 6, mood: 14 } },
   { id: 'gingerbread', cat: 'food', shops: [], name: '姜饼人', icon: '🍪', price: 15, effects: { hunger: 12, mood: 8 } },
   // what comes up when fishing (FISH); price: what the barn pays
@@ -927,25 +949,25 @@ const MEAL_HOURS = [[11 * 60 + 30, 13 * 60 + 30], [17 * 60, 19 * 60]];
 // dislike: items, for presents; birthday: 'season-day' (the town's calendar); game: the mini game they play together;
 // fav: the place they love to stop at on a walk
 const NPCS = [
-  { id: 'dog', icon: '🐶', name: '柴柴', species: 'dog', place: 'tower', home: 'apt', loves: ['burger', 'ball', 'braisedfish'], likes: ['milk', 'dumpling', 'crab'], birthday: 'summer-26', game: 'penalty', fav: 'field', perk: { key: 'pay', v: 1.05, text: '打工工资 +5%' } },
-  { id: 'fox', icon: '🦊', name: '狐狸阿姨', species: 'fox', place: 'bakery', home: 'bakery', loves: ['strawberry', 'egg', 'fruitsalad'], likes: ['milk', 'apple', 'crucian'], dislike: 'bread', birthday: 'spring-4', game: 'rps', fav: 'plaza' },
+  { id: 'dog', icon: '🐶', name: '柴柴', species: 'dog', place: 'tower', home: 'apt', loves: ['burger', 'ball', 'braisedfish', 'eggrice'], likes: ['milk', 'dumpling', 'crab'], birthday: 'summer-26', game: 'penalty', fav: 'field', perk: { key: 'pay', v: 1.05, text: '打工工资 +5%' } },
+  { id: 'fox', icon: '🦊', name: '狐狸阿姨', species: 'fox', place: 'bakery', home: 'bakery', loves: ['strawberry', 'egg', 'fruitsalad', 'smoothie'], likes: ['milk', 'apple', 'crucian'], dislike: 'bread', birthday: 'spring-4', game: 'rps', fav: 'plaza' },
   { id: 'raccoon', icon: '🦝', name: '浣浣', species: 'raccoon', place: 'bubble', home: 'apt', loves: ['strawberry', 'apple', 'crabcongee'], likes: ['donut', 'crab', 'shrimp'], birthday: 'summer-1', game: 'ttt', fav: 'lake' },
-  { id: 'squirrel', icon: '🐿️', name: '栗栗', species: 'squirrel', place: 'toy', home: 'tree', loves: ['corn', 'kite', 'cornsoup'], likes: ['donut', 'apple'], birthday: 'autumn-19', game: 'ttt', fav: 'meadow', perk: { key: 'toyRecover', v: 2, text: '玩具恢复速度 ×2' } },
-  { id: 'cat', icon: '🐱', name: '咪咪', species: 'cat', place: 'clothes', home: 'apt', loves: ['milk', 'cake', 'grilledfish'], likes: ['croissant', 'crucian', 'shrimp'], dislike: 'carrot', birthday: 'winter-21', game: 'rps', fav: 'plaza' },
-  { id: 'bear', icon: '🐻', name: '熊师傅', species: 'bear', place: 'furniture', home: 'woodshop', loves: ['honey', 'watermelon', 'seafoodrice'], likes: ['pumpkin', 'dumpling', 'crucian', 'puffer'], birthday: 'winter-15', game: 'penalty', fav: 'site' },
+  { id: 'squirrel', icon: '🐿️', name: '栗栗', species: 'squirrel', place: 'toy', home: 'tree', loves: ['corn', 'kite', 'cornsoup', 'cornpancake'], likes: ['donut', 'apple'], birthday: 'autumn-19', game: 'ttt', fav: 'meadow', perk: { key: 'toyRecover', v: 2, text: '玩具恢复速度 ×2' } },
+  { id: 'cat', icon: '🐱', name: '咪咪', species: 'cat', place: 'clothes', home: 'apt', loves: ['milk', 'cake', 'grilledfish', 'fishball'], likes: ['croissant', 'crucian', 'shrimp'], dislike: 'carrot', birthday: 'winter-21', game: 'rps', fav: 'plaza' },
+  { id: 'bear', icon: '🐻', name: '熊师傅', species: 'bear', place: 'furniture', home: 'woodshop', loves: ['honey', 'watermelon', 'seafoodrice', 'hotpot'], likes: ['pumpkin', 'dumpling', 'crucian', 'puffer'], birthday: 'winter-15', game: 'penalty', fav: 'site' },
   { id: 'sheep', icon: '🐑', name: '绵绵医生', species: 'sheep', place: 'clinic', home: 'apt', loves: ['apple', 'corn', 'carrotegg'], likes: ['milk', 'pumpkin'], dislike: 'burger', birthday: 'spring-21', game: 'ttt', fav: 'lake', perk: { key: 'clinicCd', v: 0.5, text: '看病冷却 −50%' } },
-  { id: 'owl', icon: '🦉', name: '咕咕校长', species: 'owl', place: 'primary', home: 'middle', loves: ['puzzle', 'croissant', 'takoyaki'], likes: ['egg', 'milk', 'crucian'], birthday: 'autumn-1', game: 'chess', fav: 'museum', perk: { key: 'study', v: 1.05, text: '上课经验 +5%' } },
-  { id: 'turtle', icon: '🐢', name: '龟爷爷', species: 'turtle', place: 'chess', home: 'shell', loves: ['strawberry', 'watermelon', 'shrimpegg'], likes: ['pumpkin', 'apple', 'shrimp'], birthday: 'winter-4', game: 'chess', fav: 'lake', perk: { key: 'playCap', v: 10, text: '每日游戏经验上限 +10' } },
+  { id: 'owl', icon: '🦉', name: '咕咕校长', species: 'owl', place: 'primary', home: 'middle', loves: ['puzzle', 'croissant', 'takoyaki', 'shrimpnoodle'], likes: ['egg', 'milk', 'crucian'], birthday: 'autumn-1', game: 'chess', fav: 'museum', perk: { key: 'study', v: 1.05, text: '上课经验 +5%' } },
+  { id: 'turtle', icon: '🐢', name: '龟爷爷', species: 'turtle', place: 'chess', home: 'shell', loves: ['strawberry', 'watermelon', 'shrimpegg', 'platter'], likes: ['pumpkin', 'apple', 'shrimp'], birthday: 'winter-4', game: 'chess', fav: 'lake', perk: { key: 'playCap', v: 10, text: '每日游戏经验上限 +10' } },
   { id: 'duck', icon: '🦆', name: '嘎嘎大厨', species: 'duck', place: 'canteen', home: 'boat', loves: ['corn', 'pumpkin', 'pumpkincup'], likes: ['carrot', 'rice', 'shrimp', 'octopus'], dislike: 'egg', birthday: 'summer-14', game: 'rps', fav: 'lake', perk: { key: 'canteen', v: 10, text: '食堂饱食 +10' } },
 ];
 // the farm market's keeper
-NPCS.push({ id: 'cow', icon: '🐮', name: '牛大叔', species: 'cow', place: 'farm', home: 'ranch', loves: ['donut', 'watermelon', 'cornsoup'], likes: ['bread', 'croissant'], birthday: 'summer-9', game: 'rps', fav: 'garden' });
+NPCS.push({ id: 'cow', icon: '🐮', name: '牛大叔', species: 'cow', place: 'farm', home: 'ranch', loves: ['donut', 'watermelon', 'cornsoup', 'slush'], likes: ['bread', 'croissant'], birthday: 'summer-9', game: 'rps', fav: 'garden' });
 
 // the neighbours in the cottages next door (spot: which cottage); just friends, no perk
 NPCS.push(
-  { id: 'rabbit', icon: '🐰', name: '小兔', species: 'bunny', place: 'neighbors', spot: 0, home: 'cottage0', small: true, loves: ['carrot', 'carrotcake', 'strawberry'], likes: ['ball', 'donut', 'bear'], birthday: 'spring-11', game: 'rps', fav: 'toy' },
-  { id: 'panda', icon: '🐼', name: '熊猫爷爷', species: 'panda', place: 'neighbors', spot: 1, home: 'cottage1', loves: ['bamboo', 'dumpling', 'porridge'], likes: ['apple', 'rice', 'koi'], birthday: 'autumn-9', game: 'banqi', fav: 'lake' },
-  { id: 'hedgehog', icon: '🦔', name: '刺猬妹妹', species: 'hedgehog', place: 'neighbors', spot: 2, home: 'cottage2', loves: ['apple', 'strawberry', 'fruitsalad'], likes: ['pumpkin', 'cake'], birthday: 'autumn-22', game: 'ttt', fav: 'meadow' },
+  { id: 'rabbit', icon: '🐰', name: '小兔', species: 'bunny', place: 'neighbors', spot: 0, home: 'cottage0', small: true, loves: ['carrot', 'carrotcake', 'strawberry', 'smoothie'], likes: ['ball', 'donut', 'bear'], birthday: 'spring-11', game: 'rps', fav: 'toy' },
+  { id: 'panda', icon: '🐼', name: '熊猫爷爷', species: 'panda', place: 'neighbors', spot: 1, home: 'cottage1', loves: ['bamboo', 'dumpling', 'porridge', 'bento'], likes: ['apple', 'rice', 'koi'], birthday: 'autumn-9', game: 'banqi', fav: 'lake' },
+  { id: 'hedgehog', icon: '🦔', name: '刺猬妹妹', species: 'hedgehog', place: 'neighbors', spot: 2, home: 'cottage2', loves: ['apple', 'strawberry', 'fruitsalad', 'berrypie'], likes: ['pumpkin', 'cake'], birthday: 'autumn-22', game: 'ttt', fav: 'meadow' },
 );
 const NPC_BY_ID = Object.fromEntries(NPCS.map((n) => [n.id, n]));
 
