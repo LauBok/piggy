@@ -1518,7 +1518,9 @@ const City = {
       this.placePig(pt.x, pt.y);
       this.face(pt.dir);
       const done = scene.stops.filter((_, i) => scene.stopAt[i] <= p);
-      q('.basket').innerHTML = [...Array(scene.stops.length - done.length)].map(() => `<i>${scene.item}</i>`).join('');
+      // a long round shows at most six in the basket, going down as the stops are done
+      const left = Math.ceil(((scene.stops.length - done.length) / scene.stops.length) * Math.min(6, scene.stops.length));
+      q('.basket').innerHTML = [...Array(left)].map(() => `<i>${scene.item}</i>`).join('');
       this.setDynProps(done.map((s) => `<div class="prop delivered" style="left:${s.x}px;top:${s.y - 16}px">${scene.item}<b>♥</b></div>`).join(''));
     }
   },

@@ -451,7 +451,15 @@ const JOB_SCENES = {
   docent: { place: 'artpalace', tpl: 'room', room: 'gallery' },
   weather: { place: 'museum', tpl: 'room', room: 'weather' },
   ballboy: { place: 'field', tpl: 'haul', a: near('field', -90, -60), b: near('field', 100, -10), item: '🎾', basket: '🗑️' },
-  paper: { place: 'courier', tpl: 'route', vehicle: 'bike', item: '📰', stops: [...HN.houses, PLACE_BY_ID.kinder.entry, PLACE_BY_ID.home.entry] },
+  // the paper round goes all over town: the shop street, the village, the north hill, the lake, back home
+  paper: {
+    place: 'courier', tpl: 'route', vehicle: 'bike', item: '📰',
+    stops: [
+      ...['salon', 'restaurant', 'bakery', 'kinder'].map((id) => PLACE_BY_ID[id].entry),
+      HN.houses[2], HN.houses[0], HN.houses[1],
+      ...['home', 'farm', 'barn', 'primary', 'college', 'site', 'stage', 'lake', 'apt'].map((id) => PLACE_BY_ID[id].entry),
+    ],
+  },
   busker: { place: 'plaza', tpl: 'stand', spot: near('plaza', -40, -50), hold: '🪗', fx: ['🎵', '🎶', '🪙'], hat: true },
   portrait: { place: 'lake', tpl: 'stand', spot: near('lake', -40, 34), hold: '🖌️', fx: ['🎨'], easel: true },
   museum: { place: 'museum', tpl: 'room', room: 'museum' },
