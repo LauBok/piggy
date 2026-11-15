@@ -28,6 +28,7 @@ let size = FULL_SIZE;
 
 // setBounds instead of setPosition: on scaled Windows displays setPosition can slowly grow the window
 function moveTo(x, y) {
+  if (!win || win.isDestroyed()) return;
   win.setBounds({ x: Math.round(x), y: Math.round(y), width: size.w, height: size.h });
 }
 
@@ -298,14 +299,20 @@ ipcMain.on('drag:start', () => {
   const oy = c.y - wy;
   clearInterval(dragTimer);
   dragTimer = setInterval(() => {
+    if (!win || win.isDestroyed()) return stopDrag();
     const p = screen.getCursorScreenPoint();
     moveTo(p.x - ox, p.y - oy);
   }, 16);
 });
 
-ipcMain.handle('drag:end', () => {
+function stopDrag() {
   clearInterval(dragTimer);
   dragTimer = null;
+}
+
+ipcMain.handle('drag:end', () => {
+  stopDrag();
+  if (!win || win.isDestroyed()) return { x: 0, y: 0 };
   const [x, y] = win.getPosition();
   return { x, y };
 });

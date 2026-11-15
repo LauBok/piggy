@@ -419,13 +419,19 @@ const App = {
       window.pet.dragStart();
       this.onDragStart();
     });
-    hit.addEventListener('pointerup', () => {
+    const release = (click) => {
       if (!press) return;
       const wasDrag = press.dragging;
       press = null;
       if (wasDrag) this.onDragEnd();
-      else this.onPetClick();
-    });
+      else if (click) this.onPetClick();
+    };
+    hit.addEventListener('pointerup', () => release(true));
+    // the system can swallow the button release (macOS especially): never stay stuck to the mouse
+    hit.addEventListener('pointercancel', () => release(false));
+    hit.addEventListener('lostpointercapture', () => release(false));
+    window.addEventListener('blur', () => release(false));
+    document.addEventListener('pointermove', (e) => press?.dragging && e.buttons === 0 && release(false));
     hit.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       window.pet.openHome('status');
