@@ -769,7 +769,9 @@ const Game = {
       return { ok: true, msg, fx: `${it.icon}${this.playExp(PLAY_EXP.toy)}` };
     }
 
-    if (it.cat === 'food' && s.hunger >= 95) return fail('吃不下了…');
+    // a drink goes down full or not; it's for when the pig is tired
+    if (it.drink && s.energy >= 98) return fail('不累，不用喝');
+    if (it.cat === 'food' && !it.drink && s.hunger >= 95) return fail('吃不下了…');
     if (it.cat === 'hygiene' && s.clean >= 98) return fail('已经很干净啦');
     if (it.cat === 'medicine' && s.health >= 100) return fail('很健康，不用吃药');
     // a kitchen at home makes food go further
@@ -778,7 +780,7 @@ const Game = {
     if (--s.inventory[id] <= 0) delete s.inventory[id];
     if (it.cat === 'medicine') return { ok: true, msg: '吃了药，感觉好多了', fx: '💊' };
     if (it.cat === 'hygiene') return { ok: true, msg: '擦擦洗洗，干净啦~', fx: '✨' };
-    const lines = ['好吃！', '真香~', '吧唧吧唧…', `${it.name}最棒了！`];
+    const lines = it.drink ? ['咕嘟咕嘟…', '精神多了！', `${it.name}真好喝！`] : it.effects.energy >= 10 ? ['好吃！', '吃饱了有力气！', `${it.name}最棒了！`] : ['好吃！', '真香~', '吧唧吧唧…', `${it.name}最棒了！`];
     return { ok: true, msg: lines[Math.floor(Math.random() * lines.length)], fx: '😋' };
   },
 

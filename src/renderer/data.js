@@ -254,6 +254,10 @@ const RECIPES = [
   { id: 'hotpot', needs: { puffer: 1, carrot: 1, corn: 1, salt: 1, oil: 1 }, minutes: 40, learn: 'college_gen_cook@4' },
   { id: 'seafoodrice', needs: { tropical: 1, shrimp: 1, rice: 1, oil: 1, salt: 1 }, minutes: 40, learn: 'college_gen_cook@4' },
   { id: 'pumpkincup', needs: { pumpkin: 1, corn: 1, sugar: 1 }, minutes: 30, learn: { npc: 'duck', hearts: 5 } },
+  // the ones that pick the pig up when tired
+  { id: 'sandwich', needs: { bread: 1, egg: 1, salt: 1 }, minutes: 10 },
+  { id: 'carrotjuice', needs: { carrot: 2, apple: 1 }, minutes: 10, learn: 'primary_science@3' },
+  { id: 'sushi', needs: { rice: 1, crucian: 1, soy: 1 }, minutes: 20, learn: 'middle_biology@2' },
 ];
 const RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
 const BIG_KITCHEN_SPEED = 0.7; // the 大厨房 cooks in this share of the time
@@ -680,6 +684,10 @@ const ITEMS = [
   { id: 'pumpkin', cat: 'food', shops: ['farm'], name: '南瓜', icon: '🎃', price: 24, effects: { hunger: 35, health: 2 } },
   { id: 'bamboo', cat: 'food', shops: ['farm'], name: '竹笋', icon: '🎋', price: 7, effects: { hunger: 9, health: 1 } },
   { id: 'feast', cat: 'food', shops: ['restaurant'], name: '满汉全席', icon: '🍲', price: 200, effects: { hunger: 100, mood: 20, health: 5 } },
+  // a quick lift at the shops; the strong one is hard on the body
+  { id: 'sportsdrink', cat: 'food', drink: true, shops: ['supermarket', 'store'], name: '运动饮料', icon: '🫗', price: 15, effects: { hunger: 2, energy: 12, mood: 2 } },
+  { id: 'energydrink', cat: 'food', drink: true, shops: ['supermarket', 'store'], name: '能量饮料', icon: '🥫', price: 30, effects: { hunger: 2, energy: 28, health: -3 } },
+  { id: 'wrap', cat: 'food', shops: ['restaurant'], name: '活力卷饼', icon: '🌯', price: 40, effects: { hunger: 32, energy: 15, mood: 4 } },
   // the theme park's sweet stall
   { id: 'cottoncandy', cat: 'food', shops: ['funpark'], name: '棉花糖', icon: '🍭', price: 12, effects: { hunger: 4, mood: 10 } },
   { id: 'popcorn', cat: 'food', shops: ['funpark'], name: '爆米花', icon: '🍿', price: 15, effects: { hunger: 10, mood: 6 } },
@@ -717,6 +725,10 @@ const ITEMS = [
   { id: 'platter', cat: 'food', dish: true, shops: [], name: '海鲜拼盘', icon: '🦪', price: 140, effects: { hunger: 50, health: 4, mood: 22 } },
   { id: 'hotpot', cat: 'food', dish: true, shops: [], name: '胖头鱼火锅', icon: '🫕', price: 70, effects: { hunger: 65, mood: 14 } },
   { id: 'pumpkincup', cat: 'food', dish: true, shops: [], name: '嘎嘎南瓜盅', icon: '🍲', price: 80, effects: { hunger: 70, health: 6, mood: 14 } },
+  // cooked to pick the pig up when tired (drink: gated on energy, not on being full)
+  { id: 'sandwich', cat: 'food', dish: true, shops: [], name: '鸡蛋三明治', icon: '🥪', price: 28, effects: { hunger: 26, energy: 12, mood: 4 } },
+  { id: 'carrotjuice', cat: 'food', dish: true, drink: true, shops: [], name: '胡萝卜苹果汁', icon: '🍹', price: 30, effects: { hunger: 6, energy: 16, health: 2, mood: 4 } },
+  { id: 'sushi', cat: 'food', dish: true, shops: [], name: '小鱼寿司', icon: '🍣', price: 45, effects: { hunger: 30, energy: 22, mood: 8 } },
   { id: 'gingerbread', cat: 'food', shops: [], name: '姜饼人', icon: '🍪', price: 15, effects: { hunger: 12, mood: 8 } },
   // what comes up when fishing (FISH); price: what the barn pays
   { id: 'crucian', cat: 'fish', shops: [], name: '小鲫鱼', icon: '🐟', price: 8, effects: {} },
@@ -842,8 +854,11 @@ const ITEMS = [
   { id: 'pot', cat: 'furniture', group: 'pot', npc: 'duck', name: '大厨锅', icon: '🍲', price: 2500, effects: {}, bonus: { food: 1.1 } },
 
   // the café: drinks and something sweet
-  { id: 'cocoa', cat: 'food', shops: ['cafe'], name: '热可可', icon: '☕', price: 18, effects: { hunger: 8, energy: 8, mood: 6 } },
-  { id: 'lemonsoda', cat: 'food', shops: ['cafe'], name: '柠檬汽水', icon: '🍋', price: 12, effects: { hunger: 4, energy: 4, mood: 8 } },
+  { id: 'coffee', cat: 'food', drink: true, shops: ['cafe'], name: '咖啡', icon: '☕', price: 20, effects: { hunger: 2, energy: 20, mood: 3 } },
+  { id: 'tea', cat: 'food', drink: true, shops: ['cafe'], name: '红茶', icon: '🫖', price: 14, effects: { hunger: 2, energy: 12, mood: 4 } },
+  { id: 'milktea', cat: 'food', drink: true, shops: ['cafe'], name: '珍珠奶茶', icon: '🧋', price: 22, effects: { hunger: 10, energy: 10, mood: 10 } },
+  { id: 'cocoa', cat: 'food', drink: true, shops: ['cafe'], name: '热可可', icon: '🍫', price: 18, effects: { hunger: 8, energy: 8, mood: 6 } },
+  { id: 'lemonsoda', cat: 'food', drink: true, shops: ['cafe'], name: '柠檬汽水', icon: '🍋', price: 12, effects: { hunger: 4, energy: 4, mood: 8 } },
   { id: 'pancake', cat: 'food', shops: ['cafe'], name: '松饼', icon: '🥞', price: 24, effects: { hunger: 26, mood: 6 } },
   { id: 'sundae', cat: 'food', shops: ['cafe'], name: '冰淇淋', icon: '🍨', price: 20, effects: { hunger: 10, mood: 14 } },
   // the bookshop: books are read again and again like toys (book: said as reading)
