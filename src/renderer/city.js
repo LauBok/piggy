@@ -885,6 +885,20 @@ const City = {
     });
   },
 
+  // Whoever the pig is out with stays with him to the end, even after a restart (or if the
+  // map opens halfway through): put them back beside him, as goOuting does on arrival
+  keepOutingMate(s, snap) {
+    const a = s.activity;
+    const id = a?.with;
+    if (!id || !snap.busy || this.npcHold[id] || !NPC_BY_ID[id]) return;
+    const o = OUTINGS.find((x) => (a.type === 'hobby' ? x.hobby : x.help) === a.id);
+    if (!o) return;
+    if (this.buddy?.id === id) this.buddy = null;
+    const e = this.entryOf(this.outingTarget(o));
+    const m = OUTING_MATES[o.id];
+    this.npcHold[id] = m ? { x: e.x + m.dx, y: e.y + m.dy, dir: Math.sign(-m.dx) || -1, hold: m.hold || '', act: m.act || '', untilFree: Date.now() } : { x: e.x, y: e.y, gone: true, untilFree: Date.now() };
+  },
+
   // ---------- camera ----------
 
   // how much of the world fits in the view
@@ -1331,6 +1345,7 @@ const City = {
       this.release(this.mate.id);
       this.mate = null;
     }
+    this.keepOutingMate(s, snap);
     // back out of the canteen after eating together
     for (const [id, h] of Object.entries(this.npcHold)) if (h.untilFree && !snap.busy && Date.now() - h.untilFree > 4000) this.release(id);
     this.updateTown(s);
@@ -1774,11 +1789,21 @@ const City = {
       <circle class="mv-npc-bg" r="14"/><g clip-path="url(#mvHead)">${mapFace(n.species)}</g><circle class="mv-npc-ring" r="14"/></g></g>`;
     let html = '';
     const inside = {};
+    // where everyone is right now (the window may have been hidden, when nobody moves)
+    this.moveNpcs(Date.now());
     for (const n of NPCS) {
       const st = this.npcAt[n.id];
       if (!st) continue;
+      // out of sight with the pig (in a building together): with him, not where their day says
+      const held = this.npcHold[n.id];
+      if (held?.gone) {
+        const where = this.inside || this.at?.place;
+        if (where && PLACE_BY_ID[where]) (inside[where] ||= []).push(n);
+        else html += head(n, this.pos.x + 58, this.pos.y - 30, 0);
+        continue;
+      }
       // keepers behind their counter count as inside their shop
-      const atWork = st.plan.act === 'work' && st.plan.where === n.place && !this.npcHold[n.id];
+      const atWork = st.plan.act === 'work' && st.plan.where === n.place && !held;
       if (st.shown && !atWork) html += head(n, st.x, st.y - 30, 0);
       else (inside[st.plan.where] ||= []).push(n);
     }
@@ -1789,7 +1814,7 @@ const City = {
       const shown = list.slice(0, MAP_FACES);
       [...shown].reverse().forEach((n) => {
         const i = shown.indexOf(n);
-        html += head(n, c.x, c.y, -i * 20, npcAsleep(this.npcAt[n.id].plan) ? 'zz' : '');
+        html += head(n, c.x, c.y, -i * 20, !this.npcHold[n.id] && npcAsleep(this.npcAt[n.id].plan) ? 'zz' : '');
       });
       const rest = list.slice(MAP_FACES);
       if (rest.length) {
