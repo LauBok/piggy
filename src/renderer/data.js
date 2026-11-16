@@ -956,7 +956,13 @@ const WISH_MAX_PRICE = 70;
 // what can be given as a present: things to eat, toys, medicine, a fish
 const GIFT_CATS = ['food', 'toy', 'medicine', 'fish'];
 // Hearts needed to do something together: walk, then play a game or eat at the canteen
-const TOGETHER_HEARTS = { walk: 2, play: 4, go: 4 };
+const TOGETHER_HEARTS = { walk: 2, play: 4, go: 4, home: 4 };
+// a friend round at the pig's home: they stay this many town minutes, and come only in the day
+// (from, to: town hours). Staying the night (the pig in a real bed), they leave this long after he
+// would wake.
+const GUEST_MIN = 120;
+const GUEST_HOURS = [7, 21];
+const GUEST_MORNING_MIN = 60;
 // the canteen hours when eating together is offered: [from, to] in minutes after midnight
 const MEAL_HOURS = [[11 * 60 + 30, 13 * 60 + 30], [17 * 60, 19 * 60]];
 
@@ -1718,6 +1724,25 @@ const NPC_VISITS = {
 // ---------- going somewhere together ----------
 // What each says about an outing (see OUTINGS): go, as they set off; sit, once it starts. fav: the
 // one they love most, and favLine, a little more they say about it a moment later.
+// A friend round at the pig's home: on the way (go), coming in (in), eating what he serves (eat:
+// love, ok, no), playing with his toy (toy), staying the night (night), the morning (morning), going (bye)
+const NPC_HOME_TALK = {
+  dog: { go: '去你家？汪！我早就想看看了！', in: '汪！你家真不错，我能到处看看吗？', eat: { love: '汪汪！这个我最爱吃了！你怎么知道的？', ok: '好吃，汪！你手艺不错嘛。', no: '汪……这个我不太爱吃，不过谢谢你。' }, toy: '汪！算我一个！我来接！', night: '住一晚？汪！那我睡门口，给你看家！', morning: '汪！早！我醒得比你早，去跑了一圈了！', bye: '汪，我该回去了，下次去我那儿玩！' },
+  fox: { go: '去你家呀？好，阿姨顺路带点点心。', in: '哎哟，收拾得真干净，乖孩子。', eat: { love: '哎哟，阿姨最爱这个了，真贴心。', ok: '嗯，好吃。乖孩子手真巧。', no: '阿姨吃一点点就好……心意领了。' }, toy: '阿姨陪你玩，慢点，别磕着。', night: '住一晚？好，阿姨给你掖好被子再睡。', morning: '早呀，乖孩子。阿姨看你睡得可香了。', bye: '阿姨回店里了，面包还在烤箱里呢。' },
+  raccoon: { go: '去你家？……地板干净吗？好吧，去。', in: '……比我想的干净。鞋我放门口了。', eat: { love: '……这个我喜欢。碗我来洗。', ok: '还行。挺干净的味道。', no: '这个……我就不吃了，谢谢。' }, toy: '玩完要擦一擦哦。……好吧，我也玩。', night: '住一晚？……枕头套是新换的吗？那好。', morning: '早。我把你家窗台擦了，不用谢。', bye: '我回去了。今天玩得……挺开心的。' },
+  squirrel: { go: '去你家玩？吱！我带松果去！', in: '吱吱！你家好大！我能爬到柜子上吗？', eat: { love: '吱！我最爱这个了！我能藏一点带走吗？', ok: '吱，好吃好吃！', no: '吱……这个我不太喜欢，给你吃吧。' }, toy: '吱！我也要玩！轮到我了轮到我了！', night: '住你家？吱！我们半夜偷偷吃零食！', morning: '吱！早！我梦见满屋子都是松果！', bye: '吱，我该回树洞了，拜拜！' },
+  cat: { go: '去你家？……行吧，正好没事。', in: '嗯，还挺有品位的。沙发借我坐坐。', eat: { love: '……这个，我喜欢。别告诉别人我吃了两口。', ok: '还不错。', no: '这个就算了。我不饿。' }, toy: '幼稚。……给我也玩一下。', night: '住一晚？可以。我要靠窗那边。', morning: '……早。别看我，我毛还没梳。', bye: '我回去了。今天……还行吧。' },
+  bear: { go: '去你家？嘿，正好看看我做的家具结实不。', in: '嘿，这房子不错。这个柜子我能敲敲吗？', eat: { love: '嘿！这个好！跟山里吃的一个味儿！', ok: '嗯，好吃。多谢你，小家伙。', no: '这个……熊师傅吃不惯，你吃吧。' }, toy: '嘿，这玩具做得还行。我也来试试。', night: '住一晚？好，熊师傅打呼你别嫌吵。', morning: '早，小家伙。床腿我给你紧了紧。', bye: '我回作坊了，有坏了的东西叫我。' },
+  sheep: { go: '咩~去你家？好呀，顺便看看你作息规律不。', in: '咩~屋里通风不错，很健康。', eat: { love: '咩~我最爱这个了，营养也好！', ok: '咩，好吃。细嚼慢咽哦。', no: '咩……这个油有点多，我少吃一点。' }, toy: '咩~玩一会儿就休息，别累着。', night: '住一晚？好，咩~十点前要睡着哦。', morning: '咩~早！睡够八小时了，很好。', bye: '咩，我回诊所了。记得多喝水。' },
+  owl: { go: '咕咕，家访？好，我去看看小猪同学的书桌。', in: '咕咕，书摆得整整齐齐，很好。', eat: { love: '咕咕！这个我很喜欢，学习也要吃好。', ok: '咕，味道不错。', no: '咕……这个校长就不吃了。' }, toy: '咕咕，劳逸结合，玩吧，校长也来。', night: '住一晚？咕，校长晚上睡不着，正好看看书。', morning: '咕咕，早上好！早起的小猪同学有奖励。', bye: '咕咕，校长回学校了，功课别落下。' },
+  turtle: { go: '去你家？……好，爷爷慢慢走。', in: '……嗯，好地方。爷爷坐一会儿。', eat: { love: '……好吃，这个爷爷喜欢……嘿嘿。', ok: '嗯……不错，不错。', no: '……这个爷爷嚼不动，你吃。' }, toy: '……玩吧，爷爷看着……嘿嘿。', night: '住一晚？……好，爷爷睡得早。', morning: '……早。爷爷醒了好一会儿了。', bye: '……爷爷回去了。慢慢来，不着急。' },
+  duck: { go: '嘎！去你家？让我看看你的厨房！', in: '嘎！厨房在哪？我先看一眼！', eat: { love: '嘎！就是这个味！你可以来食堂帮厨了！', ok: '嘎，火候还行，再练练！', no: '嘎……这个我不吃，大厨也有挑的。' }, toy: '嘎嘎！我也玩！', night: '住一晚？嘎！明早我给你做早饭！', morning: '嘎！早！早饭在锅里，趁热吃！', bye: '嘎！我回食堂了，午饭要开锅了！' },
+  cow: { go: '去娃家？哞，好，大叔去看看。', in: '哞，城里的房子就是亮堂。', eat: { love: '哞！好吃！跟地里刚摘的一样香！', ok: '哞，好娃，好吃。', no: '哞……这个大叔吃不惯，娃吃吧。' }, toy: '哞，大叔小时候也玩这个。', night: '住一晚？哞，大叔天不亮就起，别吵着你。', morning: '哞~早，娃。大叔已经喂完一圈了。', bye: '哞，大叔回去了，牛还等着呢。' },
+  rabbit: { go: '去小猪哥哥家！好耶！好耶！', in: '哇！小猪哥哥的家！我可以摸摸这个吗？', eat: { love: '是我最爱吃的！小猪哥哥最好了！', ok: '好吃！小猪哥哥好厉害！', no: '嗯……这个我不爱吃……小猪哥哥吃吧。' }, toy: '我也要玩！小猪哥哥教我！', night: '住小猪哥哥家！我跟兔婆婆说好啦！', morning: '小猪哥哥早！你睡觉打小呼噜，嘻嘻。', bye: '我要回家啦，兔婆婆等我吃饭，拜拜！' },
+  panda: { go: '去你家？好，好，爷爷去坐坐。', in: '孩子，你这家，住着心里踏实。', eat: { love: '好，好，爷爷就爱这一口。', ok: '嗯，好吃。孩子长大了，会照顾人了。', no: '这个爷爷就不吃了，你多吃点。' }, toy: '玩吧，爷爷看着你玩就高兴。', night: '住一晚？好，爷爷给你讲个老故事。', morning: '孩子，早。爷爷打了一套拳了。', bye: '爷爷回去了。常来看爷爷啊。' },
+  hedgehog: { go: '那个……真的可以去吗？嗯！', in: '那个……打扰了。小猪哥哥的家好暖和。', eat: { love: '这个……是我最喜欢的。谢谢小猪哥哥。', ok: '那个……很好吃。', no: '那个……我吃不下了……对不起。' }, toy: '那个……我也可以玩吗？嘻嘻。', night: '那个……我可以住下吗？我睡沙发就好。', morning: '那个……早上好。我第一次在别人家过夜。', bye: '那个……我该回去了。今天谢谢你。' },
+};
+
 const NPC_OUTINGS_TALK = {
   dog: {
     fav: 'soccer', favLine: '汪！以前我都是一个人对着墙踢，有你真好。',

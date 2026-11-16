@@ -124,7 +124,7 @@ const App = {
         res = Game.order(id);
         break;
       case 'use': {
-        const it = ITEM_BY_ID[id];
+        const it = ITEM_BY_ID[String(id).split('@')[0]];
         res = Game.use(id);
         if (!res.ok) break;
         this.hold(2500);
@@ -206,6 +206,12 @@ const App = {
         break;
       case 'gift':
         res = Game.gift(id);
+        break;
+      case 'invite':
+        res = Game.invite(id);
+        break;
+      case 'treat':
+        res = Game.treat(id);
         break;
       case 'together':
         res = Game.together(id);

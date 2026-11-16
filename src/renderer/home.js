@@ -634,7 +634,7 @@ document.addEventListener('click', (e) => {
 
   const el = e.target.closest('[data-action]');
   if (!el || el.disabled) return;
-  const { action, id } = el.dataset;
+  let { action, id } = el.dataset;
   if (el.closest('#pigMenu')) City.togglePigMenu(false);
   if (LOCAL[action]) return LOCAL[action](id, el.dataset);
   // these take a second tap to be sure
@@ -655,6 +655,9 @@ document.addEventListener('click', (e) => {
   // eating, playing with a toy or washing: the pig acts it out where it is
   if (action === 'use' && ITEM_BY_ID[id] && ['food', 'toy', 'hygiene', 'medicine'].includes(ITEM_BY_ID[id].cat)) {
     (Interior.open ? Interior : City).react(ITEM_BY_ID[id]);
+    // a toy with a friend round at home: they play along
+    const g = ITEM_BY_ID[id].cat === 'toy' && Interior.guestHere();
+    if (g) id = `${id}@${g}`;
   }
   window.home.act(action, id);
 });

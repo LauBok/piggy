@@ -590,12 +590,30 @@ const Game = {
       until = d.getTime();
     }
     this.setActivity({ type: 'sleep', start: Date.now(), auto, until });
-    return { ok: true, msg: auto ? '主人不在，我先回家睡啦…zzz' : night ? '晚安…zzz' : '睡个午觉…zzz' };
+    const res = { ok: true, msg: auto ? '主人不在，我先回家睡啦…zzz' : night ? '晚安…zzz' : '睡个午觉…zzz' };
+    // a friend round at bedtime stays the night, if there's a real bed: they go after breakfast
+    const g = guestOf(this.s);
+    if (g && until && ITEMS.some((it) => it.group === 'bed' && this.s.inventory[it.id])) {
+      Object.assign(g, { until: until + GUEST_MORNING_MIN * 60000, night: true });
+      const rec = this.npcRec(g.id);
+      let gain;
+      if (rec.night !== dayKey()) {
+        rec.night = dayKey();
+        gain = this.befriend(g.id, NPC_POINTS.together);
+      }
+      res.talk = { id: g.id, line: NPC_HOME_TALK[g.id].night, gain: !!gain?.gained };
+    }
+    return res;
   },
 
   wake(byClick) {
     if (!this.sleeping) return null;
     this.setActivity(null);
+    // morning, with a friend who stayed the night
+    const g = guestOf(this.s);
+    const morning = g?.night ? { id: g.id, line: NPC_HOME_TALK[g.id].morning } : null;
+    if (g) g.night = false;
+    if (morning && !(byClick && this.s.energy < 60)) return { ok: true, msg: wakeLine(townDate().getHours()), talk: morning };
     if (byClick && this.s.energy < 60) {
       this.apply({ mood: -5 });
       return { ok: true, msg: '被吵醒了，哼！' };
@@ -737,7 +755,9 @@ const Game = {
   },
 
   // Eat food, use a hygiene item, take medicine or play with a toy
-  use(id) {
+  // id: the item, or "item@friend" for a toy played with a friend round at home
+  use(arg) {
+    const [id, mate] = String(arg).split('@');
     const it = ITEM_BY_ID[id];
     const s = this.s;
     if (!s.inventory[id]) return fail(`没有${it.name}了`);
@@ -762,11 +782,24 @@ const Game = {
       if (wait > 0) return fail(`${it.name}刚玩过，${Math.ceil(wait)} 分钟后再玩吧`);
       if (s.energy < 5) return fail('太累了，玩不动…');
       const fun = toyFun(s, id);
-      this.apply({ mood: Math.round(it.effects.mood * fun), ...TOY_COST });
+      // more fun with a friend round: they join in, and the first time each day counts
+      const g = guestOf(s);
+      const withMate = g && g.id === mate;
+      this.apply({ mood: Math.round(it.effects.mood * fun * (withMate ? 1.5 : 1)), ...TOY_COST });
       s.toyReady[id] = Date.now() + it.cooldown * 60000;
       s.toyBored[id] = { n: toyBoredom(s, id) + 1, at: Date.now() };
       const msg = it.book ? (fun < 0.5 ? `${it.name}都快背下来了…` : `${it.name}真有意思！`) : fun < 0.5 ? `${it.name}有点玩腻了…` : `玩${it.name}好开心！`;
-      return { ok: true, msg, fx: `${it.icon}${this.playExp(PLAY_EXP.toy)}` };
+      const res = { ok: true, msg, fx: `${it.icon}${this.playExp(PLAY_EXP.toy)}` };
+      if (withMate) {
+        const rec = this.npcRec(mate);
+        let gain;
+        if (rec.toyw !== dayKey()) {
+          rec.toyw = dayKey();
+          gain = this.befriend(mate, NPC_POINTS.plain);
+        }
+        res.talk = { id: mate, line: NPC_HOME_TALK[mate].toy, toy: id, gain: !!gain?.gained };
+      }
+      return res;
     }
 
     // a drink goes down full or not; it's for when the pig is tired
@@ -1179,6 +1212,54 @@ const Game = {
     if (typeof line === 'object') line = line[itemId] || line._;
     const face = { wish: '💗💗', love: '😍', like: '😊', plain: '🙂', dislike: '😅' }[tier];
     return this.talked({ id, line, face }, gain);
+  },
+
+  // A friend comes round to the pig's home (they've walked there with him): they stay a while
+  invite(id) {
+    const npc = NPC_BY_ID[id];
+    const s = this.s;
+    if (!npc || hearts(s, id) < TOGETHER_HEARTS.home) return fail(`和${npc?.name || '他'}再熟一点吧`);
+    const why = this.blocked() || guestWhy(s, id);
+    if (why) return fail(why);
+    s.guest = { id, until: townNow() + GUEST_MIN * 60000, at: Date.now() };
+    const rec = this.npcRec(id);
+    rec.seen ||= this.pigNow();
+    let gain;
+    if (rec.tog !== dayKey()) {
+      rec.tog = dayKey();
+      gain = this.befriend(id, NPC_POINTS.together);
+    }
+    return this.talked({ id, line: null, together: 'home' }, gain);
+  },
+
+  // Something from the bag shared with the friend round ("id:item"): they eat one, the pig
+  // another if he has it and room for it; what they love counts most, the first time each day
+  treat(arg) {
+    const [id, itemId] = String(arg).split(':');
+    const it = ITEM_BY_ID[itemId];
+    const s = this.s;
+    if (guestOf(s)?.id !== id) return fail('不在家里');
+    if (!it || it.cat !== 'food' || !s.inventory[itemId]) return fail(`背包里没有${it?.name || '这个'}了`);
+    if (this.sleeping) return fail('在睡觉呢…zzz');
+    if (--s.inventory[itemId] <= 0) delete s.inventory[itemId];
+    if (s.inventory[itemId] && s.hunger < 95) {
+      const food = homeBonus(s, 'food');
+      this.apply({ ...it.effects, ...(it.effects.hunger ? { hunger: Math.round(it.effects.hunger * food) } : {}) });
+      if (--s.inventory[itemId] <= 0) delete s.inventory[itemId];
+    }
+    const taste = giftTaste(id, itemId);
+    const rec = this.npcRec(id);
+    let gain;
+    if (rec.treat !== dayKey()) {
+      rec.treat = dayKey();
+      gain = this.befriend(id, NPC_POINTS[taste]);
+    }
+    if (taste === 'love' && !(rec.fav ||= []).includes(itemId)) rec.fav.push(itemId);
+    (rec.gave ||= {})[itemId] = taste;
+    const T = NPC_HOME_TALK[id].eat;
+    const line = taste === 'love' ? T.love : taste === 'dislike' ? T.no : T.ok;
+    const face = { love: '😍', like: '😋', plain: '😋', dislike: '😅' }[taste];
+    return this.talked({ id, line, face, eat: itemId }, gain);
   },
 
   // Doing something together ("id:walk", "id:play", or an outing: "id:movie"…); the first time each

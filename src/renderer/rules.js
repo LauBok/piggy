@@ -277,6 +277,21 @@ const npcAtWork = (id, now) => {
   return plan.act === 'work' && plan.where === NPC_BY_ID[id].place;
 };
 
+// Who is round at the pig's home now (null if nobody, or their time is up)
+const guestOf = (s, now = townNow()) => (s.guest && now < s.guest.until ? s.guest : null);
+// Why someone can't be asked round just now ('' if they can)
+function guestWhy(s, id, now = townNow()) {
+  const g = guestOf(s, now);
+  if (g) return g.id === id ? '已经在家里' : '家里有客人';
+  const h = new Date(now).getHours();
+  if (h < GUEST_HOURS[0]) return '太早了';
+  if (h >= GUEST_HOURS[1]) return '太晚了';
+  const plan = npcPlan(id, now);
+  if (npcAsleep(plan)) return '在睡觉';
+  if (npcAtWork(id, now)) return '在上班';
+  return '';
+}
+
 // Time of day for small talk: morn, noon, eve, night, or '' in the afternoon
 function dayPart(d = townDate()) {
   const h = d.getHours();
@@ -406,7 +421,7 @@ const barnPrice = (it) => (it.cat === 'fish' ? it.price : Math.max(1, Math.round
 function visitDoor(s, id, now = townNow()) {
   const v = NPC_VISITS[id];
   const plan = npcPlan(id, now);
-  if (!v || plan.where !== NPC_BY_ID[id].home) return 'away';
+  if (!v || plan.where !== NPC_BY_ID[id].home || guestOf(s, now)?.id === id) return 'away';
   if (npcAsleep(plan)) return 'asleep';
   return asked(s, id) ? 'open' : 'closed';
 }

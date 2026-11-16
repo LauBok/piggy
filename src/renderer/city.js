@@ -726,6 +726,7 @@ const City = {
       this.cb.act('answer', `${t.id}:${k}:${btn.dataset.i}`);
     } else if (tk === 'walk' || tk === 'play') this.cb.act('together', `${t.id}:${tk}`);
     else if (tk === 'outing') return this.goOuting(t.id, btn.dataset.kind);
+    else if (tk === 'home') return this.goHomeWith(t.id);
     // a photo together, where they are (or by the pig, walking along)
     else if (tk === 'snap') this.cb.act('snapPhoto', `${t.id}:${nearestPlace(this.pos)}`);
     if (this.talk) this.renderTalk();
@@ -883,6 +884,31 @@ const City = {
       this.npcHold[id] = m ? { x: e.x + m.dx, y: e.y + m.dy, dir: Math.sign(-m.dx) || -1, hold: m.hold || '', act: m.act || '', untilFree: Date.now() } : { x: e.x, y: e.y, gone: true, untilFree: Date.now() };
       this.cb.act('together', `${id}:${kind}`);
     });
+  },
+
+  // Round to the pig's home: they walk along with him, and at the door come in with him
+  goHomeWith(id) {
+    const e = PLACE_BY_ID.home.entry;
+    this.endTalk(false);
+    this.startBuddy(id, NPC_HOME_TALK[id].go, 'home');
+    this.walkTo(e, () => {
+      if (this.buddy?.id !== id) return;
+      this.buddy = null;
+      this.npcHold[id] = { x: e.x, y: e.y, gone: true, guest: true, at: Date.now() };
+      this.cb.act('invite', id);
+      this.enter('home');
+    });
+  },
+
+  // A friend round at the pig's home is out of sight in it; when their time is up they come
+  // back out of his door and get on with their day
+  keepGuest(s) {
+    const g = guestOf(s);
+    // (one just come in waits a moment for the pet window to say they're round)
+    for (const [id, h] of Object.entries(this.npcHold)) if (h.guest && g?.id !== id && !(Date.now() - (h.at || 0) < 4000)) this.release(id);
+    if (!g || this.npcHold[g.id]?.guest || this.buddy?.id === g.id) return;
+    const e = PLACE_BY_ID.home.entry;
+    this.npcHold[g.id] = { x: e.x, y: e.y, gone: true, guest: true };
   },
 
   // Whoever the pig is out with stays with him to the end, even after a restart (or if the
@@ -1346,6 +1372,7 @@ const City = {
       this.mate = null;
     }
     this.keepOutingMate(s, snap);
+    this.keepGuest(s);
     // back out of the canteen after eating together
     for (const [id, h] of Object.entries(this.npcHold)) if (h.untilFree && !snap.busy && Date.now() - h.untilFree > 4000) this.release(id);
     this.updateTown(s);
@@ -1797,7 +1824,7 @@ const City = {
       // out of sight with the pig (in a building together): with him, not where their day says
       const held = this.npcHold[n.id];
       if (held?.gone) {
-        const where = this.inside || this.at?.place;
+        const where = held.guest ? 'home' : this.inside || this.at?.place;
         if (where && PLACE_BY_ID[where]) (inside[where] ||= []).push(n);
         else html += head(n, this.pos.x + 58, this.pos.y - 30, 0);
         continue;
@@ -1832,7 +1859,7 @@ const City = {
 // house): their words, and round buttons under them. 🎁 and 🤝 open a row of choices in the same
 // place; a question shows its two answers. together: whether 🤝 is offered (not indoors); tea:
 // whether ☕ is (at their house, not had today).
-function talkHtml(t, snap, { together = true, tea = false } = {}) {
+function talkHtml(t, snap, { together = true, tea = false, treat = false } = {}) {
   const s = snap.s;
   const b = (tk, icon, title, off = false) => `<button class="tk-b" data-tk="${tk}" title="${title}" ${off ? 'disabled' : ''}>${icon}</button>`;
   const back = '<button class="tk-b tk-back" data-tk="back" title="返回">‹</button>';
@@ -1845,9 +1872,14 @@ function talkHtml(t, snap, { together = true, tea = false } = {}) {
     acts = back + giftable(s, t.id).map((it) => `<button class="tk-item ${it.id === wish ? 'wish' : ''}" data-tk="give" data-item="${it.id}" title="${esc(it.name)}">${it.icon}<b>${s.inventory[it.id]}</b></button>`).join('');
   } else if (t.mode === 'together') {
     const go = h >= TOGETHER_HEARTS.go && OUTINGS.some((o) => outingOn(s, o));
+    const homeWhy = snap.busy ? '在忙' : snap.sleeping ? '在睡觉' : guestWhy(s, t.id);
     acts = back + b('walk', '🚶', '一起走走')
       + (h >= TOGETHER_HEARTS.play ? b('play', '🎲', '一起玩', !!gameBlock(snap)) : '')
-      + (go ? b('go', '📍', '一起去') : '');
+      + (go ? b('go', '📍', '一起去') : '')
+      + (h >= TOGETHER_HEARTS.home ? b('home', '🏠', homeWhy ? `来我家（${homeWhy}）` : '来我家', !!homeWhy) : '');
+  } else if (t.mode === 'treat') {
+    // something from the bag to eat together
+    acts = back + ITEMS.filter((it) => it.cat === 'food' && s.inventory[it.id]).map((it) => `<button class="tk-item" data-tk="serve" data-item="${it.id}" title="${esc(it.name)}">${it.icon}<b>${s.inventory[it.id]}</b></button>`).join('');
   } else if (t.mode === 'hands') {
     acts = back + RPS_THROWS.map((x) => `<button class="tk-b" data-tk="hand" data-hand="${x.id}" title="${x.name}">${x.icon}</button>`).join('');
   } else if (t.mode === 'go') {
@@ -1863,6 +1895,7 @@ function talkHtml(t, snap, { together = true, tea = false } = {}) {
       + b('rps', '✊', '切磋')
       + (giftable(s, t.id).length ? b('gift', '🎁', '送礼') : '')
       + (tea ? b('tea', '☕', '坐下喝点') : '')
+      + (treat && ITEMS.some((it) => it.cat === 'food' && s.inventory[it.id]) ? b('treat', '🍽️', '请吃') : '')
       + (together && h >= TOGETHER_HEARTS.walk ? b('together', '🤝', '一起') : '')
       + (h >= TOGETHER_HEARTS.walk ? b('snap', '📷', '合影', s.album.some((p) => p.k === 'snap' && p.w === t.id && p.d === dayKey())) : '');
   }

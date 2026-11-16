@@ -1329,6 +1329,7 @@ const Interior = {
   goFloor(f) {
     this.floor = Math.max(0, Math.min(this.home.layout.length - 1, f));
     this.draw();
+    this.syncGuest();
   },
 
   draw() {
@@ -1786,7 +1787,7 @@ const Interior = {
   makePeople() {
     this.people = [];
     this.talk = null;
-    if (this.own) return;
+    if (this.own) return this.syncGuest();
     const H = this.home;
     const add = (id, spots, i) => {
       const n = NPC_BY_ID[id];
@@ -1809,6 +1810,101 @@ const Interior = {
 
   person(id) {
     return this.people.find((p) => p.id === id);
+  },
+
+  // ---------- a friend round at the pig's home ----------
+  // They come in at the door, then wander the ground floor; staying the night they lie down on
+  // the floor while he sleeps; when their time is up they say goodbye and walk out of the door.
+
+  guestHere() {
+    return this.open && this.own ? this.people.find((p) => p.guest && !p.leaving)?.id || null : null;
+  },
+
+  syncGuest() {
+    if (!this.own || !this.open || !this.snap) return;
+    const g = guestOf(this.snap.s);
+    const here = g && this.floor === 0;
+    const p = this.people.find((q) => q.guest && !q.leaving);
+    if (p && (!here || p.id !== g.id)) {
+      if (!g && this.floor === 0) this.guestLeaves(p);
+      else this.removePerson(p);
+    }
+    if (here && !this.people.some((q) => q.guest && !q.leaving)) this.addGuest(g);
+    const q = this.people.find((x) => x.guest && !x.leaving);
+    if (q) this.guestSleep(q, !!(g?.night && this.snap.sleeping));
+  },
+
+  // open floor here and there on the ground floor, for them to wander between
+  guestSpots() {
+    const L = this.home.layout[0];
+    const out = [];
+    for (const z of [L.depth * 0.5, L.depth * 0.72]) for (let x = 1.5; x < L.width - 1; x += 2.6) if (this.walkable(x, z)) out.push([x, z]);
+    return out.length ? out : [[L.door + I_DOOR_W / 2, L.depth - 1.2]];
+  },
+
+  addGuest(g) {
+    const n = NPC_BY_ID[g.id];
+    const k = I_PIG * (NPC_SCALE / PIG_SCALE) * (n.small ? 0.72 : 1);
+    const el = document.createElement('div');
+    el.className = `actor npc ipers ${n.small ? 'small' : ''}`;
+    el.dataset.iperson = g.id;
+    el.innerHTML = `<div class="npc-say"></div><div class="a-face"><div class="a-sprite" style="--k:${k}">${animalSvg(n.species)}</div></div><div class="a-hold"></div>`;
+    this.world.appendChild(el);
+    const spots = this.guestSpots();
+    const L = this.layout;
+    // just come in with the pig: from the door, saying hello to the place
+    const fresh = Date.now() - (g.at || 0) < 8000;
+    const i = Math.floor(Math.random() * spots.length);
+    const [sx, sz] = spots[i];
+    const p = { id: g.id, guest: true, small: !!n.small, el, spots, i, x: sx, z: sz, dir: 1, to: null, wait: performance.now() + 6000 + Math.random() * 8000 };
+    if (fresh) Object.assign(p, { x: L.door + I_DOOR_W / 2 + 0.9, z: L.depth - 0.8, to: { x: sx, z: sz } });
+    this.people.push(p);
+    this.placePerson(p);
+    if (fresh) setTimeout(() => this.say(g.id, NPC_HOME_TALK[g.id].in), 600);
+  },
+
+  guestLeaves(p) {
+    if (this.talk?.id === p.id) this.endTalk();
+    this.guestSleep(p, false);
+    this.say(p.id, NPC_HOME_TALK[p.id].bye);
+    const L = this.layout;
+    Object.assign(p, { leaving: true, pinned: false, to: { x: L.door + I_DOOR_W / 2, z: L.depth - 0.3 } });
+    p.el.dataset.act = '';
+    p.el.querySelector('.a-hold').innerHTML = '';
+  },
+
+  removePerson(p) {
+    if (this.talk?.id === p.id) this.endTalk();
+    p.el.remove();
+    this.people = this.people.filter((q) => q !== p);
+  },
+
+  // staying the night: lying on the floor while the pig sleeps
+  guestSleep(p, on) {
+    if (on === !!p.asleep) return;
+    p.asleep = on;
+    p.pinned = on;
+    p.to = null;
+    // down for the night on the open floor nearest the pig's bed
+    const bed = on && this.items.find((q) => q.group === 'bed');
+    if (bed) {
+      const bx = (bed.box.x0 + bed.box.x1) / 2;
+      const [x, z] = [...p.spots].sort((a, b) => Math.hypot(a[0] - bx, a[1] - bed.box.z1) - Math.hypot(b[0] - bx, b[1] - bed.box.z1))[0];
+      Object.assign(p, { x, z });
+    }
+    p.el.dataset.act = on ? 'sleep' : '';
+    p.el.querySelector('.a-hold').innerHTML = on ? '<span>💤</span>' : '';
+    this.placePerson(p);
+  },
+
+  // holding something for a moment (what's being eaten or played with)
+  holdFor(p, icon, ms = 2600) {
+    const h = p.el.querySelector('.a-hold');
+    h.innerHTML = `<span>${icon}</span>`;
+    clearTimeout(p.holdTimer);
+    p.holdTimer = setTimeout(() => {
+      if (!p.asleep) h.innerHTML = '';
+    }, ms);
   },
 
   // Arrived at a spot: start doing what's done there, facing the pig if he's near
@@ -1836,6 +1932,11 @@ const Interior = {
         const d = Math.hypot(dx, dz);
         const step = (p.id === 'turtle' ? 0.7 : 1.5) * dt;
         if (d <= step) {
+          // out of the door: gone
+          if (p.leaving) {
+            p.out = true;
+            continue;
+          }
           Object.assign(p, { x: p.to.x, z: p.to.z, to: null, wait: now + 12000 + Math.random() * 14000 });
           this.settle(p);
         } else {
@@ -1852,6 +1953,7 @@ const Interior = {
         p.el.querySelector('.a-hold').innerHTML = '';
       }
     }
+    for (const p of this.people.filter((q) => q.out)) this.removePerson(p);
     // walking away from someone ends the talk
     const t = this.talk && this.person(this.talk.id);
     if (t && Math.hypot(this.pos.x - t.x, this.pos.z - t.z) > 2.4) this.endTalk();
@@ -1883,7 +1985,7 @@ const Interior = {
     }
     p.el.classList.add('talking');
     const tea = t.id === this.home.host && this.snap.s.npc?.[t.id]?.tea !== dayKey();
-    const html = talkHtml(t, this.snap, { together: false, tea });
+    const html = talkHtml(t, this.snap, { together: false, tea, treat: this.own && !!p.guest });
     if (box.dataset.html !== html) {
       box.dataset.html = html;
       box.innerHTML = html;
@@ -1899,7 +2001,11 @@ const Interior = {
     else if (tk === 'rps') Object.assign(t, { mode: 'hands', line: RPS_CALL });
     else if (tk === 'hand') this.cb.act('rps', `${t.id}:${btn.dataset.hand}`);
     else if (tk === 'back') t.mode = 'line';
-    else if (tk === 'give') {
+    else if (tk === 'treat') t.mode = 'treat';
+    else if (tk === 'serve') {
+      t.mode = 'line';
+      this.cb.act('treat', `${t.id}:${btn.dataset.item}`);
+    } else if (tk === 'give') {
       t.mode = 'line';
       this.cb.act('gift', `${t.id}:${btn.dataset.item}`);
     } else if (tk === 'answer') {
@@ -1907,7 +2013,7 @@ const Interior = {
       Object.assign(t, { ask: null, mode: 'line' });
       this.cb.act('answer', `${t.id}:${k}:${btn.dataset.i}`);
     } else if (tk === 'tea') return this.askTea();
-    else if (tk === 'snap') this.cb.act('snapPhoto', `${t.id}:home-${this.home.host}`);
+    else if (tk === 'snap') this.cb.act('snapPhoto', `${t.id}:${this.own ? 'home' : `home-${this.home.host}`}`);
     if (this.talk) this.renderTalk();
   },
 
@@ -1933,6 +2039,16 @@ const Interior = {
     if (t.tea) {
       this.teaTime(t.id);
       return true;
+    }
+    // eating together, or playing along: it's in their hands a moment (the pig eats too)
+    if (t.eat) {
+      this.holdFor(p, ITEM_BY_ID[t.eat].icon);
+      this.react(ITEM_BY_ID[t.eat]);
+    }
+    if (t.toy) {
+      this.holdFor(p, ITEM_BY_ID[t.toy].icon);
+      p.el.dataset.act = 'play';
+      setTimeout(() => p.el.dataset.act === 'play' && (p.el.dataset.act = ''), 2600);
     }
     if (t.face) this.personFx(p, t.face);
     if (t.gain && t.face !== '💗💗') this.personFx(p, '💗', t.face ? 500 : 0);
@@ -2054,6 +2170,7 @@ const Interior = {
       this.seated = null;
     }
     this.sprite.root.classList.toggle('studying', !!(a && a.type === 'hobby'));
+    this.syncGuest();
     if (this.talk) this.renderTalk();
   },
 };

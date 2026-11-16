@@ -1301,6 +1301,12 @@ body.map-open #mapScrim {
   transform: translateY(18%);
 }
 
+/* a friend staying the night at the pig's: lying on the floor */
+.npc[data-act='sleep'] .a-sprite svg {
+  transform-origin: 50% 85%;
+  transform: rotate(-82deg) translate(-12%, 10%);
+}
+
 .npc[data-act='taichi'] .a-sprite svg {
   transform-origin: 50% 90%;
   animation: npc-sway 3.2s ease-in-out infinite;
