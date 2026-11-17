@@ -211,6 +211,7 @@ const City = {
     svg.innerHTML = `${groundSvg()}${farmSvg()}${snow}${all.map((o) => o.svg(o.p)).join('')}<g id="donations"></g>${scenerySvg()}${marketSvg()}${festiveSvg(this.fest)}${signsSvg()}`;
     this.homeTier = -1;
     this.donated = '';
+    this.crops = '';
     this.drawLights();
     this.drawWeather();
   },
